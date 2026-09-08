@@ -1,0 +1,59 @@
+[project]
+name = "shim-backend"
+version = "0.1.0"
+description = "shim.gg API — brackets, team generation and persistent stats for game nights."
+requires-python = ">=3.12"
+
+# ── Ruff: linter and formatter ────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations", "venv", ".venv", "staticfiles"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort — import ordering
+    "B",        # bugbear — likely bugs
+    "C4",       # comprehension simplifications
+    "DJ",       # Django-specific checks
+    "UP",       # pyupgrade
+    "N",        # pep8-naming
+    "BLE",      # blind-except
+    "RUF",      # ruff's own rules
+]
+ignore = [
+    # Django's own idioms trip these; suppressing them project-wide is cleaner
+    # than a noqa on every model.
+    "RUF012",   # mutable class attrs need ClassVar — untrue for Django Meta
+    "B008",     # function call in default arg — normal in DRF field definitions
+    "RUF002",   # en dashes are deliberate prose in this codebase's comments
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]
+
+[tool.ruff.lint.per-file-ignores]
+# Settings modules use star imports by design to layer over base.py.
+"config/settings/*.py" = ["F403", "F405", "E402"]
+
+# ── pytest ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.dev"
+python_files = ["test_*.py", "*_test.py"]
+testpaths = ["apps"]
+addopts = [
+    "--strict-markers",
+    "--reuse-db",       # keep the test database between runs; --create-db forces a rebuild
+    "-ra",
+]
+filterwarnings = ["error::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["apps", "config"]
+omit = ["*/migrations/*", "*/tests/*", "*/venv/*"]
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true

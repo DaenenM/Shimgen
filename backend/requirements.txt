@@ -1,0 +1,44 @@
+# Runtime dependencies for shim.gg.
+#
+# Direct dependencies only, pinned to exact versions. Transitive packages are
+# resolved by pip — listing them here would mean hand-editing this file on every
+# upstream patch release, for no added reproducibility that the pins below do
+# not already provide.
+#
+# Install:  pip install -r requirements.txt
+# Local dev also wants:  pip install -r requirements-dev.txt
+
+# ── Framework ─────────────────────────────────────────────────────────────────
+Django==6.0.8
+djangorestframework==3.18.0
+djangorestframework-simplejwt==5.5.1   # JWT auth for the SPA
+django-cors-headers==4.9.0             # lets the Vite dev server call the API
+django-filter==26.1                    # query-param filtering on list endpoints
+drf-spectacular==0.30.0                # OpenAPI schema + Swagger/Redoc
+
+# ── Database ──────────────────────────────────────────────────────────────────
+psycopg[binary]==3.3.5                 # Postgres driver (v3, not psycopg2)
+dj-database-url==3.1.2                 # parses DATABASE_URL into Django's DATABASES
+
+# ── Realtime ──────────────────────────────────────────────────────────────────
+# Live bracket updates (plan §4, NEW 3). Wired but dormant until the first
+# consumer ships; installing it now keeps ASGI config out of a later refactor.
+channels==4.3.2
+channels-redis==4.3.0                  # cross-process WebSocket fanout
+daphne==4.2.3                          # ASGI server, also used by runserver
+redis==8.1.0
+
+# ── Serving ───────────────────────────────────────────────────────────────────
+gunicorn==26.2.0                       # WSGI worker manager; runs daphne workers in prod
+whitenoise==6.12.0                     # static files without a separate web server
+pillow==12.3.0                         # ImageField support (avatars)
+
+# ── Social sign-in ────────────────────────────────────────────────────────────
+# Verifies Google ID tokens: checks the signature against Google's published
+# keys, plus the issuer, expiry and audience. `requests` is the transport it
+# uses to fetch those keys.
+google-auth==2.57.1
+requests==2.34.2
+
+# ── Configuration ─────────────────────────────────────────────────────────────
+python-dotenv==1.2.3                   # loads backend/.env into os.environ

@@ -1,0 +1,125 @@
+@import 'tailwindcss';
+
+/* DaisyUI v5 is configured here rather than in a JS config file — v5 dropped
+   tailwind.config.js in favour of CSS-first configuration.
+
+   Dark is the default: this is a gaming tool used at night, often on a second
+   monitor, and a white page is the wrong thing to put there. `light --prefersdark`
+   is not used, so the choice is ours rather than the OS's; a theme toggle can
+   flip data-theme on <html> when one is built. */
+@plugin 'daisyui' {
+  themes:
+    dark --default,
+    light;
+}
+
+/* ── Brand palette ────────────────────────────────────────────────────────────
+   Overrides on top of DaisyUI's dark theme. Colours are oklch because it keeps
+   perceived lightness consistent across hues — a cyan and an amber at the same
+   L actually look equally bright, which hex does not give you. */
+[data-theme='dark'] {
+  /* Lifted off near-black. The original palette bottomed out around 17% L,
+     which reads as a void rather than a surface and leaves too little room
+     between the page, its cards and their borders for any of them to be
+     distinguishable. Everything here is raised, and the steps between the
+     three base tones widened, so cards visibly sit on the page. */
+  --color-base-100: oklch(30% 0.016 265); /* cards, modals                     */
+  --color-base-200: oklch(25% 0.018 265); /* page background                   */
+  --color-base-300: oklch(39% 0.018 265); /* borders, dividers                 */
+  --color-base-content: oklch(97% 0.006 265); /* body text — near-white        */
+
+  /* Cyan carries the brand: buttons, links, the active nav item. Light enough
+     that its content colour is near-black rather than white, which is what
+     makes a filled button read as a solid block of colour instead of a glow. */
+  --color-primary: oklch(76% 0.14 195);
+  --color-primary-content: oklch(18% 0.03 195);
+
+  /* A desaturated slate for secondary emphasis. Deliberately quiet — with a
+     bright primary and a bright accent already competing, a third loud hue
+     just makes the page noisy. */
+  --color-secondary: oklch(62% 0.05 230);
+  --color-secondary-content: oklch(97% 0.005 230);
+
+  --color-accent: oklch(78% 0.17 75); /* amber — winners, highlights           */
+  --color-accent-content: oklch(20% 0.03 75);
+
+  --color-neutral: oklch(26% 0.02 265);
+  --color-neutral-content: oklch(92% 0.01 265);
+}
+
+@layer base {
+  html {
+    /* 17px rather than the browser's 16. Every Tailwind size is relative to
+       this, so one change lifts the whole interface — and this is a page read
+       at arm's length on a second monitor, not up close. */
+    font-size: 17px;
+  }
+
+  body {
+    margin: 0;
+    font-family:
+      'Inter',
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      sans-serif;
+    line-height: 1.6;
+    /* Stops layout shifting sideways when a page grows past one screen. */
+    scrollbar-gutter: stable;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Inter's default letter spacing is tuned for body text and looks loose at
+     display sizes. Tightening headings is most of what separates a typeface
+     that has been set from one that has merely been loaded. */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+  }
+
+  /* Muted text was being set as low as /40, which on a dark surface is barely
+     legible. These floors keep secondary text readable while still ranking it
+     below the primary text beside it. Applied by attribute selector so every
+     existing usage is lifted without editing each component. */
+  [class*='text-base-content/40'],
+  [class*='text-base-content/35'],
+  [class*='text-base-content/30'],
+  [class*='text-base-content/25'] {
+    color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+  }
+
+  [class*='text-base-content/50'],
+  [class*='text-base-content/60'] {
+    color: color-mix(in oklch, var(--color-base-content) 78%, transparent);
+  }
+
+  /* Tabular figures keep scores and seed numbers from jittering as they change —
+     without this, a score ticking 1 → 2 visibly moves the text beside it. */
+  .tabular,
+  td.score,
+  .bracket-score {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The browser default outline is invisible against a dark background. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Respect a reduced-motion preference everywhere, including DaisyUI's own
+     transitions, rather than remembering to guard each animation. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

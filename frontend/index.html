@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Inter was named in the stylesheet but never actually loaded, so every
+         page was falling back to the system UI font. Preconnect first: the
+         font files come from a second origin, and without it the browser waits
+         for the CSS to resolve before it even opens that connection. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <title>shim.gg — brackets, teams and stats for game night</title>
+    <meta
+      name="description"
+      content="Build a tournament bracket in seconds, generate balanced teams, and keep the stats that make next Saturday worth showing up for."
+    />
+
+    <!-- Paints the browser chrome to match the dark theme instead of leaving a
+         white bar above the page on mobile. -->
+    <meta name="theme-color" content="#16181f" />
+
+    <!-- Spectator links get pasted straight into Discord, so the unfurl is a
+         real part of the product rather than an afterthought. -->
+    <meta property="og:title" content="shim.gg" />
+    <meta
+      property="og:description"
+      content="Brackets, team generation and persistent stats for recurring game nights."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

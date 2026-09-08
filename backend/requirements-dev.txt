@@ -1,0 +1,19 @@
+# Development and CI dependencies. Never installed in production.
+#
+# Install:  pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+# The bracket generators are the part of this codebase where a bug destroys
+# trust instantly (plan §8), so the test tooling is not optional.
+pytest==9.1.1
+pytest-django==4.14.0
+pytest-cov==7.1.0
+factory_boy==3.3.3          # model factories, so tests read as intent not setup
+
+# ── Linting ───────────────────────────────────────────────────────────────────
+ruff==0.16.6                # linter and formatter; configured in pyproject.toml
+
+# ── Django tooling ────────────────────────────────────────────────────────────
+django-extensions==4.1      # shell_plus, show_urls, graph_models

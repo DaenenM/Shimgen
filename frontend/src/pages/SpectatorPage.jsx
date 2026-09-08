@@ -50,7 +50,7 @@ export function SpectatorPage() {
         <EmptyState
           title="No bracket here"
           description="This link may be wrong, or the tournament may have been deleted."
-          actionLabel="Go to shim.gg"
+          actionLabel="Go to Shimgen"
           actionTo={paths.home}
         />
       </div>

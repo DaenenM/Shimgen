@@ -71,6 +71,6 @@ class RatingAdmin(admin.ModelAdmin):
 admin.site.register([Participation, FFAResult, Role, TeamGenerationConstraint])
 
 # Branding for the /admin/ dashboard.
-admin.site.site_header = "shim.gg administration"
-admin.site.site_title = "shim.gg"
+admin.site.site_header = "Shimgen administration"
+admin.site.site_title = "Shimgen"
 admin.site.index_title = "Operations"

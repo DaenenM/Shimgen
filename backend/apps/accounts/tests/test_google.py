@@ -192,7 +192,7 @@ def test_the_avatar_url_follows_google():
 
 def test_the_endpoint_returns_our_own_token_pair(api_client, settings):
     """
-    The Google token is traded for shim.gg tokens and discarded, so everything
+    The Google token is traded for Shimgen tokens and discarded, so everything
     downstream sees one kind of credential.
     """
     settings.GOOGLE_CLIENT_ID = "test-client-id"

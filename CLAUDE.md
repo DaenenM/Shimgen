@@ -1,4 +1,4 @@
-# shim.gg — working notes
+# Shimgen — working notes
 
 Product spec: `game-night-tools-plan.md`. Setup and commands: `README.md`.
 

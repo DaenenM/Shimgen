@@ -47,7 +47,7 @@ class GoogleAuthView(APIView):
 
     The client never receives a Google token beyond this call: it is verified,
     traded for our tokens, and discarded. That keeps one auth system in the app
-    — everything downstream sees an ordinary shim.gg access token, whether the
+    — everything downstream sees an ordinary Shimgen access token, whether the
     user signed in with a password or with Google.
     """
 

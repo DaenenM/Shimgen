@@ -1,4 +1,4 @@
-# shim.gg
+# Shimgen
 
 Brackets, team generation and persistent stats for recurring game nights.
 
@@ -112,7 +112,7 @@ back to email and password, so this is safe to skip until you want it.
    and choose **Web application**.
 2. Under **Authorised JavaScript origins**, add the frontend origin exactly:
    - `http://localhost:5173` for development
-   - `https://shim.gg` for production
+   - `https://shimgen.com` for production
    No redirect URI is needed — Google Identity Services hands the token back to
    the page rather than redirecting.
 3. Put the client ID in `backend/.env`:
@@ -128,7 +128,7 @@ is not used by this flow — do not add it to the environment.
 **How it works:** the browser gets an ID token from Google, posts it to
 `/api/v1/auth/google/`, and Django verifies the signature, issuer, expiry and
 audience before issuing its own JWT pair. Everything downstream sees an ordinary
-shim.gg token, so there is one auth system rather than two. Accounts are matched
+Shimgen token, so there is one auth system rather than two. Accounts are matched
 on Google's stable `sub` first, then on a verified email — which links Google to
 an account that already signed up with that address instead of creating a
 duplicate.

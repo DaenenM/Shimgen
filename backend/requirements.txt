@@ -1,4 +1,4 @@
-# Runtime dependencies for shim.gg.
+# Runtime dependencies for Shimgen.
 #
 # Direct dependencies only, pinned to exact versions. Transitive packages are
 # resolved by pip — listing them here would mean hand-editing this file on every

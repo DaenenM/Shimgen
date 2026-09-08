@@ -1,7 +1,7 @@
 [project]
 name = "shim-backend"
 version = "0.1.0"
-description = "shim.gg API — brackets, team generation and persistent stats for game nights."
+description = "Shimgen API — brackets, team generation and persistent stats for game nights."
 requires-python = ">=3.12"
 
 # ── Ruff: linter and formatter ────────────────────────────────────────────────

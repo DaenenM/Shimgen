@@ -64,7 +64,7 @@ function Brand() {
         <Trophy className="h-4.5 w-4.5" />
       </span>
       <span className="hidden sm:inline">
-        shim<span className="text-primary">.gg</span>
+        shim<span className="text-primary">gen</span>
       </span>
     </Link>
   )

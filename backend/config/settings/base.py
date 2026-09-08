@@ -1,5 +1,5 @@
 """
-Shared settings for shim.gg.
+Shared settings for Shimgen.
 
 Environment-specific overrides live in dev.py and prod.py. Anything that differs
 between local and production belongs in one of those two files, not here.
@@ -176,7 +176,7 @@ SIMPLE_JWT = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "shim.gg API",
+    "TITLE": "Shimgen API",
     "DESCRIPTION": "Brackets, team generation and persistent stats for recurring game nights.",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
@@ -224,7 +224,7 @@ EMAIL_PORT = env_int("EMAIL_PORT", 587)
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_HOST_USER = env_str("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = env_str("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = env_str("DEFAULT_FROM_EMAIL", "noreply@shim.gg")
+DEFAULT_FROM_EMAIL = env_str("DEFAULT_FROM_EMAIL", "noreply@shimgen.com")
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 LOGGING = {

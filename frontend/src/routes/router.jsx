@@ -49,45 +49,77 @@ const FriendsPage = named(() => import('@/pages/FriendsPage'), 'FriendsPage')
 const ProfilePage = named(() => import('@/pages/ProfilePage'), 'ProfilePage')
 const NotFoundPage = named(() => import('@/pages/NotFoundPage'), 'NotFoundPage')
 
+/**
+ * Turn a link's readable tail back into something a tab can show.
+ *
+ * "friday-night-cafe" becomes "Friday night cafe". It is the name the user
+ * typed, slugified, so it is close enough to name the tab immediately rather
+ * than leaving a generic title until the fetch lands.
+ */
+function titleFromSlug(slug) {
+  if (!slug) return null
+
+  const words = slug.replace(/-/g, ' ').trim()
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : null
+}
+
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
       // ── Public ────────────────────────────────────────────────────────────
-      { index: true, element: <HomePage /> },
-      { path: paths.quickStart, element: <QuickStartPage /> },
-      { path: paths.login, element: <LoginPage /> },
-      { path: paths.register, element: <RegisterPage /> },
+      { index: true, element: <HomePage />, handle: { title: 'Home' } },
+      { path: paths.quickStart, element: <QuickStartPage />, handle: { title: 'New tournament' } },
+      { path: paths.login, element: <LoginPage />, handle: { title: 'Log in' } },
+      { path: paths.register, element: <RegisterPage />, handle: { title: 'Sign up' } },
       // Deliberately outside ProtectedRoute: nine friends click this link and
       // none of them have an account.
       // The trailing name is decorative: the slug in front resolves the page,
       // so a renamed or mistyped tail still lands. `?` keeps the bare form
       // working, which is what every link shared before this looked like.
-      { path: `${paths.spectate(':publicSlug')}/:name?`, element: <SpectatorPage /> },
+      {
+        path: `${paths.spectate(':publicSlug')}/:name?`,
+        element: <SpectatorPage />,
+        handle: { title: 'Spectate' },
+      },
       // These three are nav destinations that must work signed out — each has a
       // useful anonymous mode, and gating them would put the signup wall back
       // in front of the product (plan §4, NEW 6).
-      { path: paths.tournaments, element: <TournamentsPage /> },
-      { path: `${paths.tournament(':id')}/:name?`, element: <TournamentDetailPage /> },
-      { path: paths.teamGenerator, element: <TeamGeneratorPage /> },
-      { path: paths.stats, element: <StatsPage /> },
+      { path: paths.tournaments, element: <TournamentsPage />, handle: { title: 'Tournaments' } },
+      {
+        path: `${paths.tournament(':id')}/:name?`,
+        element: <TournamentDetailPage />,
+        // The readable tail of the URL is the tournament's own name, so the tab
+        // can say which bracket this is without waiting for the fetch.
+        handle: { title: (match) => titleFromSlug(match.params.name) ?? 'Tournament' },
+      },
+      {
+        path: paths.teamGenerator,
+        element: <TeamGeneratorPage />,
+        handle: { title: 'Team Generator' },
+      },
+      { path: paths.stats, element: <StatsPage />, handle: { title: 'Stats' } },
       // A board is shared by link, so reading one must work signed out.
-      { path: `${paths.board(':slug')}/:name?`, element: <BoardPage /> },
+      {
+        path: `${paths.board(':slug')}/:name?`,
+        element: <BoardPage />,
+        handle: { title: (match) => titleFromSlug(match.params.name) ?? 'Stats' },
+      },
 
       // ── Signed in ─────────────────────────────────────────────────────────
       {
         element: <ProtectedRoute />,
         children: [
-          { path: paths.dashboard, element: <DashboardPage /> },
-          { path: paths.groups, element: <GroupsPage /> },
-          { path: paths.group(':slug'), element: <GroupDetailPage /> },
-          { path: paths.roster, element: <RosterPage /> },
-          { path: paths.friends, element: <FriendsPage /> },
-          { path: paths.profile, element: <ProfilePage /> },
+          { path: paths.dashboard, element: <DashboardPage />, handle: { title: 'Dashboard' } },
+          { path: paths.groups, element: <GroupsPage />, handle: { title: 'Groups' } },
+          { path: paths.group(':slug'), element: <GroupDetailPage />, handle: { title: 'Group' } },
+          { path: paths.roster, element: <RosterPage />, handle: { title: 'My Roster' } },
+          { path: paths.friends, element: <FriendsPage />, handle: { title: 'Friends' } },
+          { path: paths.profile, element: <ProfilePage />, handle: { title: 'Profile' } },
         ],
       },
 
-      { path: '*', element: <NotFoundPage /> },
+      { path: '*', element: <NotFoundPage />, handle: { title: 'Not found' } },
     ],
   },
 ])

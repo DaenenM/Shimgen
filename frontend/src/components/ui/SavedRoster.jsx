@@ -47,7 +47,7 @@ export function SavedRoster({ selected, onAdd, title = 'Saved roster' }) {
 
         {players.length === 0 ? (
           <p className="text-base-content/40 py-4 text-center text-sm">
-            Nobody saved yet — the names you add will show up here next time.
+            Nobody saved yet. The names you add will show up here next time.
           </p>
         ) : (
           // Capped and scrolling, so a roster of forty does not push the page

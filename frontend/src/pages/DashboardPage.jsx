@@ -140,7 +140,7 @@ export function DashboardPage() {
           <EmptyState
             icon={Users}
             title="Create a group to track stats"
-            description="Stats and ratings are scoped to a crew — your Saturday regulars, your LoL customs. Tournaments work fine without one, but nothing accumulates."
+            description="Stats and ratings are scoped to a crew: your Saturday regulars, your LoL customs. Tournaments work fine without one, but nothing accumulates."
             actionLabel="Create a group"
             actionTo={paths.groups}
           />

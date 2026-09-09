@@ -330,7 +330,7 @@ export function TeamGeneratorPage() {
                 <div className="alert bg-base-100 border-base-300 border">
                   <Swords className="text-primary h-5 w-5" />
                   <div className="text-sm">
-                    <p className="font-medium">Two teams — play a series instead.</p>
+                    <p className="font-medium">Two teams. Play a series instead.</p>
                     <p className="text-base-content/60">
                       A bracket for two is just ceremony. Try a best-of-3 or 5.
                     </p>

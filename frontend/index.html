@@ -16,11 +16,17 @@
       rel="stylesheet"
     />
 
-    <title>Shimgen — brackets, teams and stats for game night</title>
+    <title>Shimgen: Free Tournament Bracket Generator, Team Randomizer &amp; Stats</title>
     <meta
       name="description"
-      content="Build a tournament bracket in seconds, generate balanced teams, and keep the stats that make next Saturday worth showing up for."
+      content="Free tournament bracket generator and random team generator. Create single or double elimination brackets, round robin and Swiss tournaments, split players into balanced teams, and keep stats boards that track wins across game nights. No sign-up needed."
     />
+
+    <!-- The phrases people actually type. Search engines no longer read the
+         keywords meta tag, so the terms live where they are read instead: in
+         the title, the description and the visible copy on each page. -->
+    <link rel="canonical" href="https://shimgen.com/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
 
     <!-- Paints the browser chrome to match the dark theme instead of leaving a
          white bar above the page on mobile. -->
@@ -28,13 +34,44 @@
 
     <!-- Spectator links get pasted straight into Discord, so the unfurl is a
          real part of the product rather than an afterthought. -->
-    <meta property="og:title" content="Shimgen" />
+    <meta property="og:site_name" content="Shimgen" />
+    <meta property="og:title" content="Shimgen: Tournaments, Teams &amp; Stats for Game Night" />
     <meta
       property="og:description"
-      content="Brackets, team generation and persistent stats for recurring game nights."
+      content="Generate balanced teams, build a tournament bracket in seconds, and track wins, losses and trophies on stats boards that update themselves. Free, no sign-up needed."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://shimgen.com/" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Shimgen: Tournaments, Teams &amp; Stats for Game Night" />
+    <meta
+      name="twitter:description"
+      content="Generate balanced teams, build a tournament bracket in seconds, and track wins, losses and trophies on stats boards that update themselves. Free, no sign-up needed."
+    />
+
+    <!-- Structured data. Tells search engines this is a free web application
+         rather than a page about one, which is what earns the richer result
+         with a price and category shown under the link. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Shimgen",
+        "url": "https://shimgen.com/",
+        "applicationCategory": "SportsApplication",
+        "operatingSystem": "Any",
+        "description": "Free tournament bracket generator, random team generator and stats tracker for recurring game nights.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "Tournament bracket generator",
+          "Single and double elimination brackets",
+          "Round robin and Swiss tournaments",
+          "Random team generator",
+          "Stats boards and leaderboards"
+        ]
+      }
+    </script>
+
   </head>
   <body>
     <div id="root"></div>

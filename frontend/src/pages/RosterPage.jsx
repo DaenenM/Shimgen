@@ -219,7 +219,7 @@ function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
             <button
               className="btn btn-ghost btn-xs"
               onClick={onArchive}
-              title="Archive — hides them without losing their history"
+              title="Archive: hides them without losing their history"
               aria-label={`Archive ${player.display_name}`}
             >
               <Archive className="h-4 w-4" />

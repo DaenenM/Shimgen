@@ -126,7 +126,7 @@ export function StatsPage() {
                   [
                     false,
                     'Counted by hand',
-                    'You add each win yourself — the game night that never became a bracket.',
+                    'You add each win yourself. The game night that never became a bracket.',
                   ],
                   [
                     true,
@@ -195,7 +195,7 @@ export function StatsPage() {
         <EmptyState
           icon={Table2}
           title="No boards yet"
-          description="A board is a list of names and the things you count for them — solo wins, team wins, whatever your crew argues about."
+          description="A board is a list of names and the things you count for them: solo wins, team wins, whatever your crew argues about."
           actionLabel="Create a board"
           onAction={() => setCreating(true)}
         />

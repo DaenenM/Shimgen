@@ -1,0 +1,14 @@
+# Public pages are worth indexing; anything behind a login or a private link is
+# not. Spectator brackets and stats boards are unlisted rather than secret, so
+# they are excluded here to keep someone's game night out of search results.
+
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /friends
+Disallow: /roster
+Disallow: /groups
+Disallow: /t/
+
+Sitemap: https://shimgen.com/sitemap.xml

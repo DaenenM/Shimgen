@@ -316,7 +316,7 @@ export function QuickStartPage() {
                 <span className="text-base-content/50 mt-1 text-xs">
                   {bestOf === 1
                     ? 'Every matchup is decided by one game.'
-                    : `Every matchup is a best-of-${bestOf} series — first to ${
+                    : `Every matchup is a best-of-${bestOf} series, first to ${
                         Math.floor(bestOf / 2) + 1
                       } wins${isElimination ? ' advances' : ''}.`}
                 </span>

@@ -67,7 +67,7 @@ export function TallyCell({ count, emoji, canEdit, onAward, busy, display = 'emo
     <div className="flex items-center gap-2">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1">
         {asNumber ? null : count === 0 ? (
-          <span className="text-base-content/25 text-sm">—</span>
+          <span className="text-base-content/25 text-sm">0</span>
         ) : (
           <>
             {/* Negative tracking pulls the marks together. An emoji carries a

@@ -68,8 +68,26 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       // ── Public ────────────────────────────────────────────────────────────
-      { index: true, element: <HomePage />, handle: { title: 'Home' } },
-      { path: paths.quickStart, element: <QuickStartPage />, handle: { title: 'New tournament' } },
+      {
+        index: true,
+        element: <HomePage />,
+        handle: {
+          title: 'Home',
+          seoTitle: 'Shimgen: Free Tournament Bracket Generator, Team Randomizer & Stats',
+          description:
+            'Free tournament bracket generator and random team generator. Single and double elimination, round robin and Swiss, plus stats boards that track wins across game nights. No sign-up needed.',
+        },
+      },
+      {
+        path: paths.quickStart,
+        element: <QuickStartPage />,
+        handle: {
+          title: 'New tournament',
+          seoTitle: 'Free Tournament Bracket Generator: Single & Double Elimination',
+          description:
+            'Make a tournament bracket in seconds. Single elimination, double elimination, round robin, Swiss and free-for-all, with best-of series and automatic seeding. Free, no account required.',
+        },
+      },
       { path: paths.login, element: <LoginPage />, handle: { title: 'Log in' } },
       { path: paths.register, element: <RegisterPage />, handle: { title: 'Sign up' } },
       // Deliberately outside ProtectedRoute: nine friends click this link and
@@ -85,7 +103,15 @@ export const router = createBrowserRouter([
       // These three are nav destinations that must work signed out — each has a
       // useful anonymous mode, and gating them would put the signup wall back
       // in front of the product (plan §4, NEW 6).
-      { path: paths.tournaments, element: <TournamentsPage />, handle: { title: 'Tournaments' } },
+      {
+        path: paths.tournaments,
+        element: <TournamentsPage />,
+        handle: {
+          title: 'Tournaments',
+          description:
+            'Every bracket you host, help run or play in, with its format, entrants and winner.',
+        },
+      },
       {
         path: `${paths.tournament(':id')}/:name?`,
         element: <TournamentDetailPage />,
@@ -96,9 +122,23 @@ export const router = createBrowserRouter([
       {
         path: paths.teamGenerator,
         element: <TeamGeneratorPage />,
-        handle: { title: 'Team Generator' },
+        handle: {
+          title: 'Team Generator',
+          seoTitle: 'Random Team Generator: Split Players Into Balanced Teams',
+          description:
+            'Paste a list of names and split them into balanced random teams. Keep two players apart, keep a pair together, and re-roll until the split looks right. Free team randomizer, no sign-up.',
+        },
       },
-      { path: paths.stats, element: <StatsPage />, handle: { title: 'Stats' } },
+      {
+        path: paths.stats,
+        element: <StatsPage />,
+        handle: {
+          title: 'Stats',
+          seoTitle: 'Stats Boards: Track Wins, Losses and Leaderboards',
+          description:
+            'Build a stats board for your group. Track wins, losses and games played by player, tally by hand or let linked tournaments fill it in automatically.',
+        },
+      },
       // A board is shared by link, so reading one must work signed out.
       {
         path: `${paths.board(':slug')}/:name?`,

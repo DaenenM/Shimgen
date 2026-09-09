@@ -65,7 +65,7 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
     const mine = (match.score ?? {})[side] ?? 0
 
     return mine >= match.wins_needed
-      ? `Reset the series — click to start ${label} again at 0`
+      ? `Reset the series: click to start ${label} again at 0`
       : `${label} wins a game (${mine + 1} of ${match.wins_needed})`
   }
 
@@ -183,7 +183,7 @@ function Side({ match, side, canReport, onPick, seriesHint }) {
     <button
       className={`${base} hover:bg-primary/20 transition-colors`}
       onClick={onPick}
-      title={seriesHint ?? (isWinner ? `Undo — ${label} won` : `${label} wins`)}
+      title={seriesHint ?? (isWinner ? `Undo: ${label} won` : `${label} wins`)}
     >
       {content}
     </button>

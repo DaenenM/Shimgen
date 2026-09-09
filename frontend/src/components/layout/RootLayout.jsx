@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useScrollToTop } from '@/hooks/useScrollToTop'
 
 import { Footer } from './Footer'
 import { Navbar } from './Navbar'
@@ -15,9 +16,10 @@ import { Navbar } from './Navbar'
  * still loading leaves the navbar intact and the user able to navigate away.
  */
 export function RootLayout() {
-  // Named here rather than in each page: the layout renders on every route, so
-  // one call keeps every tab titled without seventeen pages remembering to.
+  // Both live here rather than in each page: the layout renders on every route,
+  // so one call each covers seventeen pages without any of them remembering to.
   useDocumentTitle()
+  useScrollToTop()
 
   return (
     <div className="bg-base-200 flex min-h-screen flex-col">

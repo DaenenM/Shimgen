@@ -197,7 +197,7 @@ export function QuickStartPage() {
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="Saturday Pummel Party"
+                placeholder="Friday Night Showdown"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -227,49 +227,66 @@ export function QuickStartPage() {
                 ))}
               </div>
 
-              {mode === 'teams' ? (
-                <TeamBuilder
-                  teams={teams}
-                  onChange={setTeams}
-                  activeTeam={activeTeam}
-                  onFocusTeam={setActiveTeam}
-                />
-              ) : (
-                <RosterPicker selected={names} onChange={setNames} />
-              )}
+              {/* The entrant list scrolls inside itself rather than growing the
+                  page. Twelve teams used to push the format panel and the
+                  create button thousands of pixels down, so choosing a format
+                  meant scrolling away from the thing you were editing. Capped
+                  against the viewport so it always ends above the fold. */}
+              <div className="flex max-h-[calc(100vh-21rem)] flex-col">
+                {mode === 'teams' ? (
+                  <TeamBuilder
+                    teams={teams}
+                    onChange={setTeams}
+                    activeTeam={activeTeam}
+                    onFocusTeam={setActiveTeam}
+                  />
+                ) : (
+                  <RosterPicker selected={names} onChange={setNames} />
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         <div className="card bg-base-100 border-base-300 min-w-0 border lg:sticky lg:top-20">
           <div className="card-body gap-5">
-            {/* Format */}
+            {/* Format.
+
+                One row per option with the explanation shown only for the
+                chosen one. Five cards each carrying a permanent subtitle cost
+                about 350px — a third of the viewport — to describe four
+                formats the host was not picking. */}
             <div>
               <span className="text-sm font-medium">Format</span>
-              <div className="mt-2 grid gap-2">
+              <div className="border-base-300 mt-2 overflow-hidden rounded-lg border">
                 {FORMATS.map((option) => (
                   <label
                     key={option.value}
-                    className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                      format === option.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-base-300 hover:border-base-content/20'
+                    className={`border-base-300 flex cursor-pointer items-center gap-2.5 border-b px-3 py-2 transition-colors last:border-b-0 ${
+                      format === option.value ? 'bg-primary/10' : 'hover:bg-base-content/5'
                     }`}
                   >
                     <input
                       type="radio"
                       name="format"
-                      className="radio radio-primary radio-sm mt-0.5"
+                      className="radio radio-primary radio-xs"
                       checked={format === option.value}
                       onChange={() => setFormat(option.value)}
                     />
-                    <span>
-                      <span className="block text-sm font-medium">{option.label}</span>
-                      <span className="text-base-content/50 block text-xs">{option.hint}</span>
+                    <span
+                      className={`text-sm ${
+                        format === option.value ? 'text-primary font-semibold' : 'font-medium'
+                      }`}
+                    >
+                      {option.label}
                     </span>
                   </label>
                 ))}
               </div>
+
+              <p className="text-base-content/50 mt-1.5 text-xs">
+                {FORMATS.find((option) => option.value === format)?.hint}
+              </p>
             </div>
 
             {/* Options */}
@@ -339,13 +356,10 @@ export function QuickStartPage() {
 
             {isAuthenticated && (
               <div className="border-base-300 bg-base-200/30 rounded-xl border p-3">
-                <span className="flex items-center gap-1.5 text-sm font-medium">
+                <span className="mb-2 flex items-center gap-1.5 text-sm font-medium">
                   <Users className="h-4 w-4" />
-                  Who else can report results
+                  Permission to edit
                 </span>
-                <p className="text-base-content/50 mt-0.5 mb-2 text-xs">
-                  So you are not the only one entering scores all night.
-                </p>
 
                 <FriendPicker
                   selected={cohosts}
@@ -366,13 +380,10 @@ export function QuickStartPage() {
                 bracket has no board of its own to feed. */}
             {isAuthenticated && (
               <div className="border-base-300 bg-base-200/30 rounded-xl border p-3">
-                <span className="flex items-center gap-1.5 text-sm font-medium">
+                <span className="mb-2 flex items-center gap-1.5 text-sm font-medium">
                   <BarChart3 className="h-4 w-4" />
-                  Count towards a board
+                  Connect Stats Board
                 </span>
-                <p className="text-base-content/50 mt-0.5 mb-2 text-xs">
-                  Credited to each player, never to the team name.
-                </p>
 
                 {makingBoard ? (
                   // Only a name is asked for. A board made from here is always
@@ -427,7 +438,7 @@ export function QuickStartPage() {
                     }}
                     aria-label="Stats board"
                   >
-                    <option value="">No board</option>
+                    <option value="">No stat board</option>
                     {editableBoards.map((board) => (
                       <option key={board.slug} value={board.slug}>
                         {board.name}

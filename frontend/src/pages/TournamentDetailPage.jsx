@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Play, Share2, Users } from 'lucide-react'
+import { Check, Play, Share2, Trophy, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
@@ -79,12 +79,13 @@ export function TournamentDetailPage() {
    *
    * The previous cache entry is returned so onError can roll back.
    */
-  const optimistically = async (transform) => {
+  const optimistically = (transform) => {
     const key = queryKeys.tournaments.detail(id)
 
-    // Stop an in-flight refetch from landing on top of the local edit.
-    await queryClient.cancelQueries({ queryKey: key })
-
+    // The cache is written first and synchronously. Awaiting cancelQueries
+    // before this — the obvious ordering — made every click wait on an
+    // in-flight request aborting, because React Query holds the mutation until
+    // onMutate resolves. That turned a sub-50ms repaint into a visible pause.
     const previous = queryClient.getQueryData(key)
     if (previous) {
       queryClient.setQueryData(key, {
@@ -92,6 +93,10 @@ export function TournamentDetailPage() {
         matches: transform(previous.matches),
       })
     }
+
+    // Then stop any in-flight refetch from landing on top of the local edit.
+    // Not awaited: it only has to happen, not happen first.
+    queryClient.cancelQueries({ queryKey: key })
 
     return { previous }
   }
@@ -237,20 +242,12 @@ export function TournamentDetailPage() {
         </div>
       )}
 
-      <div
-        className={`grid gap-6 ${tournament.rules ? 'lg:grid-cols-[16rem_1fr_18rem]' : 'lg:grid-cols-[16rem_1fr]'}`}
-      >
-        <aside className="order-2 lg:order-1">
-          <div className="card bg-base-100 border-base-300 border">
-            <div className="card-body p-4">
-              <h3 className="text-sm font-semibold">Standings</h3>
-              <StandingsTable rows={standings} />
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Bracket ───────────────────────────────────────────────────── */}
-        <div className="order-1 min-w-0 lg:order-2">
+      {/* The bracket takes the full width. Standings used to hold a 16rem
+          column beside it, which cost the bracket a whole round of horizontal
+          room on a laptop — and standings are what you read after a result,
+          not while clicking one. They now sit below, next to the entrants. */}
+      <div className={`grid gap-6 ${tournament.rules ? 'lg:grid-cols-[1fr_18rem]' : ''}`}>
+        <div className="min-w-0">
           {tournament.matches.length === 0 ? (
             <EmptyState
               icon={Users}
@@ -277,7 +274,7 @@ export function TournamentDetailPage() {
         {/* Rules only. The spectator link lives on the Share button now —
             a permanent card for a URL nobody reads was dead weight. */}
         {tournament.rules && (
-          <aside className="order-3">
+          <aside>
             <div className="card bg-base-100 border-base-300 border">
               <div className="card-body p-4">
                 <h3 className="mb-1 text-sm font-semibold">Rules</h3>
@@ -290,7 +287,26 @@ export function TournamentDetailPage() {
         )}
       </div>
 
-      <EntrantRoster entrants={tournament.entrants} />
+      {/* Standings and the roster share the bottom row: both are things you
+          read once the bracket has moved, and side by side they fill the width
+          that a single full-bleed list would waste. */}
+      <div className="mt-10 grid gap-6 lg:grid-cols-[20rem_1fr]">
+        <section>
+          <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
+            <Trophy className="h-5 w-5" />
+            Standings
+          </h2>
+          <p className="text-base-content/60 mb-4 text-sm">How everyone is placed so far.</p>
+
+          <div className="card bg-base-100 border-base-300 border">
+            <div className="card-body p-4">
+              <StandingsTable rows={standings} />
+            </div>
+          </div>
+        </section>
+
+        <EntrantRoster entrants={tournament.entrants} />
+      </div>
     </div>
   )
 }

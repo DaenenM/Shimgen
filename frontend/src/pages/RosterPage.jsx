@@ -102,7 +102,7 @@ export function RosterPage() {
         <div className="border-base-300 mb-4 space-y-2 rounded-lg border p-3">
           <textarea
             className="textarea textarea-bordered h-28 w-full font-mono text-sm"
-            placeholder={'One name per line, or comma separated\nDaenen\nBrett\nMark'}
+            placeholder={'One name per line, or comma separated\nMark\nDaniel\nJacob'}
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
           />

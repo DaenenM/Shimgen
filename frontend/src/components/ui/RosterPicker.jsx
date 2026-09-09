@@ -84,7 +84,7 @@ export function RosterPicker({ selected, onChange }) {
         <textarea
           className="textarea textarea-bordered w-full rounded-xl text-sm"
           rows={3}
-          placeholder={'One name per line, or comma separated\nDaenen, Brett, Mark'}
+          placeholder={'One name per line, or comma separated\nMark, Daniel, Jacob'}
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
           // Enter inserts a newline, as a textarea should. Submitting on it

@@ -65,10 +65,12 @@ export function BoardPage() {
    */
   const award = useMutation({
     mutationFn: ({ row, column, delta }) => boardsApi.award(slug, row, column, delta),
-    onMutate: async ({ row, column, delta }) => {
+    onMutate: ({ row, column, delta }) => {
       const key = queryKeys.boards.detail(slug)
-      await queryClient.cancelQueries({ queryKey: key })
 
+      // Written synchronously, then the in-flight refetch is cancelled without
+      // awaiting it: React Query holds the mutation until onMutate resolves, so
+      // awaiting the abort first made every tap wait on it.
       const previous = queryClient.getQueryData(key)
       if (previous) {
         queryClient.setQueryData(key, {
@@ -91,6 +93,8 @@ export function BoardPage() {
           })),
         })
       }
+
+      queryClient.cancelQueries({ queryKey: key })
 
       return { previous }
     },

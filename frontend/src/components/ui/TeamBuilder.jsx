@@ -34,8 +34,11 @@ export function TeamBuilder({ teams, onChange, activeTeam = 0, onFocusTeam = () 
   const assigned = new Set(teams.flatMap((team) => team.members.map((name) => name.toLowerCase())))
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-baseline justify-between">
+    // A column that fills whatever height it is given, so the list between the
+    // header and the add button is the only part that scrolls — both stay put
+    // and reachable no matter how many teams there are.
+    <div className="flex min-h-0 flex-col gap-3">
+      <div className="flex shrink-0 items-baseline justify-between">
         <span className="text-sm font-medium">
           Teams <span className="text-base-content/50">({teams.length})</span>
         </span>
@@ -50,7 +53,7 @@ export function TeamBuilder({ teams, onChange, activeTeam = 0, onFocusTeam = () 
         )}
       </div>
 
-      <ul className="space-y-3">
+      <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
         {teams.map((team, index) => (
           <TeamCard
             key={index}
@@ -69,7 +72,7 @@ export function TeamBuilder({ teams, onChange, activeTeam = 0, onFocusTeam = () 
       <button
         type="button"
         onClick={addTeam}
-        className="border-base-300 text-base-content/60 hover:border-primary/60 hover:text-primary flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-sm font-medium transition-colors duration-150"
+        className="border-base-300 text-base-content/60 hover:border-primary/60 hover:text-primary flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 text-sm font-medium transition-colors duration-150"
       >
         <Plus className="h-4 w-4" />
         Add a team
@@ -86,6 +89,7 @@ export function TeamBuilder({ teams, onChange, activeTeam = 0, onFocusTeam = () 
 
 function TeamCard({ team, index, assigned, active, onFocus, onUpdate, onRemove, onRemember }) {
   const [draft, setDraft] = useState('')
+  const [focused, setFocused] = useState(false)
   const [error, setError] = useState(null)
 
   /**
@@ -137,11 +141,11 @@ function TeamCard({ team, index, assigned, active, onFocus, onUpdate, onRemove, 
     // picking names for team three is: click the card, then click the names.
     <li
       onClick={onFocus}
-      className={`rounded-xl border p-3 transition-colors duration-150 ${
+      className={`rounded-xl border p-2.5 transition-colors duration-150 ${
         active ? 'border-primary/60 bg-primary/5' : 'border-base-300 bg-base-200/40'
       }`}
     >
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-1.5 flex items-center gap-2">
         <span className="bg-primary/15 text-primary grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-bold">
           {index + 1}
         </span>
@@ -165,7 +169,7 @@ function TeamCard({ team, index, assigned, active, onFocus, onUpdate, onRemove, 
       </div>
 
       {team.members.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5">
+        <div className="mb-1.5 flex flex-wrap gap-1.5">
           {team.members.map((name) => (
             <span
               key={name}
@@ -187,13 +191,19 @@ function TeamCard({ team, index, assigned, active, onFocus, onUpdate, onRemove, 
 
       {/* One paste box rather than a field and a button: a team is usually
           entered as a couple of names at once, and this takes one as happily
-          as several. */}
-      <div className="space-y-1.5">
+          as several.
+
+          A single row at rest, growing to three once focused. Eight teams each
+          holding a permanent two-row box and a full-width button was most of
+          the page height, spent on controls nobody was using at that moment. */}
+      <div className="flex items-start gap-1.5">
         <textarea
-          className="textarea textarea-bordered w-full rounded-lg text-sm"
-          rows={2}
-          placeholder={'One name per line, or comma separated'}
+          className="textarea textarea-bordered min-h-0 flex-1 resize-none rounded-lg py-1.5 text-sm transition-all duration-150"
+          rows={draft || focused ? 3 : 1}
+          placeholder={'Names…'}
           value={draft}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           onChange={(e) => {
             setDraft(e.target.value)
             setError(null)
@@ -205,11 +215,11 @@ function TeamCard({ team, index, assigned, active, onFocus, onUpdate, onRemove, 
           type="button"
           onClick={() => addMembers(draft)}
           disabled={!draft.trim()}
-          className="bg-primary/15 text-primary hover:bg-primary/25 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40"
+          className="bg-primary/15 text-primary hover:bg-primary/25 grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={`Add players to team ${index + 1}`}
+          title="Add them"
         >
-          <Plus className="h-3.5 w-3.5" />
-          Add them
+          <Plus className="h-4 w-4" />
         </button>
       </div>
 

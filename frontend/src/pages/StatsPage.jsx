@@ -108,7 +108,7 @@ export function StatsPage() {
               <span className="label-text mb-1">Board name</span>
               <input
                 className="input input-bordered w-full"
-                placeholder="Pummel Party Wins"
+                placeholder="Game Night Wins"
                 value={name}
                 autoFocus
                 onChange={(e) => setName(e.target.value)}

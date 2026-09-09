@@ -22,7 +22,7 @@ export function EntrantRoster({ entrants }) {
   const anyTeams = entrants.some((e) => (e.players?.length ?? 0) > 1)
 
   return (
-    <section className="mt-10">
+    <section>
       <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
         <Users className="h-5 w-5" />
         {anyTeams ? 'Teams' : 'Entrants'}

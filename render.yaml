@@ -1,0 +1,86 @@
+# Render deployment for Shimgen.
+#
+# Declaring the services here rather than clicking them into the dashboard means
+# the configuration is reviewable, survives a service being rebuilt, and cannot
+# drift silently between environments.
+#
+# To adopt this on an existing setup: Render Dashboard → Blueprints → New
+# Blueprint Instance → point it at this repo. Existing services with matching
+# names are updated rather than duplicated.
+#
+# Secrets are deliberately NOT here. Anything marked `sync: false` is set once
+# in the dashboard and never committed.
+
+databases:
+  - name: shimgen-db
+    databaseName: shimgen
+    user: shimgen_user
+    plan: free # NOTE: the free tier is DELETED after 30 days, not downgraded.
+
+services:
+  # ── API ─────────────────────────────────────────────────────────────────────
+  - type: web
+    name: shimgen-backend
+    runtime: python
+    plan: free # Sleeps after 15 min idle; first request then takes ~30-50s.
+    rootDir: backend
+    # collectstatic runs here; migrations run in preDeploy so a failed migration
+    # aborts the deploy while the previous version keeps serving.
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --no-input
+    preDeployCommand: python manage.py migrate
+    # Bind 0.0.0.0 and Render's $PORT: the dev server binds 127.0.0.1, which the
+    # port scan cannot see, and the service never receives traffic.
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    envVars:
+      # Without this manage.py falls back to config.settings.dev, which imports
+      # django_extensions — a dev-only dependency that is not installed here.
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: SECRET_KEY
+        generateValue: true
+      # The backend's own hostname.
+      - key: ALLOWED_HOSTS
+        value: shimgen-backend.onrender.com
+      # The frontend's origin. These name the *other* service, which is exactly
+      # why they are easy to set backwards.
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://shimgen.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://shimgen.onrender.com
+      - key: SITE_URL
+        value: https://shimgen.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: shimgen-db
+          property: connectionString
+      # Set in the dashboard: rotate without touching the repo.
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  - type: web
+    name: shimgen
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Baked into the bundle at BUILD time, not read at runtime — changing it
+      # requires a rebuild with the cache cleared. It must name the backend, not
+      # this service: pointing it here makes the app ask the static host for
+      # /api/v1/... and get a 404, because only Django serves those routes.
+      - key: VITE_API_BASE_URL
+        value: https://shimgen-backend.onrender.com/api/v1
+    routes:
+      # Client-side routing: the browser asks for /stats on a reload, and no such
+      # file exists — only index.html and the bundle do. Rewriting hands over
+      # index.html while leaving the URL alone, so React Router renders the right
+      # page. A *redirect* would rewrite the address bar to /index.html and lose
+      # the route. This is what makes shared links — spectator brackets and stats
+      # boards — survive being opened cold.
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -1,0 +1,9 @@
+# Client-side routing fallback.
+#
+# React Router owns the URL after the first load, so a reload of /stats asks the
+# static host for a file that does not exist. Serving index.html for anything
+# unmatched lets the app resolve the route itself — and keeps shared links
+# (spectator brackets, stats boards) working when opened cold.
+#
+# 200 rather than 301: the URL must stay as it was, or the router never sees it.
+/*    /index.html   200

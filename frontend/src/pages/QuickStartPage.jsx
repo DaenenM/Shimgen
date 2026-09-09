@@ -128,6 +128,12 @@ export function QuickStartPage() {
       }),
     onSuccess: (tournament) => {
       touchLocal(mode === 'teams' ? teams.flatMap((t) => t.members) : names)
+
+      // The tournaments list is now out of date. Without this it keeps serving
+      // the cached copy — which does not contain the bracket just created — so
+      // the new tournament appeared to be missing until a hard refresh.
+      queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
+
       navigate(paths.tournament(tournament.id, tournament.title))
     },
   })

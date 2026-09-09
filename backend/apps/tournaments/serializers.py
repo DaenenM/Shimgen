@@ -7,6 +7,7 @@ from apps.groups.models import Player
 from apps.groups.serializers import PlayerSerializer
 
 from .models import Entrant, FFAResult, Match, Participation, Role, Tournament
+from .standings import champion_entrant_id
 
 
 class EntrantSerializer(serializers.ModelSerializer):
@@ -132,6 +133,9 @@ class TournamentSerializer(serializers.ModelSerializer):
 
     entrant_count = serializers.SerializerMethodField()
     created_by = PublicUserSerializer(read_only=True)
+    # Who won, for a finished tournament. Named on the card so a list of past
+    # nights reads as a record rather than a set of identical rows.
+    winner_label = serializers.SerializerMethodField()
 
     class Meta:
         model = Tournament
@@ -148,6 +152,7 @@ class TournamentSerializer(serializers.ModelSerializer):
             "public_slug",
             "entrant_count",
             "created_by",
+            "winner_label",
             "favourited_at",
             "created_at",
         )
@@ -156,12 +161,31 @@ class TournamentSerializer(serializers.ModelSerializer):
             "state",
             "public_slug",
             "created_by",
+            "winner_label",
             "favourited_at",
             "created_at",
         )
 
     def get_entrant_count(self, obj) -> int:
         return obj.entrants.count()
+
+    def get_winner_label(self, obj) -> str | None:
+        """
+        The champion's name, once the tournament is over.
+
+        Only computed for a complete tournament: an unfinished bracket has a
+        leader, not a winner, and naming one on the card would be wrong for as
+        long as the night is still being played.
+        """
+        if obj.state != Tournament.State.COMPLETE:
+            return None
+
+        entrant_id = champion_entrant_id(obj)
+        if entrant_id is None:
+            return None
+
+        entrant = next((e for e in obj.entrants.all() if e.id == entrant_id), None)
+        return entrant.label if entrant else None
 
 
 class TournamentDetailSerializer(TournamentSerializer):

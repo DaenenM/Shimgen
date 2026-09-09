@@ -108,10 +108,22 @@ export function TournamentsPage() {
                   <h3 className="truncate font-semibold">
                     {tournament.title || 'Untitled tournament'}
                   </h3>
-                  <p className="text-base-content/60 mt-0.5 text-sm">
-                    {FORMAT_LABELS[tournament.format] ?? tournament.format} ·{' '}
-                    {tournament.entrant_count}{' '}
-                    {tournament.entrant_count === 1 ? 'entrant' : 'entrants'}
+                  <p className="text-base-content/60 mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm">
+                    <span>
+                      {FORMAT_LABELS[tournament.format] ?? tournament.format} ·{' '}
+                      {tournament.entrant_count}{' '}
+                      {tournament.entrant_count === 1 ? 'entrant' : 'entrants'}
+                    </span>
+
+                    {/* Who won, once there is a winner. A list of finished
+                        nights reads as a record with this and as a set of
+                        identical rows without it. */}
+                    {tournament.winner_label && (
+                      <span className="text-warning flex items-center gap-1 font-medium">
+                        <Trophy className="h-3.5 w-3.5" />
+                        {tournament.winner_label}
+                      </span>
+                    )}
                   </p>
                 </Link>
 

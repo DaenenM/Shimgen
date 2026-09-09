@@ -58,6 +58,19 @@ export function TournamentDetailPage() {
   }
 
   /**
+   * Refresh the detail *and* the list behind it.
+   *
+   * Used where the tournament's state changes — starting it, or a result
+   * finishing it — because the list shows that state as a badge and would
+   * otherwise keep serving a cached "draft" for the next two minutes. Kept
+   * separate from `refresh` so an ordinary reported result does not refetch the
+   * whole list on every click.
+   */
+  const refreshAll = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
+  }
+
+  /**
    * Reconcile after a reported result, without making the page feel busy.
    *
    * The optimistic write has already put the right thing on screen, so this is
@@ -127,7 +140,7 @@ export function TournamentDetailPage() {
 
   const start = useMutation({
     mutationFn: () => tournamentsApi.start(id),
-    onSuccess: refresh,
+    onSuccess: refreshAll,
   })
 
   const nextRound = useMutation({

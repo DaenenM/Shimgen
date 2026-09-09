@@ -628,3 +628,45 @@ def test_deleting_takes_the_matches_with_it(auth_client):
     auth_client.delete(reverse("v1:tournaments:tournament-detail", args=[created["id"]]))
 
     assert not Match.objects.filter(tournament_id=created["id"]).exists()
+
+
+@pytest.mark.django_db
+def test_a_finished_tournament_names_its_winner_in_the_list(auth_client, user):
+    """The card in the list says who won, so past nights read as a record."""
+    created = auth_client.post(
+        "/api/v1/tournaments/",
+        {"title": "Finished", "format": "single", "entrant_labels": ["Alpha", "Bravo"]},
+        format="json",
+    )
+    tournament = Tournament.objects.get(pk=created.data["id"])
+    match = tournament.matches.filter(a__isnull=False, b__isnull=False).first()
+    winner = match.a.label
+
+    auth_client.post(
+        f"/api/v1/matches/{match.id}/report/", {"score_a": 1, "score_b": 0}, format="json"
+    )
+
+    row = next(
+        r
+        for r in auth_client.get("/api/v1/tournaments/").data["results"]
+        if r["title"] == "Finished"
+    )
+    assert row["state"] == "complete"
+    assert row["winner_label"] == winner
+
+
+@pytest.mark.django_db
+def test_an_unfinished_tournament_names_nobody(auth_client):
+    # A bracket in progress has a leader, not a winner.
+    auth_client.post(
+        "/api/v1/tournaments/",
+        {"title": "Ongoing", "format": "single", "entrant_labels": ["A", "B", "C", "D"]},
+        format="json",
+    )
+
+    row = next(
+        r
+        for r in auth_client.get("/api/v1/tournaments/").data["results"]
+        if r["title"] == "Ongoing"
+    )
+    assert row["winner_label"] is None

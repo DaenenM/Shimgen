@@ -28,9 +28,13 @@ export const queryClient = new QueryClient({
       // page may have been idle for an hour.
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
-      // Remounting a component is not new information; the staleTime above
-      // decides when a refetch is actually worth making.
-      refetchOnMount: false,
+      // Stale data refetches on mount, fresh data does not. `false` was too
+      // aggressive: it also ignored explicit invalidations, so a newly created
+      // tournament stayed missing from its list — the cache had been marked
+      // stale but nothing ever acted on it. With placeholderData above, the
+      // refetch is invisible anyway: the cached page paints immediately and
+      // updates underneath.
+      refetchOnMount: true,
 
       retry: (failureCount, error) => {
         // 4xx means the request itself was wrong: unauthenticated, forbidden,

@@ -60,7 +60,7 @@ function Brand() {
       to={paths.home}
       className="group flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 text-xl font-extrabold tracking-tight"
     >
-      <span className="bg-primary/15 text-primary grid h-8 w-8 place-items-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+      <span className="bg-primary/15 text-primary grid h-8 w-8 place-items-center rounded-lg transition-transform duration-300 ease-out group-hover:scale-105">
         <Trophy className="h-4.5 w-4.5" />
       </span>
       <span className="hidden sm:inline">
@@ -78,6 +78,15 @@ function Brand() {
  * re-laying-out the page, so it stays smooth while the bracket re-renders
  * behind it.
  */
+/**
+ * One nav destination.
+ *
+ * Hover does exactly one thing: the label brightens and the underline grows in
+ * from the centre. There used to be three effects at once — a grey box behind
+ * the text, the icon hopping upward, and the underline sweeping in from the
+ * left — which read as busy rather than polished, and the box in particular
+ * made the bar look like a row of buttons.
+ */
 function NavItem({ to, label, icon: Icon, end }) {
   return (
     <NavLink
@@ -85,26 +94,23 @@ function NavItem({ to, label, icon: Icon, end }) {
       end={end}
       className={({ isActive }) =>
         [
-          'group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium',
+          'group relative flex items-center gap-2 px-3 py-2 text-sm font-medium',
           'transition-colors duration-200',
-          isActive
-            ? 'text-primary'
-            : 'text-base-content/70 hover:text-base-content hover:bg-base-content/5',
+          isActive ? 'text-primary' : 'text-base-content/60 hover:text-base-content',
         ].join(' ')
       }
     >
       {({ isActive }) => (
         <>
-          <Icon
-            className={`h-4 w-4 transition-transform duration-200 ${
-              isActive ? '' : 'group-hover:-translate-y-0.5'
-            }`}
-          />
+          <Icon className="h-4 w-4" />
           {label}
 
+          {/* Grown from the centre rather than swept from the left: a symmetric
+              reveal reads as the item settling, where a left-to-right sweep
+              reads as something loading. */}
           <span
             aria-hidden
-            className={`bg-primary absolute inset-x-3 -bottom-px h-0.5 origin-left rounded-full transition-transform duration-200 ${
+            className={`bg-primary absolute inset-x-2 bottom-0 h-[2px] origin-center rounded-full transition-transform duration-300 ease-out ${
               isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
             }`}
           />
@@ -119,14 +125,14 @@ function SignedOutActions() {
     <>
       <Link
         to={paths.login}
-        className="text-base-content/70 hover:text-base-content hover:bg-base-content/5 hidden rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 sm:block"
+        className="text-base-content/60 hover:text-base-content hidden px-3 py-2 text-sm font-medium transition-colors duration-200 sm:block"
       >
         Log in
       </Link>
 
       <Link
         to={paths.register}
-        className="bg-primary text-primary-content shadow-primary/20 hover:shadow-primary/30 rounded-lg px-4 py-2 text-sm font-semibold shadow-lg transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+        className="bg-primary text-primary-content hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-200"
       >
         Sign up
       </Link>
@@ -155,7 +161,7 @@ function AccountMenu({ user, onLogout }) {
     <div className="dropdown dropdown-end">
       <button
         tabIndex={0}
-        className="group hover:bg-base-content/5 flex items-center gap-2 rounded-lg py-1.5 pr-2 pl-1.5 transition-colors duration-200"
+        className="group text-base-content/70 hover:text-base-content flex items-center gap-2 rounded-lg py-1.5 pr-2 pl-1.5 transition-colors duration-200"
         aria-label="Account menu"
       >
         <span className="relative">
@@ -195,7 +201,7 @@ function AccountMenu({ user, onLogout }) {
         <li className="border-base-300/60 mt-1 border-t pt-1">
           <button
             onClick={onLogout}
-            className="text-error hover:bg-error/10 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors duration-150"
+            className="text-error hover:bg-error/10 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-all duration-150 hover:pl-4"
           >
             <LogOut className="h-4 w-4" />
             Sign out
@@ -211,7 +217,7 @@ function MenuLink({ to, label, icon: Icon, badge = 0 }) {
     <li>
       <Link
         to={to}
-        className="hover:bg-base-content/5 hover:text-primary flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150"
+        className="hover:bg-primary/10 hover:text-primary flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 hover:pl-4"
       >
         {label}
         <span className="flex items-center gap-2">
@@ -232,7 +238,7 @@ function MobileMenu() {
     <div className="dropdown lg:hidden">
       <button
         tabIndex={0}
-        className="hover:bg-base-content/5 grid h-10 w-10 place-items-center rounded-lg transition-colors duration-200"
+        className="text-base-content/70 hover:text-primary grid h-10 w-10 place-items-center rounded-lg transition-colors duration-200"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
@@ -253,7 +259,7 @@ function MobileMenu() {
                   'transition-colors duration-150',
                   isActive
                     ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-base-content/5 text-base-content/80',
+                    : 'hover:bg-primary/10 hover:text-primary text-base-content/80',
                 ].join(' ')
               }
             >

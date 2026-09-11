@@ -1,4 +1,4 @@
-import { Check, Plus, Trash2, User, Users, X } from '@/components/icons'
+import { Archive, Check, Plus, Trash2, User, Users, X } from '@/components/icons'
 import { useMemo } from 'react'
 
 import { useRoster } from '@/hooks/useRoster'
@@ -30,7 +30,7 @@ export function SavedRoster({
   const sizing = maxHeight ? 'self-start overflow-hidden' : 'self-start lg:sticky lg:top-20'
   const capStyle = maxHeight ? { maxHeight: `${maxHeight}px` } : undefined
 
-  const { players, forget, isLoading } = useRoster()
+  const { players, forget, archive, isLoading } = useRoster()
 
   /**
    * You first, then friends alphabetically, then everybody else as they came.
@@ -163,15 +163,35 @@ export function SavedRoster({
                     )}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => forget(player)}
-                    aria-label={`Delete ${player.display_name} from saved roster`}
-                    title="Delete from saved roster"
-                    className="text-base-content/30 hover:text-error hover:bg-error/10 mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {/* A friend, or you: archived rather than deleted.
+
+                      Deleting takes their rating history with it, and that
+                      history belongs to a person who is not the one clicking.
+                      Archiving hides the row and keeps every number on it — so
+                      the control stays useful and stops being destructive. The
+                      server refuses the delete either way; this is the half
+                      that explains why rather than waiting to be refused. */}
+                  {player.is_friend || player.is_self ? (
+                    <button
+                      type="button"
+                      onClick={() => archive(player)}
+                      aria-label={`Archive ${player.display_name}`}
+                      title="Archive — hides them and keeps their history"
+                      className="text-base-content/30 hover:text-primary hover:bg-primary/10 mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      <Archive className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => forget(player)}
+                      aria-label={`Delete ${player.display_name} from saved roster`}
+                      title="Delete from saved roster"
+                      className="text-base-content/30 hover:text-error hover:bg-error/10 mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </li>
               )
             })}

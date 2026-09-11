@@ -47,10 +47,19 @@ export function RosterPicker({ value, onChange, count, glass = false }) {
         // the rounded corner. Hiding it with ::-webkit-resizer did not take, and
         // the box has a fixed row count inside a height-capped column anyway —
         // dragging it taller had nothing to reveal.
-        className={`w-full resize-none rounded-xl p-3 text-sm transition-colors focus:outline-none ${
+        // `text-base-content` is explicit, and load-bearing rather than
+        // decoration. The muted-text floor in index.css matches by attribute
+        // substring — `[class*='text-base-content/35']` — and a Tailwind
+        // variant keeps its base name in the class string, so
+        // `placeholder:text-base-content/35` matched it too. The rule then set
+        // `color` on the textarea itself, dimming every name typed into it to
+        // 62%. Naming the colour here wins on specificity and puts the names
+        // back at full strength, which is what they should be: this box is the
+        // player list, not a hint.
+        className={`w-full resize-none rounded-xl p-3 text-sm leading-relaxed transition-colors focus:outline-none ${
           glass
-            ? 'glass-inset focus:border-primary/50 placeholder:text-base-content/35'
-            : 'textarea textarea-bordered'
+            ? 'glass-inset text-base-content focus:border-primary/50 placeholder:text-base-content/45 font-medium'
+            : 'textarea textarea-bordered text-base-content font-medium'
         }`}
         rows={10}
         placeholder={'One name per line, or comma separated\nMark, Daniel, Jacob'}

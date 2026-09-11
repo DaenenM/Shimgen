@@ -62,10 +62,27 @@ export const tournaments = {
   batchReport: (id, operations) =>
     api.post(`/tournaments/${id}/batch-report/`, { operations }).then((r) => r.data),
   // Point a tournament at a stats board after the fact, or move it to another.
-  // An empty slug unlinks. Returns the whole tournament, like the other
-  // mutations here, so the caller can write it straight into the cache.
-  linkStatsBoard: (id, slug) =>
-    api.post(`/tournaments/${id}/stats-board/`, { stats_board: slug ?? '' }).then((r) => r.data),
+  // An empty slug unlinks. A table id names one table on a board directly,
+  // which is what a board with several tables needs — the server cannot know
+  // which of "Solo wins" and "Team wins" tonight belongs to. Returns the whole
+  // tournament, like the other mutations here, so the caller can write it
+  // straight into the cache.
+  linkStatsBoard: (id, slug, tableId) =>
+    api
+      .post(`/tournaments/${id}/stats-board/`, {
+        stats_board: slug ?? '',
+        ...(tableId ? { stats_table: tableId } : {}),
+      })
+      .then((r) => r.data),
+  // Run it back: a fresh draft with the same entrants, feeding the same table,
+  // named as the next in the series.
+  //
+  // `reshuffle` pairs round one afresh. The default mirrors the server's, which
+  // keeps the original seeding — the tournaments list always asks for `true`,
+  // since running a night back means playing it again rather than replaying the
+  // same fixtures, but the flag stays because the endpoint still honours both.
+  restage: (id, { reshuffle = false } = {}) =>
+    api.post(`/tournaments/${id}/restage/`, { reshuffle }).then((r) => r.data),
   addCohost: (id, userId) =>
     api.post(`/tournaments/${id}/cohosts/`, { user: userId }).then((r) => r.data),
   removeCohost: (id, userId) =>

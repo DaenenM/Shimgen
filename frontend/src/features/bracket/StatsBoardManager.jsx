@@ -99,11 +99,19 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
         aria-expanded={open}
         // The board's name rather than "Stats board": what a host wants to know
         // at a glance is whether tonight is being counted, and where.
-        title={board ? `Counting towards ${board.name}` : 'This tournament is not being counted'}
+        title={
+          board
+            ? `Counting towards ${board.name}${board.table_name ? ` — ${board.table_name}` : ''}`
+            : 'This tournament is not being counted'
+        }
         className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 max-w-[8.5rem] items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 sm:max-w-[13rem]"
         disabled={pending}
       >
         <BarChart3 className={`h-4 w-4 shrink-0 ${board ? 'text-primary' : ''}`} />
+        {/* The board's name alone, even when a table is linked: the button is
+            narrow, and "Pummel Party — Solo wins" truncates to something less
+            useful than the board it names. The table is named in the menu and
+            in the title attribute. */}
         <span className="truncate">{board ? board.name : 'No board'}</span>
         <ChevronDown
           className={`text-base-content/40 h-4 w-4 shrink-0 transition-transform duration-200 ${
@@ -169,18 +177,45 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
                   }}
                 />
 
-                {editable.map((item) => (
-                  <Option
-                    key={item.slug}
-                    label={item.name}
-                    hint="Tracks tournaments"
-                    selected={board?.slug === item.slug}
-                    onSelect={() => {
-                      onLink(item.slug)
-                      setOpen(false)
-                    }}
-                  />
-                ))}
+                {/* A board with one table is offered as itself; a board with
+                    several is offered a table at a time.
+
+                    Naming the board alone is enough when there is only one
+                    place the results can go. When there are two — "Solo wins"
+                    and "Team wins" — the server would have to guess, and a 3v3
+                    night landing in the solo column is the kind of wrong nobody
+                    notices until the numbers are weeks old. */}
+                {editable.flatMap((item) => {
+                  const tables = (item.tables_summary ?? []).filter((t) => t.tracks_tournaments)
+
+                  if (tables.length <= 1) {
+                    return [
+                      <Option
+                        key={item.slug}
+                        label={item.name}
+                        hint={tables[0]?.name ?? 'Tracks tournaments'}
+                        selected={board?.slug === item.slug}
+                        onSelect={() => {
+                          onLink(item.slug)
+                          setOpen(false)
+                        }}
+                      />,
+                    ]
+                  }
+
+                  return tables.map((table) => (
+                    <Option
+                      key={`${item.slug}:${table.id}`}
+                      label={`${item.name} — ${table.name}`}
+                      hint="Tracks tournaments"
+                      selected={board?.slug === item.slug && board?.table_id === table.id}
+                      onSelect={() => {
+                        onLink(item.slug, table.id)
+                        setOpen(false)
+                      }}
+                    />
+                  ))
+                })}
               </div>
 
               <button

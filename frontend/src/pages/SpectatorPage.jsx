@@ -61,7 +61,11 @@ export function SpectatorPage() {
 
   return (
     <div className="mx-auto max-w-[92rem] px-4 py-8">
-      <div className="mb-6">
+      {/* The title block only. This page polls every thirty seconds, so the
+          bracket and standings beside it are replaced on a timer — animating
+          them would make the page twitch at somebody watching a friend's
+          tournament, which is the last place a flourish belongs. */}
+      <div className="rise-in mb-6">
         <div className="text-base-content/50 mb-1 flex items-center gap-1.5 text-xs">
           <Eye className="h-3.5 w-3.5" />
           Spectator view

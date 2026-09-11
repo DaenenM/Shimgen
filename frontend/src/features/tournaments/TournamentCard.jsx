@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Star, Trash2, Trophy, Users } from '@/components/icons'
+import { Archive, ArchiveRestore, RotateCcw, Star, Trash2, Trophy, Users } from '@/components/icons'
 import { Link } from 'react-router-dom'
 
 import { paths } from '@/routes/paths'
@@ -103,6 +103,7 @@ export function TournamentCard({
   onFavourite,
   onArchive,
   onRestore,
+  onRunBack,
   onDelete,
   pending = false,
   // A glance rather than a workbench — the dashboard shows the same row but
@@ -203,6 +204,30 @@ export function TournamentCard({
 
         {!readOnly && (
           <div className="flex shrink-0 items-center">
+            {/* Run it back.
+
+                An icon with a label on hover rather than a worded button: it
+                sits in a row of three icon controls, and one button spelling
+                itself out would make the row read as a toolbar with an odd
+                stray in it. The title carries the words for a mouse, the
+                aria-label for everything else.
+
+                Not offered on an archived card — running one back puts a fresh
+                draft in the list, which is the opposite of what archiving
+                just said. */}
+            {onRunBack && !archived && (
+              <button
+                type="button"
+                onClick={() => onRunBack(tournament)}
+                disabled={pending}
+                aria-label={`Run ${name} back as a new tournament`}
+                title="Run it back"
+                className="text-base-content/35 hover:text-success hover:bg-success/10 group/again grid h-8 w-8 place-items-center rounded-lg transition-colors disabled:opacity-30 sm:opacity-60 sm:group-hover:opacity-100"
+              >
+                <RotateCcw className="h-4 w-4 transition-transform duration-300 ease-out group-hover/again:-rotate-180" />
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => onFavourite(tournament.id)}

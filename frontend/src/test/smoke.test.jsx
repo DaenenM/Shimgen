@@ -12,6 +12,7 @@ import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router-d
 import { describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/api/client'
+import { PERSIST_KEY, clearPersistedCache, shouldPersist } from '@/lib/persist'
 import { clearTokens, getAccessToken, setTokens } from '@/api/tokens'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { SectionLoader } from '@/components/ui/SectionLoader'
@@ -1272,6 +1273,138 @@ describe('TournamentCard readOnly', () => {
     expect(screen.getByLabelText(/Pin Friday night/)).toBeTruthy()
     expect(screen.getByLabelText(/Archive Friday night/)).toBeTruthy()
     expect(screen.getByLabelText(/Delete Friday night/)).toBeTruthy()
+  })
+
+  it('offers to run a night back, naming it for anyone not seeing the icon', () => {
+    // The control is an icon with a hover label, so the accessible name is the
+    // only thing carrying its meaning to a screen reader.
+    renderCard({
+      onFavourite: () => {},
+      onArchive: () => {},
+      onDelete: () => {},
+      onRunBack: () => {},
+    })
+
+    expect(screen.getByLabelText(/Run Friday night back as a new tournament/)).toBeTruthy()
+  })
+
+  it('hands the whole tournament to the restage handler, so the dialog can name it', () => {
+    const runBack = vi.fn()
+    renderCard({
+      onFavourite: () => {},
+      onArchive: () => {},
+      onDelete: () => {},
+      onRunBack: runBack,
+    })
+
+    fireEvent.click(screen.getByLabelText(/Run Friday night back as a new tournament/))
+
+    expect(runBack).toHaveBeenCalledWith(expect.objectContaining({ id: 7, title: 'Friday night' }))
+  })
+
+  it('does not offer to run back an archived night', () => {
+    // Restaging puts a fresh draft at the top of the list, which is the exact
+    // opposite of what archiving just said.
+    renderCard({
+      archived: true,
+      onFavourite: () => {},
+      onRestore: () => {},
+      onDelete: () => {},
+      onRunBack: () => {},
+    })
+
+    expect(screen.queryByLabelText(/Run Friday night back/)).toBeNull()
+  })
+})
+
+/**
+ * Picking one table of a board, rather than the board.
+ *
+ * A <select> can only carry a string, so the board slug and the table id share
+ * one value joined by a separator. The slug alphabet is lowercase letters and
+ * digits (apps/common/slugs.py), so a colon cannot appear in the first half and
+ * the split is unambiguous.
+ */
+/**
+ * What reaches the disk.
+ *
+ * The cache holds a person's profile, their email and the people they play
+ * with alongside the tournaments and boards this feature is for. An allowlist
+ * decides which of those is written to localStorage, and a mistake there is
+ * invisible — nothing breaks, data is simply somewhere it should not be — so
+ * the predicate is pinned rather than trusted.
+ */
+describe('persisted cache allowlist', () => {
+  const query = (queryKey, status = 'success') => ({ queryKey, state: { status } })
+
+  it('keeps tournaments and boards, which is the point of the feature', () => {
+    expect(shouldPersist(query(['tournaments']))).toBe(true)
+    expect(shouldPersist(query(['boards']))).toBe(true)
+  })
+
+  it('keeps their nested keys too', () => {
+    // A board's own page and the archived variant of the list both sit under
+    // the same root, and both are worth painting from disk.
+    expect(shouldPersist(query(['boards', 'saturday-league']))).toBe(true)
+    expect(shouldPersist(query(['tournaments', { archived: true }]))).toBe(true)
+    expect(shouldPersist(query(['tournaments', 12, 'standings']))).toBe(true)
+  })
+
+  it('refuses anything carrying who you are or who you play with', () => {
+    // The reason the list is an allowlist: these would otherwise outlive the
+    // tab in a store any script on the origin can read.
+    expect(shouldPersist(query(['auth', 'me']))).toBe(false)
+    expect(shouldPersist(query(['auth', 'search', 'brett']))).toBe(false)
+    expect(shouldPersist(query(['friends', 'accepted']))).toBe(false)
+    expect(shouldPersist(query(['roster']))).toBe(false)
+  })
+
+  it('refuses a query that has not succeeded', () => {
+    // A restored error renders the page's error branch on open, with no request
+    // behind it to clear the state — a broken page built from a problem that
+    // has most likely already passed.
+    expect(shouldPersist(query(['boards'], 'error'))).toBe(false)
+    expect(shouldPersist(query(['boards'], 'pending'))).toBe(false)
+  })
+
+  it('is private by default, so a query added later has to opt in', () => {
+    expect(shouldPersist(query(['something-new']))).toBe(false)
+  })
+})
+
+describe('clearing the cache on sign-out', () => {
+  it('removes what was written to disk', () => {
+    // Tokens alone are not enough: restored data paints without any request
+    // being made, so there is nothing for the server to refuse.
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({ clientState: {} }))
+
+    clearPersistedCache()
+
+    expect(localStorage.getItem(PERSIST_KEY)).toBeNull()
+  })
+
+  it('is safe to call when nothing was ever stored', () => {
+    expect(() => clearPersistedCache()).not.toThrow()
+  })
+})
+
+describe('stats board option values', () => {
+  const SEPARATOR = '::'
+  const split = (value) =>
+    value.includes(SEPARATOR)
+      ? { stats_table: Number(value.split(SEPARATOR)[1]) }
+      : { stats_board: value }
+
+  it('sends a bare slug when the board has only one table', () => {
+    expect(split('xnddd6w745')).toEqual({ stats_board: 'xnddd6w745' })
+  })
+
+  it('names the table outright when the host picked one of several', () => {
+    expect(split('xnddd6w745::5986')).toEqual({ stats_table: 5986 })
+  })
+
+  it('carries the id as a number, which is what the API expects', () => {
+    expect(typeof split('abc123::42').stats_table).toBe('number')
   })
 })
 

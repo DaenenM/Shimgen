@@ -92,7 +92,10 @@ export function StatsPage() {
 
   return (
     <PageShell className="glass-backdrop">
+      {/* Header only: the board list is query-backed and re-renders whenever a
+          board is created, renamed or deleted. */}
       <PageHeader
+        className="rise-in rise-delay-1"
         title="Stats"
         description="Tally boards for the nights that never became a bracket."
       >

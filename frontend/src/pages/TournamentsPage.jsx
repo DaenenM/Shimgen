@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ChevronDown, Plus, Trophy } from '@/components/icons'
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Archive, ChevronDown, Plus, RotateCcw, Trophy } from '@/components/icons'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { tournaments as tournamentsApi } from '@/api/endpoints'
 import { PageShell } from '@/components/layout/PageShell'
@@ -14,13 +14,138 @@ import { useAuth } from '@/hooks/useAuth'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
 
+/**
+ * "Run it back" — confirming a restage.
+ *
+ * Its own dialog rather than `ConfirmDialog`, which is built for destruction:
+ * red button, warning triangle, "this cannot be undone". None of that is true
+ * here — the original keeps every result, and this only adds. It still asks,
+ * because it creates a whole tournament.
+ *
+ * Deliberately not on DaisyUI's `.modal`. That class carries a 300ms
+ * visibility/background transition and its own translate and scale corrections,
+ * which are applied to `.modal-box` — a class this does not use, since the
+ * surface is the app's own glass. The result was a panel sitting low on the
+ * screen that smeared away on close. Styling the <dialog> directly is both
+ * fewer moving parts and the only way to get an instant dismissal.
+ */
+function RunBackDialog({ tournament, pending, error, onConfirm, onCancel }) {
+  const ref = useRef(null)
+  const open = Boolean(tournament)
+
+  useEffect(() => {
+    const dialog = ref.current
+    if (!dialog) return
+
+    if (open && !dialog.open) dialog.showModal()
+    if (!open && dialog.open) dialog.close()
+  }, [open])
+
+  return (
+    <dialog
+      ref={ref}
+      // `m-auto` against `inset-0` is what centres a <dialog> in both axes.
+      // The browser's own default is `margin: auto` on a positioned box, but
+      // the UA stylesheet also sets `top`/`bottom` to the block-start edge,
+      // which is what leaves an unstyled dialog sitting high — or, with a
+      // library's overrides half-applied, low.
+      className="fixed inset-0 m-auto max-h-fit w-[calc(100%-2rem)] max-w-sm bg-transparent p-0 backdrop:bg-transparent"
+      onClose={onCancel}
+      // Clicking the backdrop cancels. The dialog element itself fills the
+      // viewport only as far as its own box, so a click landing on it rather
+      // than on the panel inside is a click outside the panel.
+      onMouseDown={(event) => {
+        if (event.target === ref.current) onCancel()
+      }}
+    >
+      {/* Centred rather than an icon-beside-text row. The icon tile against a
+          two-line paragraph left three different left edges and no alignment
+          anywhere — the tile's, the heading's, and the text's. A single centred
+          column has one axis, which is what makes a small card read as composed
+          rather than assembled.
+
+          One padding value throughout, and every gap a multiple of it, so the
+          vertical rhythm is even top to bottom. */}
+      <div className="glass-raised flex flex-col items-center gap-4 p-6 text-center">
+        <span className="bg-success/12 text-success grid h-11 w-11 shrink-0 place-items-center rounded-full">
+          <RotateCcw className="h-5 w-5" />
+        </span>
+
+        <div className="space-y-1.5">
+          <h3 className="text-lg leading-tight font-bold tracking-tight">Run it back?</h3>
+          {/* `text-sm` rather than `text-xs`: this is the sentence explaining
+              what the button does, and it was set smaller than the buttons
+              underneath it. Balanced wrapping keeps two lines even rather than
+              leaving one word stranded. */}
+          <p className="text-base-content/70 text-sm text-balance">
+            A fresh bracket with the same entrants, freshly paired
+            {tournament?.feeds_stats_board ? ', counting towards the same board' : ''}.
+          </p>
+          {/* The name on its own line. Inlined into the sentence it pushed the
+              paragraph to three ragged lines and buried the one piece of the
+              text that changes. */}
+          {tournament?.title && (
+            <p className="text-base-content/50 truncate text-xs">
+              {tournament.title} keeps its results
+            </p>
+          )}
+        </div>
+
+        {error && (
+          <div
+            role="alert"
+            className="border-error/30 bg-error/12 text-error w-full rounded-lg border px-3 py-2 text-xs"
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Full width and equal halves. Two shrink-wrapped buttons pushed right
+            left a ragged bottom edge on a card this narrow; splitting the row
+            gives the panel a base to sit on.
+
+            Colour and border on hover, nothing that moves — a panel that has
+            just appeared under the cursor should not also shift under it. */}
+        <div className="grid w-full grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="glass-raised hover:border-base-content/30 hover:bg-base-content/8 inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="bg-primary text-primary-content hover:bg-primary/85 shadow-primary/20 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold shadow-sm transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
+          >
+            {pending ? (
+              <span className="loading loading-spinner loading-xs" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            Run it back
+          </button>
+        </div>
+      </div>
+    </dialog>
+  )
+}
+
 export function TournamentsPage() {
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   // The tournament awaiting confirmation, held whole so the dialog can name it.
   // Deleting takes every match and result with it, which is worth a real pause.
   const [confirming, setConfirming] = useState(null)
+
+  // The tournament being run back, held whole so the dialog can name it.
+  const [runningBack, setRunningBack] = useState(null)
 
   /**
    * Whether the archived section at the foot of the page is open.
@@ -80,6 +205,29 @@ export function TournamentsPage() {
     onSuccess: invalidate,
   })
 
+  /**
+   * Run a night back: a fresh draft with the same entrants and the same board.
+   *
+   * Opens on the new bracket rather than returning to the list. Restaging is
+   * something a host does *in order to play it*, so leaving them on the list to
+   * find it themselves would put a step between the decision and the thing they
+   * decided to do.
+   */
+  const runBack = useMutation({
+    // Always reshuffled. Running it back means playing it again, not replaying
+    // the same fixtures — and a rematch of the identical first round is the one
+    // thing nobody asks for twice.
+    mutationFn: (id) => tournamentsApi.restage(id, { reshuffle: true }),
+    onSuccess: (tournament) => {
+      setRunningBack(null)
+      invalidate()
+      // The clone enrols its players on the linked board straight away, so the
+      // boards this tab holds are now out of date.
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all })
+      navigate(paths.tournament(tournament.id, tournament.title))
+    },
+  })
+
   const items = data?.results ?? data ?? []
   const archivedItems = archivedData?.results ?? archivedData ?? []
   const busy = archive.isPending || restore.isPending
@@ -88,13 +236,21 @@ export function TournamentsPage() {
     onFavourite: (id) => favourite.mutate(id),
     onArchive: (id) => archive.mutate(id),
     onRestore: (id) => restore.mutate(id),
+    onRunBack: (tournament) => setRunningBack(tournament),
     onDelete: (tournament) => setConfirming(tournament),
     pending: busy,
   }
 
   return (
     <PageShell width="list" className="glass-backdrop">
-      <PageHeader title="Tournaments" description="Every event you host, help run or play in.">
+      {/* Only the header. The list below re-renders on every pin, archive and
+          delete — animating it would replay the page's entrance each time
+          somebody used one of those buttons. */}
+      <PageHeader
+        className="rise-in rise-delay-1"
+        title="Tournaments"
+        description="Every event you host, help run or play in."
+      >
         {/* Styled here rather than through `Button`, which is still on the old
             DaisyUI variants and used across every page — converting it moves
             the whole app at once and belongs to its own pass. */}
@@ -186,6 +342,20 @@ export function TournamentsPage() {
           )}
         </div>
       )}
+
+      {/* Running a night back.
+
+          A confirmation rather than a straight click, because it creates a
+          whole tournament and puts a new row at the top of the list. Not styled
+          as a danger, since nothing is destroyed: the original keeps every
+          result. */}
+      <RunBackDialog
+        tournament={runningBack}
+        pending={runBack.isPending}
+        error={runBack.isError ? runBack.error.message : null}
+        onConfirm={() => runBack.mutate(runningBack.id)}
+        onCancel={() => setRunningBack(null)}
+      />
 
       <ConfirmDialog
         open={Boolean(confirming)}

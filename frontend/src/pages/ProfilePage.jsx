@@ -23,9 +23,11 @@ export function ProfilePage() {
 
   return (
     <div className="glass-backdrop mx-auto max-w-xl px-4 py-8">
-      <PageHeader title="Profile" description="How you appear on leaderboards and brackets." />
+      <div className="rise-in rise-delay-1">
+        <PageHeader title="Profile" description="How you appear on leaderboards and brackets." />
+      </div>
 
-      <div className="glass-panel">
+      <div className="glass-panel rise-in rise-delay-2">
         <form
           className="flex flex-col gap-4 p-5 sm:p-6"
           // No credentials on this form either — the email below is disabled
@@ -113,7 +115,7 @@ export function ProfilePage() {
         </form>
       </div>
 
-      <div className="glass-panel mt-6">
+      <div className="glass-panel rise-in rise-delay-3 mt-6">
         <div className="p-4">
           <h2 className="text-sm font-semibold">Session</h2>
           <p className="text-base-content/60 mb-2 text-sm">

@@ -300,15 +300,19 @@ export function BoardPage() {
 
   return (
     <PageShell className="glass-backdrop">
+      {/* The frame, not the tables. A board's rows and tallies change on every
+          mark added, and a tally that re-animates as it is counted would be
+          unusable — this page is meant to be tapped repeatedly during a game
+          night. */}
       <Link
         to={paths.stats}
-        className="text-base-content/60 hover:text-base-content mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
+        className="text-base-content/60 hover:text-base-content rise-in rise-delay-1 mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         All boards
       </Link>
 
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="rise-in rise-delay-2 mb-6 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           {editing && isOwner ? (
             <BoardName name={board.name} onRename={(name) => renameBoard.mutate(name)} />

@@ -49,19 +49,29 @@ export function DashboardPage() {
 
   return (
     <PageShell className="glass-backdrop">
-      <PageHeader
-        title={`Welcome back, ${user?.display_name || user?.username}`}
-        description="Pick up where you left off, or start something new."
-      >
-        <Button icon={Plus} to={paths.quickStart}>
-          New tournament
-        </Button>
-        <Button icon={Shuffle} variant="secondary" to={paths.teamGenerator}>
-          Teams
-        </Button>
-      </PageHeader>
+      {/* The frame animates, never the list below it.
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+          The recent-tournaments list is swapped in when its query resolves and
+          again on every invalidation, so `rise-in` there would fire when the
+          data lands rather than on arrival — and replay itself each time
+          somebody changed a tournament on another page. The header, counters
+          and prompt are mounted immediately and stay put, which is exactly what
+          a greeting should be attached to. */}
+      <div className="rise-in rise-delay-1">
+        <PageHeader
+          title={`Welcome back, ${user?.display_name || user?.username}`}
+          description="Pick up where you left off, or start something new."
+        >
+          <Button icon={Plus} to={paths.quickStart}>
+            New tournament
+          </Button>
+          <Button icon={Shuffle} variant="secondary" to={paths.teamGenerator}>
+            Teams
+          </Button>
+        </PageHeader>
+      </div>
+
+      <div className="rise-in rise-delay-2 mb-6 grid gap-3 sm:grid-cols-3">
         <Stat label="Tournaments" value={events.length} to={paths.tournaments} />
         <Stat label="In progress" value={active} to={paths.tournaments} />
         <Stat label="Saved players" value={list(players).length} to={paths.roster} />
@@ -72,7 +82,7 @@ export function DashboardPage() {
       {pendingCount > 0 && (
         <Link
           to={paths.friends}
-          className="glass-inset hover:border-base-content/25 hover:bg-base-content/5 mb-6 flex items-center gap-2.5 px-4 py-3 text-sm transition-colors duration-200"
+          className="glass-inset hover:border-base-content/25 hover:bg-base-content/5 rise-in rise-delay-3 mb-6 flex items-center gap-2.5 px-4 py-3 text-sm transition-colors duration-200"
         >
           <UserPlus className="text-primary h-4 w-4 shrink-0" />
           <span>
@@ -81,7 +91,7 @@ export function DashboardPage() {
         </Link>
       )}
 
-      <h2 className="text-base-content/60 mb-3 text-sm font-semibold tracking-wide uppercase">
+      <h2 className="text-base-content/60 rise-in rise-delay-4 mb-3 text-sm font-semibold tracking-wide uppercase">
         Recent tournaments
       </h2>
 

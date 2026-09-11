@@ -11,6 +11,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { api } from '@/api/client'
 import { clearTokens, getAccessToken, setTokens } from '@/api/tokens'
+import { clearPersistedCache } from '@/lib/persist'
+import { queryClient } from '@/lib/queryClient'
 
 import { AuthContext } from './AuthContext'
 
@@ -101,6 +103,17 @@ export function AuthProvider({ children }) {
       // Already expired or the network is down — nothing to recover.
     } finally {
       clearTokens()
+
+      // Both halves matter, and for different reasons. `clear()` empties the
+      // in-memory cache so nothing of the previous session is rendered while
+      // this tab stays open; `clearPersistedCache()` removes what was written
+      // to disk, which would otherwise be restored on the next visit and paint
+      // one person's tournaments and boards for whoever opens the app next.
+      // Tokens alone are not enough: restored data is shown without any request
+      // being made, so there is nothing for the server to refuse.
+      queryClient.clear()
+      clearPersistedCache()
+
       setUser(null)
       setStatus('anonymous')
     }

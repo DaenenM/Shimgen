@@ -88,8 +88,6 @@ def restage_tournament(tournament, *, user, reshuffle: bool = False):
     move the night onto whichever table the board-level lookup preferred, and
     the crew would find next week's 3v3 results in the solo column.
     """
-    from apps.tournaments.views import _link_stats
-
     clone = Tournament.objects.create(
         title=next_restage_title(tournament),
         description=tournament.description,
@@ -171,7 +169,11 @@ def _relink_stats(original, clone, user) -> None:
     perfectly good bracket; it just is not counted, and the host can link it
     from the bracket page.
     """
+    # Imported here rather than at module scope: views.py imports this module,
+    # so a top-level import either way round is a cycle.
     from rest_framework.exceptions import ValidationError
+
+    from apps.tournaments.views import _link_stats
 
     link = getattr(original, "stats_link", None)
     if link is None:

@@ -15,7 +15,7 @@ import { paths } from '@/routes/paths'
 export function NotFoundPage() {
   return (
     <div className="glass-backdrop mx-auto flex min-h-[60vh] max-w-xl items-center px-4 py-10">
-      <div className="glass-panel w-full">
+      <div className="glass-panel rise-in w-full">
         <div className="flex flex-col items-center gap-4 p-8 text-center sm:p-10">
           {/* Set in the panel's own tint rather than as a headline: the number
               is context, and at 5rem solid it was the loudest thing on a page

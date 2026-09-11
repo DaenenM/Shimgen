@@ -287,11 +287,23 @@ class TournamentDetailSerializer(TournamentSerializer):
         {
             "type": "object",
             "nullable": True,
-            "properties": {"slug": {"type": "string"}, "name": {"type": "string"}},
+            "properties": {
+                "slug": {"type": "string"},
+                "name": {"type": "string"},
+                "table_id": {"type": "integer"},
+                "table_name": {"type": "string"},
+            },
         }
     )
     def get_stats_board(self, obj):
-        """The linked board's slug and name, or null when nothing is linked."""
+        """
+        The linked board, and which of its tables this feeds.
+
+        The table is named as well as the board because a board may have several
+        — "Solo wins" and "Team wins" — and the picker has to be able to show
+        which one is ticked. Saying only the board would leave both tables
+        looking equally selected.
+        """
         link = getattr(obj, "stats_link", None)
         if link is None:
             return None
@@ -300,7 +312,12 @@ class TournamentDetailSerializer(TournamentSerializer):
         if table is None:
             return None
 
-        return {"slug": table.board.slug, "name": table.board.name}
+        return {
+            "slug": table.board.slug,
+            "name": table.board.name,
+            "table_id": table.id,
+            "table_name": table.name,
+        }
 
 
 class SpectatorSerializer(TournamentDetailSerializer):

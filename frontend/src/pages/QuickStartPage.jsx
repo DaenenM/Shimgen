@@ -29,6 +29,11 @@ const BEST_OF = [1, 3, 5, 7]
 // live in the same control as the boards themselves.
 const NEW_BOARD = '__new__'
 
+// Joins a board slug to a table id in one option value, since a <select> can
+// only carry a string. A slug is generated from an alphabet without this
+// character, so it cannot appear in the first half by accident.
+const TABLE_SEPARATOR = '::'
+
 /**
  * Build a tournament, with or without an account.
  *
@@ -126,7 +131,14 @@ export function QuickStartPage() {
         // Where results land. Everyone on the winning entrant is credited
         // individually — a 3v3 win is three people's win — which the server
         // handles.
-        ...(statsBoard ? { stats_board: statsBoard } : {}),
+        //
+        // A value carrying a table id names that table outright; a bare slug
+        // lets the server pick, which is right when the board has only one.
+        ...(statsBoard
+          ? statsBoard.includes(TABLE_SEPARATOR)
+            ? { stats_table: Number(statsBoard.split(TABLE_SEPARATOR)[1]) }
+            : { stats_board: statsBoard }
+          : {}),
         settings: {
           best_of: { default: bestOf },
           ...(format === 'double' ? { bracket_reset: bracketReset } : {}),
@@ -207,6 +219,7 @@ export function QuickStartPage() {
   return (
     <PageShell className="glass-backdrop">
       <PageHeader
+        className="rise-in rise-delay-1"
         title="New tournament"
         description="Add names, pick a format, and you have a bracket. No account needed."
       />
@@ -219,15 +232,20 @@ export function QuickStartPage() {
           the container every time the list wrapped, and put the names people
           were about to click below the box they were typing in. */}
       <div className="grid items-start gap-6 lg:grid-cols-[14rem_1fr_20rem]">
-        <SavedRoster
-          selected={placed}
-          onAdd={addFromRoster}
-          onRemove={removeFromRoster}
-          title={mode === 'teams' ? `Add to team ${activeTeam + 1}` : 'Saved roster'}
-          glass
-        />
+        {/* `self-start` travels onto the wrapper with the animation, the same
+            way it does on the Team Generator: wrapping makes this div the grid
+            item, and without it the roster rail stretches to the row's height. */}
+        <div className="rise-in rise-delay-2 self-start">
+          <SavedRoster
+            selected={placed}
+            onAdd={addFromRoster}
+            onRemove={removeFromRoster}
+            title={mode === 'teams' ? `Add to team ${activeTeam + 1}` : 'Saved roster'}
+            glass
+          />
+        </div>
 
-        <div className="glass-panel min-w-0">
+        <div className="glass-panel rise-in rise-delay-3 min-w-0">
           <div className="flex flex-col gap-5 p-5">
             <label className="flex w-full flex-col">
               <span className="label-text mb-1">
@@ -292,7 +310,7 @@ export function QuickStartPage() {
           </div>
         </div>
 
-        <div className="glass-panel min-w-0 lg:sticky lg:top-20">
+        <div className="glass-panel rise-in rise-delay-4 min-w-0 lg:sticky lg:top-20">
           <div className="flex flex-col gap-5 p-5">
             {/* Format.
 
@@ -495,11 +513,32 @@ export function QuickStartPage() {
                     aria-label="Stats board"
                   >
                     <option value="">No stat board</option>
-                    {editableBoards.map((board) => (
-                      <option key={board.slug} value={board.slug}>
-                        {board.name}
-                      </option>
-                    ))}
+                    {/* A board with several tournament tables is listed one
+                        table at a time — "Pummel Party — Solo wins". With one
+                        table there is nothing to choose between, so the board's
+                        own name is the option and the server picks the table. */}
+                    {editableBoards.flatMap((board) => {
+                      const tables = (board.tables_summary ?? []).filter(
+                        (table) => table.tracks_tournaments,
+                      )
+
+                      if (tables.length <= 1) {
+                        return [
+                          <option key={board.slug} value={board.slug}>
+                            {board.name}
+                          </option>,
+                        ]
+                      }
+
+                      return tables.map((table) => (
+                        <option
+                          key={`${board.slug}:${table.id}`}
+                          value={`${board.slug}${TABLE_SEPARATOR}${table.id}`}
+                        >
+                          {board.name} — {table.name}
+                        </option>
+                      ))
+                    })}
                     <option value={NEW_BOARD}>+ New board…</option>
                   </select>
                 )}

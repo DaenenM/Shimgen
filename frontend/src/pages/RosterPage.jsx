@@ -74,7 +74,10 @@ export function RosterPage() {
 
   return (
     <div className="glass-backdrop mx-auto max-w-3xl px-4 py-8">
+      {/* The header and the add form, not the list of names — that list is
+          rewritten every time somebody adds, archives or removes a player. */}
       <PageHeader
+        className="rise-in rise-delay-1"
         title="My Roster"
         description="Names you've saved. They show up as one-click chips when you build an event."
       >
@@ -86,7 +89,7 @@ export function RosterPage() {
         </button>
       </PageHeader>
 
-      <form onSubmit={submitOne} className="mb-4 flex gap-2">
+      <form onSubmit={submitOne} className="rise-in rise-delay-2 mb-4 flex gap-2">
         <input
           type="text"
           className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 flex-1 px-3 text-sm transition-colors focus:outline-none"
@@ -282,14 +285,21 @@ function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
             </button>
           )}
 
-          <button
-            className="text-error hover:bg-error/10 inline-flex h-8 items-center rounded-lg px-2.5 text-xs font-medium transition-colors duration-150"
-            onClick={onRemove}
-            title="Delete permanently"
-            aria-label={`Delete ${player.display_name}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          {/* Deleting is offered only for a plain typed name. A row backed by
+              an account — a friend, or you — takes a real person's rating
+              history with it, so archiving is the whole of what is on offer and
+              the delete control is not rendered at all rather than rendered
+              and refused. The server enforces the same rule. */}
+          {!player.is_friend && !player.is_self && (
+            <button
+              className="text-error hover:bg-error/10 inline-flex h-8 items-center rounded-lg px-2.5 text-xs font-medium transition-colors duration-150"
+              onClick={onRemove}
+              title="Delete permanently"
+              aria-label={`Delete ${player.display_name}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </li>

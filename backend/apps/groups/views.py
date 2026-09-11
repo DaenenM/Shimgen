@@ -3,6 +3,7 @@
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.common.permissions import IsOwner
@@ -80,6 +81,28 @@ class PlayerViewSet(viewsets.ModelViewSet):
         created = serializer.save()
 
         return Response({"merged": len(created)}, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        """
+        A roster entry backed by an account cannot be deleted, only archived.
+
+        Deleting one takes their rating history with it — `Rating` is CASCADE —
+        and for a friend or for yourself that history belongs to a real person
+        who did not ask for it to go. Archiving hides the row and keeps every
+        number attached to it, which is what somebody reaching for the control
+        actually wants.
+
+        Enforced here rather than only in the client, because a hidden button is
+        not a rule: the endpoint is a plain DELETE and anything holding a token
+        can call it.
+        """
+        if instance.user_id is not None:
+            raise ValidationError(
+                "This roster entry belongs to an account, so it cannot be deleted. "
+                "Archive them instead — it hides them and keeps their history."
+            )
+
+        instance.delete()
 
     @action(detail=True, methods=["post"])
     def archive(self, request, pk=None):

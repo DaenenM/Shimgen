@@ -267,7 +267,9 @@ export function TournamentDetailPage() {
    * is worth trying to predict locally.
    */
   const linkBoard = useMutation({
-    mutationFn: (slug) => tournamentsApi.linkStatsBoard(id, slug),
+    // A table id when the host picked one table of several, so the night lands
+    // where they pointed it rather than wherever the server would have guessed.
+    mutationFn: ({ slug, tableId }) => tournamentsApi.linkStatsBoard(id, slug, tableId),
     onSuccess: (fresh) => {
       queryClient.setQueryData(queryKeys.tournaments.detail(id), fresh)
       // The board itself now holds different numbers, and the stats list shows
@@ -336,7 +338,10 @@ export function TournamentDetailPage() {
   return (
     <PageShell width="wide" className="glass-backdrop">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3 sm:mb-6 sm:gap-4">
+      {/* The header only. The bracket below it re-renders on every reported
+          result, and a bracket that re-animated as scores were entered would
+          be intolerable on the page this app exists for. */}
+      <div className="rise-in mb-5 flex flex-wrap items-start justify-between gap-3 sm:mb-6 sm:gap-4">
         <div className="min-w-0">
           <EditableTitle
             title={tournament.title}
@@ -373,7 +378,7 @@ export function TournamentDetailPage() {
           {tournament.is_host && user && (
             <StatsBoardManager
               board={tournament.stats_board}
-              onLink={(slug) => linkBoard.mutate(slug)}
+              onLink={(slug, tableId) => linkBoard.mutate({ slug, tableId })}
               pending={linkBoard.isPending}
               error={linkBoard.isError ? linkBoard.error.message : null}
             />

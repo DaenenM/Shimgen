@@ -114,13 +114,16 @@ export function FriendsPage() {
 
   return (
     <div className="glass-backdrop mx-auto max-w-2xl px-4 py-8">
+      {/* Header and the add form. The friends list itself re-renders on every
+          request, accept and removal. */}
       <PageHeader
+        className="rise-in rise-delay-1"
         title="Friends"
         description="Add someone by their @username. Linking accounts keeps everyone's stats together across whoever is hosting."
       />
 
       <form
-        className="relative mb-6 flex gap-2"
+        className="rise-in rise-delay-2 relative mb-6 flex gap-2"
         ref={box}
         // Nothing here is a credential. Saying so on the form as well as the
         // field matters: a manager that ignores the input's own hint will still

@@ -120,7 +120,13 @@
   html {
     /* 17px rather than the browser's 16. Every Tailwind size is relative to
        this, so one change lifts the whole interface — and this is a page read
-       at arm's length on a second monitor, not up close. */
+       at arm's length on a second monitor, not up close.
+
+       Tried at 19.55 (a 15% lift) and reverted: because spacing and control
+       heights are rem-based too, everything grew together, and the pages built
+       to fit one screen — the landing page, the team generator, the new
+       tournament form — no longer did. Type size here is not an isolated
+       setting; it is the unit the layouts are measured in. */
     font-size: 17px;
   }
 
@@ -271,6 +277,28 @@
     -webkit-backdrop-filter: blur(24px) saturate(180%);
   }
 
+  /* The scrim behind a dialog.
+
+     DaisyUI's own is a flat dark wash, which sits oddly in front of a page
+     built on blur — the mesh and the panels behind it turn into a grey
+     rectangle, so the dialog reads as pasted over a screenshot rather than as
+     glass floating above the page. Blurring the backdrop instead keeps the
+     colour and the light underneath, and is what makes the raised panel on top
+     of it look like a pane rather than a card.
+
+     Set on the element rather than via DaisyUI's classes because `::backdrop`
+     is a pseudo-element of <dialog> itself and cannot be reached from a child.
+
+     Matched on every open <dialog> rather than on `.modal`, so it covers the
+     dialogs that style themselves directly as well as the ones still on
+     DaisyUI's class. A dialog opting out sets `backdrop:bg-transparent` on
+     itself, which is more specific and wins. */
+  dialog[open]::backdrop {
+    background: oklch(25% 0.02 260 / 0.28);
+    backdrop-filter: blur(6px) saturate(120%);
+    -webkit-backdrop-filter: blur(6px) saturate(120%);
+  }
+
   .glass-chrome-top {
     border-bottom: 1px solid var(--glass-border);
     box-shadow: 0 1px 0 0 var(--glass-highlight) inset;
@@ -382,11 +410,108 @@
       transform: translate3d(-42rem, -28rem, 0);
     }
   }
+
+  /* ── Arriving ───────────────────────────────────────────────────────────
+
+     A page settling into place, not an entrance. Everything rises a few pixels
+     while fading in, which is the same small upward move the buttons make on
+     hover — the page uses one motion vocabulary rather than gaining a second
+     one at load.
+
+     Opacity and transform only. Both composite on the GPU without repainting
+     the text underneath, and neither touches layout, so nothing reflows while
+     the animation runs.
+
+     `backwards` fill is what makes the stagger work: a delayed element holds
+     its `from` state during the delay instead of appearing at full opacity and
+     then flickering out when its turn arrives.
+
+     On the curve. An ease-out has to keep the FIRST control point's y low: that
+     value is how far the element has travelled early on. A curve like
+     (0.22, 0.75, …) covers three quarters of the distance almost immediately
+     and then inches through the rest, which reads as a pop followed by a drag
+     rather than as a glide. Starting near zero and easing to 1 decelerates the
+     whole way, so the element is still moving when it arrives rather than
+     having stopped short and crept. */
+  .rise-in {
+    animation: rise-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  /* The stagger. Tight gaps — the whole sequence runs well under a second,
+     because this is a greeting rather than a performance, and a visitor who
+     came to build a bracket should not be waiting on choreography.
+
+     Eight steps: the homepage runs four pieces of hero and then six cards, and
+     pairing the cards onto shared delays landed four of them at once, which
+     read as a clump interrupting the cascade rather than as part of it. The
+     hero and the grid overlap by design — the cards begin arriving while the
+     subhead is still settling, so the page reads as one movement travelling
+     down it rather than as two sequences played back to back.
+
+     At 0.05s apart the last card starts at 0.39s and the whole page has
+     settled inside 0.9s, which is short enough that nobody is waiting on it.
+
+     Applied per element rather than via `:nth-child` so the order follows
+     meaning (badge, headline, subhead, buttons) rather than DOM position. */
+  .rise-delay-1 {
+    animation-delay: 0.04s;
+  }
+  .rise-delay-2 {
+    animation-delay: 0.09s;
+  }
+  .rise-delay-3 {
+    animation-delay: 0.14s;
+  }
+  .rise-delay-4 {
+    animation-delay: 0.19s;
+  }
+  .rise-delay-5 {
+    animation-delay: 0.24s;
+  }
+  .rise-delay-6 {
+    animation-delay: 0.29s;
+  }
+  .rise-delay-7 {
+    animation-delay: 0.34s;
+  }
+  .rise-delay-8 {
+    animation-delay: 0.39s;
+  }
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      /* 0.5rem rather than more: the less distance there is to cover, the less
+         the movement reads as sliding — and the text is never meaningfully
+         displaced from where it lands, so a reader who starts mid-animation is
+         not chasing the line down the page. */
+      transform: translate3d(0, 0.5rem, 0);
+    }
+
+    /* Opacity finishes well before the movement does. Fading across the whole
+       duration leaves text half-transparent while it is still travelling, which
+       is what makes an entrance feel mushy; arriving at full opacity early lets
+       the last few pixels of travel read as a crisp settle instead. */
+    60% {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
 }
 
 @layer utilities {
   /* Respect a reduced-motion preference everywhere, including DaisyUI's own
-     transitions, rather than remembering to guard each animation. */
+     transitions, rather than remembering to guard each animation.
+
+     This covers `rise-in` too: the wildcard collapses the duration, so a
+     visitor who has asked for less motion gets the finished page immediately
+     rather than a faster version of the same movement. The content is never
+     hidden behind the animation — `backwards` fill only applies while the
+     animation is pending, and at 0.01ms there is nothing to wait for. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

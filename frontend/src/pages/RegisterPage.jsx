@@ -81,7 +81,9 @@ export function RegisterPage() {
 
   return (
     <div className="glass-backdrop mx-auto flex min-h-[70vh] max-w-md items-center px-4 py-10">
-      <div className="glass-panel w-full">
+      {/* One panel, one movement — same reasoning as the sign-in form: the
+          fields are what somebody came here to fill in. */}
+      <div className="glass-panel rise-in w-full">
         <form className="flex flex-col gap-4 p-5 sm:p-6" onSubmit={onSubmit}>
           <div>
             <h1 className="text-2xl font-bold">Create an account</h1>

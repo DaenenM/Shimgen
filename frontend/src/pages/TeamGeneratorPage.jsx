@@ -225,25 +225,38 @@ export function TeamGeneratorPage() {
           out at the shell's much wider edge; overshooting the total leaves
           dead space on the right, which reads as off-centre. */}
       <div className="mx-auto w-full max-w-[64.75rem]">
-        <PageHeader
-          title="Team Generator"
-          description="Split a group into balanced teams, with the rules your crew actually needs."
-        />
+        {/* Wrapped rather than given a class: `PageHeader` is shared by every
+            page and takes no `className`, and adding a presentational prop for
+            one caller would spread this page's choice across all of them. */}
+        <div className="rise-in rise-delay-1">
+          <PageHeader
+            title="Team Generator"
+            description="Split a group into balanced teams, with the rules your crew actually needs."
+          />
+        </div>
 
         {/* Every column is sized to its contents rather than to a share of the
             row — the roster rail, a fixed-width form, and two team cards
             abreast all have a natural width. */}
         <div className="grid items-start gap-6 lg:grid-cols-[11rem_22rem_28.75rem]">
-          <SavedRoster
-            selected={names}
-            onAdd={stageAdd}
-            onRemove={stageRemove}
-            glass
-            maxHeight={isWide ? setupHeight : null}
-          />
+          {/* `self-start` moves onto the wrapper with the animation.
+              `SavedRoster` sets it on its own <aside>, which stops the rail
+              stretching to the row's height — but wrapping makes this div the
+              grid item, so the alignment has to travel with it or the rail
+              grows to match the setup column and the height cap it is given
+              stops meaning anything. */}
+          <div className="rise-in rise-delay-2 self-start">
+            <SavedRoster
+              selected={names}
+              onAdd={stageAdd}
+              onRemove={stageRemove}
+              glass
+              maxHeight={isWide ? setupHeight : null}
+            />
+          </div>
 
           {/* ── Setup ─────────────────────────────────────────────────────── */}
-          <div ref={setupRef} className="glass-panel min-w-0">
+          <div ref={setupRef} className="glass-panel rise-in rise-delay-3 min-w-0">
             <div className="flex flex-col gap-5 p-5">
               <RosterPicker
                 value={rosterText}
@@ -430,8 +443,14 @@ export function TeamGeneratorPage() {
             </div>
           </div>
 
-          {/* ── Result ────────────────────────────────────────────────────── */}
-          <div>
+          {/* ── Result ──────────────────────────────────────────────────────
+
+              The animation sits on this column, never on the team cards inside
+              it. The cards are rebuilt on every re-roll, so animating them
+              would turn a page-load greeting into something that fires each
+              time somebody presses Generate — and a result you are comparing
+              against the last one should not slide about while you read it. */}
+          <div className="rise-in rise-delay-4">
             {result ? (
               <div className="max-w-[28.75rem] space-y-4">
                 {/* The cap above is two team cards plus their gap, so the button

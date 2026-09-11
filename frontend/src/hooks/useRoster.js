@@ -51,6 +51,11 @@ export function useRoster() {
     onSuccess: invalidate,
   })
 
+  const archiveOne = useMutation({
+    mutationFn: (id) => rosterApi.archive(id),
+    onSuccess: invalidate,
+  })
+
   const players = useMemo(() => {
     if (!isAuthenticated) return local.players
     return data?.results ?? data ?? []
@@ -95,11 +100,27 @@ export function useRoster() {
     [isAuthenticated, local, removeOne],
   )
 
+  /**
+   * Hide someone without losing what they have played.
+   *
+   * The only option offered for a friend or for your own row: deleting those
+   * cascades away a real person's rating history, and the server refuses it.
+   * Signed out there are no accounts to be friends with, so nothing reaches
+   * this path and the local list keeps its plain remove.
+   */
+  const archive = useCallback(
+    (player) => {
+      if (isAuthenticated && player.id) archiveOne.mutate(player.id)
+    },
+    [isAuthenticated, archiveOne],
+  )
+
   return {
     players,
     isLoading: isAuthenticated && isLoading,
     remember,
     forget,
+    archive,
     touchLocal: local.touch,
   }
 }

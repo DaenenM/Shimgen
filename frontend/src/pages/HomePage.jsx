@@ -10,49 +10,81 @@ import { paths } from '@/routes/paths'
  * The primary call to action is building a bracket, not signing up. The whole
  * wedge is that the tool works before you have an account and gets better once
  * you do (plan §4, NEW 6).
+ *
+ * Styled to the glass system the Team Generator established: an ambient mesh
+ * behind, translucent panels over it, and exactly one opaque element — the
+ * primary action. Two solid buttons side by side would make neither of them
+ * the answer to "what do I do here".
  */
 export function HomePage() {
   const { isAuthenticated } = useAuth()
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+    <div className="glass-backdrop mx-auto max-w-6xl px-4 py-12 sm:py-16">
       <section className="text-center">
-        <div className="badge badge-primary badge-outline mb-4 gap-1">
-          <Zap className="h-3 w-3" />
+        {/* The badge is the page's smallest piece of glass — a pill rather than
+            DaisyUI's outlined badge, so it belongs to the same material as the
+            panels below it. */}
+        <span className="glass-inset text-base-content/70 mb-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
+          <Zap className="text-primary h-3.5 w-3.5" />
           No signup needed
-        </div>
+        </span>
 
-        <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl">
+        <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
           Brackets, teams and stats that <span className="text-primary">stick around</span>
         </h1>
 
-        <p className="text-base-content/70 mx-auto mt-4 max-w-2xl text-lg text-pretty">
+        <p className="text-base-content/70 mx-auto mt-5 max-w-2xl text-lg text-pretty">
           Build a tournament in ten seconds, generate balanced teams, and keep the results that make
           next Saturday worth showing up for.
         </p>
 
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link to={paths.quickStart} className="btn btn-primary btn-lg gap-2">
-            <Trophy className="h-5 w-5" />
+        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          {/* The one opaque thing on the page, and the one thing the page is
+              for. Everything else is glass, so this reads as the way forward
+              without needing to be bigger than everything else.
+
+              On hover it lifts and its glow spreads — light behaving the way
+              the rest of the material does, rather than the button simply
+              getting darker. `-translate-y-0.5` is deliberately small: this is
+              a page element settling, not a card flying up. */}
+          <Link
+            to={paths.quickStart}
+            className="group bg-primary text-primary-content shadow-primary/20 hover:shadow-primary/30 relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-7 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] sm:w-auto"
+          >
+            {/* A sheen that crosses the button once per hover. Pure transform,
+                so it composites without repainting the text underneath. */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full"
+            />
+            <Trophy className="h-4.5 w-4.5 transition-transform duration-200 ease-out group-hover:-rotate-12" />
             Create a bracket
           </Link>
-          <Link to={paths.teamGenerator} className="btn btn-outline btn-lg gap-2">
-            <Shuffle className="h-5 w-5" />
+
+          {/* The glass counterpart: it brightens and lifts rather than glowing,
+              since a translucent surface catching more light is what "raised"
+              looks like in this material. */}
+          <Link
+            to={paths.teamGenerator}
+            className="group glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-12 w-full items-center justify-center gap-2 px-7 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] sm:w-auto"
+          >
+            <Shuffle className="h-4.5 w-4.5 transition-transform duration-300 ease-out group-hover:rotate-180" />
             Randomise teams
           </Link>
         </div>
 
         {!isAuthenticated && (
-          <p className="text-base-content/50 mt-4 text-sm">
+          <p className="text-base-content/50 mt-5 text-sm">
             Already have an account?{' '}
-            <Link to={paths.login} className="link link-primary">
+            <Link to={paths.login} className="text-primary font-medium hover:underline">
               Sign in
             </Link>
           </p>
         )}
       </section>
 
-      <section className="mt-20 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Feature
           icon={Trophy}
           title="Every format, done properly"
@@ -88,14 +120,21 @@ export function HomePage() {
   )
 }
 
+/**
+ * One selling point.
+ *
+ * The icon sits in its own tinted tile rather than loose above the heading: at
+ * six cards the loose icons read as a scattered column of blue marks, where the
+ * tiles give each card a consistent anchor.
+ */
 function Feature({ icon: Icon, title, body }) {
   return (
-    <div className="card bg-base-100 border-base-300 border transition-shadow hover:shadow-md">
-      <div className="card-body gap-2">
-        <Icon className="text-primary h-6 w-6" />
-        <h3 className="card-title text-base">{title}</h3>
-        <p className="text-base-content/60 text-sm">{body}</p>
-      </div>
+    <div className="glass-panel hover:border-base-content/20 p-5 transition-colors duration-200">
+      <span className="bg-primary/15 text-primary mb-3 grid h-10 w-10 place-items-center rounded-xl">
+        <Icon className="h-5 w-5" />
+      </span>
+      <h3 className="text-base font-semibold">{title}</h3>
+      <p className="text-base-content/60 mt-1.5 text-sm">{body}</p>
     </div>
   )
 }

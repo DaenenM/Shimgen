@@ -38,10 +38,16 @@ export function useRoster() {
   })
 
   const removeOne = useMutation({
-    // Archive rather than delete: a saved player may already appear in past
-    // tournaments, and removing the row would orphan those results. Archiving
-    // takes them out of the picker while keeping the history intact.
-    mutationFn: (id) => rosterApi.archive(id),
+    // A real delete, matching what the trash-can control promises: the row is
+    // gone, not hidden, and re-adding the name makes a new Player.
+    //
+    // What survives and what does not, because the two differ: stats rows keep
+    // their own `label` and hold the player by SET_NULL, so past results stay
+    // on a board. `PlayerRating` is CASCADE, so a deleted player's Elo history
+    // goes with them — deleting someone who has played is not reversible by
+    // re-adding the same name. `rosterApi.archive` is still there if hiding
+    // rather than deleting is wanted somewhere.
+    mutationFn: (id) => rosterApi.remove(id),
     onSuccess: invalidate,
   })
 
@@ -74,9 +80,9 @@ export function useRoster() {
   /**
    * Drop someone from the saved roster.
    *
-   * Signed out that deletes the localStorage entry outright. Signed in it
-   * archives the Player, since their name may already be attached to finished
-   * tournaments and deleting the row would orphan those results.
+   * Deletes outright in both modes — the localStorage entry signed out, the
+   * Player row signed in — so the control does the same thing either way. See
+   * `removeOne` for what that does and does not take with it.
    */
   const forget = useCallback(
     (player) => {

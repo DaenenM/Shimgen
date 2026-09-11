@@ -53,7 +53,7 @@ export function FriendsPage() {
   const outgoing = sent ?? []
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="glass-backdrop mx-auto max-w-2xl px-4 py-8">
       <PageHeader
         title="Friends"
         description="Linking accounts keeps everyone's stats together across whoever is hosting."
@@ -67,19 +67,26 @@ export function FriendsPage() {
         }}
       >
         <input
-          className="input input-bordered flex-1"
+          className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 flex-1 px-3 text-sm transition-colors focus:outline-none"
           placeholder="Username or email"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
         />
-        <button type="submit" className="btn btn-primary gap-2" disabled={request.isPending}>
+        <button
+          type="submit"
+          className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+          disabled={request.isPending}
+        >
           <UserPlus className="h-4 w-4" />
           Add
         </button>
       </form>
 
       {request.isError && (
-        <div role="alert" className="alert alert-error mb-4 py-2 text-sm">
+        <div
+          role="alert"
+          className="border-error/30 bg-error/12 text-error mb-4 rounded-xl border px-3 py-2 text-sm"
+        >
           {request.error.message}
         </div>
       )}
@@ -95,13 +102,13 @@ export function FriendsPage() {
 
           <ul className="grid gap-2">
             {requests.map((item) => (
-              <li key={item.id} className="card bg-base-100 border-base-300 border">
-                <div className="card-body flex-row items-center justify-between gap-3 p-3">
+              <li key={item.id} className="glass-inset">
+                <div className="flex flex-row items-center justify-between gap-3 p-3">
                   <p className="min-w-0 truncate text-sm font-medium">{item.from_user.name}</p>
 
                   <div className="flex shrink-0 gap-1">
                     <button
-                      className="btn btn-primary btn-sm gap-1"
+                      className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
                       disabled={accept.isPending}
                       onClick={() => accept.mutate(item.id)}
                     >
@@ -109,7 +116,7 @@ export function FriendsPage() {
                       Accept
                     </button>
                     <button
-                      className="btn btn-ghost btn-sm hover:text-error"
+                      className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content hover:text-error inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
                       onClick={() => remove.mutate(item.id)}
                       aria-label={`Decline request from ${item.from_user.name}`}
                       title="Decline"
@@ -131,11 +138,11 @@ export function FriendsPage() {
           </h2>
           <ul className="grid gap-2">
             {outgoing.map((item) => (
-              <li key={item.id} className="card bg-base-100 border-base-300 border">
-                <div className="card-body flex-row items-center justify-between gap-3 p-3">
+              <li key={item.id} className="glass-inset">
+                <div className="flex flex-row items-center justify-between gap-3 p-3">
                   <p className="min-w-0 truncate text-sm font-medium">{item.to_user.name}</p>
                   <button
-                    className="btn btn-ghost btn-sm hover:text-error"
+                    className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content hover:text-error inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
                     onClick={() => remove.mutate(item.id)}
                     aria-label={`Cancel request to ${item.to_user.name}`}
                   >
@@ -168,11 +175,11 @@ export function FriendsPage() {
             const them = item.direction === 'outgoing' ? item.to_user : item.from_user
 
             return (
-              <li key={item.id} className="card bg-base-100 border-base-300 border">
-                <div className="card-body flex-row items-center justify-between gap-3 p-3">
+              <li key={item.id} className="glass-inset">
+                <div className="flex flex-row items-center justify-between gap-3 p-3">
                   <p className="min-w-0 truncate text-sm font-medium">{them.name}</p>
                   <button
-                    className="btn btn-ghost btn-xs text-error"
+                    className="text-error hover:bg-error/10 inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors duration-150"
                     onClick={() => remove.mutate(item.id)}
                   >
                     Remove

@@ -80,9 +80,9 @@ export function RegisterPage() {
   const fieldError = (name) => errors[name]?.[0]
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-md items-center px-4 py-10">
-      <div className="card bg-base-100 border-base-300 w-full border shadow-sm">
-        <form className="card-body gap-4" onSubmit={onSubmit}>
+    <div className="glass-backdrop mx-auto flex min-h-[70vh] max-w-md items-center px-4 py-10">
+      <div className="glass-panel w-full">
+        <form className="flex flex-col gap-4 p-5 sm:p-6" onSubmit={onSubmit}>
           <div>
             <h1 className="text-2xl font-bold">Create an account</h1>
             <p className="text-base-content/60 mt-1 text-sm">
@@ -91,7 +91,10 @@ export function RegisterPage() {
           </div>
 
           {errors._ && (
-            <div role="alert" className="alert alert-error py-2 text-sm">
+            <div
+              role="alert"
+              className="border-error/30 bg-error/12 text-error rounded-xl border px-3 py-2 text-sm"
+            >
               {errors._}
             </div>
           )}
@@ -102,7 +105,7 @@ export function RegisterPage() {
             </span>
             <input
               type="text"
-              className="input input-bordered w-full"
+              className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none"
               value={form.display_name}
               onChange={update('display_name')}
               placeholder="What your friends call you"
@@ -115,7 +118,7 @@ export function RegisterPage() {
             <span className="label-text mb-1">Email</span>
             <input
               type="email"
-              className={`input input-bordered w-full ${fieldError('email') ? 'input-error' : ''}`}
+              className={`glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none ${fieldError('email') ? 'border-error/60' : ''}`}
               value={form.email}
               onChange={update('email')}
               autoComplete="email"
@@ -130,8 +133,8 @@ export function RegisterPage() {
             <span className="label-text mb-1">Password</span>
             <input
               type="password"
-              className={`input input-bordered w-full ${
-                fieldError('password') ? 'input-error' : ''
+              className={`glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none ${
+                fieldError('password') ? 'border-error/60' : ''
               }`}
               value={form.password}
               onChange={update('password')}
@@ -145,7 +148,11 @@ export function RegisterPage() {
             )}
           </label>
 
-          <button type="submit" className="btn btn-primary mt-2" disabled={busy}>
+          <button
+            type="submit"
+            className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+            disabled={busy}
+          >
             {busy && <span className="loading loading-spinner loading-sm" />}
             Create account
           </button>
@@ -158,7 +165,7 @@ export function RegisterPage() {
 
           <p className="text-base-content/60 text-center text-sm">
             Already have one?{' '}
-            <Link to={paths.login} className="link link-primary">
+            <Link to={paths.login} className="text-primary font-medium hover:underline">
               Sign in
             </Link>
           </p>

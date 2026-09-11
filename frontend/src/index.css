@@ -32,6 +32,11 @@
    colour told you anything on sight. */
 
 [data-theme='dark'] {
+  /* Declared so `light-dark()` resolves correctly. Without it every
+     `light-dark()` in the app silently returns its light value, whatever the
+     theme is set to. */
+  color-scheme: dark;
+
   /* Four steps with real distance between them. The page floor drops so cards
      can sit above it without being lightened into glare, and the border tone
      comes down from 39% so a list of twelve rows reads as rows rather than as
@@ -79,6 +84,8 @@
    have to drop in lightness and gain chroma or they disappear against white —
    the dark theme's 70%-L blue on a white card is a pastel. */
 [data-theme='light'] {
+  color-scheme: light;
+
   --color-base-100: oklch(100% 0 0);
   --color-base-200: oklch(97% 0.004 260);
   --color-base-300: oklch(90% 0.008 260);
@@ -172,6 +179,145 @@
   }
 }
 
+/* ── Glass surfaces ───────────────────────────────────────────────────────────
+   Opt-in only. These are classes rather than an override of `.card`, because
+   only the Team Generator uses them so far — the rest of the app keeps its flat
+   cards until this look is signed off, and nothing here changes a page that
+   does not ask for it.
+
+   The effect is three layers, and all three are load-bearing. Drop any one and
+   it stops reading as glass and starts reading as a grey box:
+
+     1. a translucent tint, so the mesh behind genuinely shows through
+     2. a backdrop blur + saturate, which is what makes the blur look like
+        *thick glass* rather than a cheap opacity fade — saturation is the tell
+     3. a bright hairline along the top edge, the specular highlight where a
+        real pane catches light, plus a darker outer ring to seat it
+
+   Values are tokens so the whole system retunes from one place. */
+
+[data-theme='dark'] {
+  --glass-tint: oklch(30% 0.02 260 / 0.55);
+  --glass-tint-strong: oklch(32% 0.022 260 / 0.72);
+  --glass-border: oklch(100% 0 0 / 0.1);
+  --glass-highlight: oklch(100% 0 0 / 0.16);
+  --glass-shadow: oklch(0% 0 0 / 0.38);
+}
+
+[data-theme='light'] {
+  /* Light needs a *higher* tint opacity, not lower. A 55%-alpha white panel on
+     a pale mesh has almost no separation from it; the dark theme gets contrast
+     for free that this has to buy. */
+  --glass-tint: oklch(100% 0 0 / 0.72);
+  --glass-tint-strong: oklch(100% 0 0 / 0.85);
+  --glass-border: oklch(25% 0.015 260 / 0.1);
+  --glass-highlight: oklch(100% 0 0 / 0.85);
+  --glass-shadow: oklch(25% 0.02 260 / 0.1);
+}
+
+@layer components {
+  .glass-panel {
+    position: relative;
+    background: var(--glass-tint);
+    /* `saturate` is doing as much work as `blur`. Without it the colour bleeding
+       through goes grey and the panel reads as frosted plastic. */
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 1.25rem;
+    box-shadow:
+      0 1px 0 0 var(--glass-highlight) inset,
+      0 8px 32px -8px var(--glass-shadow);
+  }
+
+  /* For panels sitting *on* another glass panel, where a second 20px blur would
+     compound into mud. More tint, less blur. */
+  .glass-inset {
+    background: var(--glass-tint);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    border: 1px solid var(--glass-border);
+    border-radius: 0.875rem;
+  }
+
+  .glass-raised {
+    background: var(--glass-tint-strong);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    box-shadow:
+      0 1px 0 0 var(--glass-highlight) inset,
+      0 12px 40px -12px var(--glass-shadow);
+  }
+
+  /* Chrome that spans an edge of the viewport — the top nav, the bottom tab
+     bar. Distinct from `.glass-panel` in three ways, all of them because it is
+     anchored rather than floating:
+
+       - no radius: it meets the viewport edges, and a rounded corner against
+         a screen edge reads as a mistake
+       - the lit edge goes on the side facing the content, so the top bar is
+         lit along its bottom and the bottom bar along its top — the highlight
+         should sit where the pane catches light from the page, not off-screen
+       - a stronger tint than a floating panel, because text sits directly on
+         it while arbitrary page content scrolls underneath; a 55% tint that
+         works over a known card is unreadable over a passing bracket
+
+     `--glass-tint-strong` plus the blur is what keeps that legible. */
+  .glass-chrome {
+    background: var(--glass-tint-strong);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .glass-chrome-top {
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: 0 1px 0 0 var(--glass-highlight) inset;
+  }
+
+  .glass-chrome-bottom {
+    border-top: 1px solid var(--glass-highlight);
+  }
+
+  /* The ambient mesh the glass refracts. Fixed rather than scrolled: the panels
+     should move over a stationary light source, the way a pane moves over a lit
+     surface. Two blobs only — the palette already has a blue and an amber, and
+     a third hue would start inventing meaning the colour system does not have.
+
+     Two details this does not work without:
+
+     `isolation: isolate` on the host establishes a stacking context, so the
+     `z-index: -1` layer lands behind the page's own content but still *above*
+     the layout's opaque `bg-base-200` wrapper. Without it the mesh paints
+     behind that background and is simply never seen.
+
+     `pointer-events: none` because the layer covers the viewport and would
+     otherwise swallow every click on the page. */
+  .glass-backdrop {
+    isolation: isolate;
+  }
+
+  .glass-backdrop::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        60rem 40rem at 12% 8%,
+        color-mix(in oklch, var(--color-primary) 20%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        50rem 36rem at 75% 70%,
+        color-mix(in oklch, var(--color-accent) 16%, transparent),
+        transparent 62%
+      );
+  }
+}
+
 @layer utilities {
   /* Respect a reduced-motion preference everywhere, including DaisyUI's own
      transitions, rather than remembering to guard each animation. */
@@ -182,6 +328,18 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Backdrop filters are the one part of this that genuinely is not universal.
+     Where unsupported, fall back to an opaque surface rather than leaving text
+     over a transparent panel on top of a coloured mesh, which is unreadable. */
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass-panel,
+    .glass-inset,
+    .glass-raised,
+    .glass-chrome {
+      background: var(--color-base-100);
     }
   }
 }

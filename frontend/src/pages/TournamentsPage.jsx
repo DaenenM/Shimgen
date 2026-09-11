@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, ChevronDown, Plus, Trophy } from '@/components/icons'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { tournaments as tournamentsApi } from '@/api/endpoints'
 import { PageShell } from '@/components/layout/PageShell'
-import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -93,15 +93,25 @@ export function TournamentsPage() {
   }
 
   return (
-    <PageShell width="list">
+    <PageShell width="list" className="glass-backdrop">
       <PageHeader title="Tournaments" description="Every event you host, help run or play in.">
-        <Button to={paths.quickStart} icon={Plus} block className="sm:w-auto">
+        {/* Styled here rather than through `Button`, which is still on the old
+            DaisyUI variants and used across every page — converting it moves
+            the whole app at once and belongs to its own pass. */}
+        <Link
+          to={paths.quickStart}
+          className="group bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 flex h-10 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] sm:w-auto"
+        >
+          <Plus className="h-4 w-4 transition-transform duration-200 ease-out group-hover:rotate-90" />
           New tournament
-        </Button>
+        </Link>
       </PageHeader>
 
       {remove.isError && (
-        <div role="alert" className="alert alert-error mb-4 py-2 text-sm">
+        <div
+          role="alert"
+          className="border-error/30 bg-error/12 text-error mb-4 rounded-xl border px-3 py-2 text-sm"
+        >
           {remove.error.message}
         </div>
       )}
@@ -139,19 +149,19 @@ export function TournamentsPage() {
           disclosure is a control that never does anything, and the count is
           what makes it worth a tap. */}
       {isAuthenticated && !isLoading && archivedItems.length > 0 && (
-        <div className="border-base-300/70 mt-8 border-t pt-4">
+        <div className="border-base-content/10 mt-8 border-t pt-4">
           <button
             type="button"
             onClick={() => setArchivedOpen((open) => !open)}
             aria-expanded={archivedOpen}
-            className="text-base-content/70 hover:text-base-content hover:bg-base-100 flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors"
+            className="text-base-content/70 hover:text-base-content hover:bg-base-content/8 flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 text-sm font-medium transition-colors duration-200"
           >
             <Archive className="h-4 w-4 shrink-0" />
             <span>Archived tournaments</span>
 
             {/* The count sits in the label so the section says how much is
                 behind it before it is opened. */}
-            <span className="bg-base-300 text-base-content/70 rounded-full px-2 py-0.5 text-xs">
+            <span className="bg-base-content/10 text-base-content/70 rounded-full px-2 py-0.5 text-xs">
               {archivedItems.length}
             </span>
 

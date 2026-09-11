@@ -44,16 +44,22 @@ export function DashboardPage() {
   const active = events.filter((t) => t.state === 'active').length
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="glass-backdrop mx-auto max-w-5xl px-4 py-8">
       <PageHeader
         title={`Welcome back, ${user?.display_name || user?.username}`}
         description="Pick up where you left off, or start something new."
       >
-        <Link to={paths.quickStart} className="btn btn-primary btn-sm gap-2">
+        <Link
+          to={paths.quickStart}
+          className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+        >
           <Plus className="h-4 w-4" />
           New tournament
         </Link>
-        <Link to={paths.teamGenerator} className="btn btn-outline btn-sm gap-2">
+        <Link
+          to={paths.teamGenerator}
+          className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+        >
           <Shuffle className="h-4 w-4" />
           Teams
         </Link>
@@ -70,7 +76,7 @@ export function DashboardPage() {
       {list(pending).length > 0 && (
         <Link
           to={paths.friends}
-          className="alert bg-base-100 border-base-300 mb-6 flex border py-2 text-sm hover:shadow-sm"
+          className="glass-inset hover:border-base-content/25 hover:bg-base-content/5 mb-6 flex items-center gap-2.5 p-3 text-sm transition-colors duration-200"
         >
           <UserPlus className="text-primary h-4 w-4" />
           <span>
@@ -98,9 +104,9 @@ export function DashboardPage() {
             <li key={tournament.id}>
               <Link
                 to={paths.tournament(tournament.id, tournament.title)}
-                className="card bg-base-100 border-base-300 border transition-shadow hover:shadow-md"
+                className="glass-panel hover:border-base-content/25 hover:bg-base-content/5 p-4 transition-colors duration-200"
               >
-                <div className="card-body flex-row items-center justify-between gap-4 p-3">
+                <div className="flex flex-row items-center justify-between gap-4 p-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       {tournament.title || 'Untitled tournament'}
@@ -111,12 +117,10 @@ export function DashboardPage() {
                     </p>
                   </div>
                   <span
-                    className={`badge badge-sm ${
-                      tournament.state === 'complete'
-                        ? 'badge-neutral'
-                        : tournament.state === 'active'
-                          ? 'badge-success'
-                          : 'badge-ghost'
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium capitalize ${
+                      tournament.state === 'active'
+                        ? 'bg-success/15 text-success'
+                        : 'bg-base-content/8 text-base-content/60'
                     }`}
                   >
                     {tournament.state}
@@ -140,9 +144,9 @@ function Stat({ label, value, to }) {
   return (
     <Link
       to={to}
-      className="card bg-base-100 border-base-300 border transition-shadow hover:shadow-md"
+      className="glass-panel hover:border-base-content/25 hover:bg-base-content/5 p-4 transition-colors duration-200"
     >
-      <div className="card-body p-4">
+      <div className="p-4">
         <p className="text-base-content/50 text-xs">{label}</p>
         <p className="tabular text-2xl font-bold">{value}</p>
       </div>

@@ -1,5 +1,7 @@
 import { Users } from '@/components/icons'
 
+import { teamTone } from '@/features/teams/tone'
+
 /**
  * Who is on which team, as a card grid at the foot of the bracket.
  *
@@ -32,25 +34,44 @@ export function EntrantRoster({ entrants }) {
       </p>
 
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {entrants.map((entrant) => {
+        {entrants.map((entrant, index) => {
           const members = entrant.players ?? []
+          // Same scale as the generator, keyed off the same position, so a team
+          // keeps the colour it was given when it was drawn.
+          const tone = teamTone(index)
 
           return (
             <li
               key={entrant.id}
-              className={`card bg-base-100 border-base-300 border ${
-                entrant.eliminated ? 'opacity-50' : ''
-              }`}
+              className={`glass-panel overflow-hidden ${entrant.eliminated ? 'opacity-50' : ''}`}
+              style={{ borderTopColor: tone.edge }}
             >
-              <div className="card-body gap-2 p-4">
+              {/* The team's hue as light falling through the top of the panel,
+                  exactly as the generator draws it. */}
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-24"
+                style={{ background: `linear-gradient(to bottom, ${tone.wash}, transparent)` }}
+                aria-hidden="true"
+              />
+              <div className="relative flex flex-col gap-2 p-4">
                 <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-xs font-bold"
+                    style={{ backgroundColor: tone.wash, color: tone.edge }}
+                    aria-hidden="true"
+                  >
+                    {index + 1}
+                  </span>
+
                   <h3
-                    className={`truncate font-semibold ${entrant.eliminated ? 'line-through' : ''}`}
+                    className={`min-w-0 flex-1 truncate font-semibold ${entrant.eliminated ? 'line-through' : ''}`}
                   >
                     {entrant.label}
                   </h3>
 
-                  <span className="badge badge-ghost badge-sm shrink-0">{members.length || 1}</span>
+                  <span className="bg-base-content/8 text-base-content/70 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums">
+                    {members.length || 1}
+                  </span>
                 </div>
 
                 {members.length > 0 ? (

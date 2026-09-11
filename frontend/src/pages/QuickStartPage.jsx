@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Info, Trophy } from '@/components/icons'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { boards as boardsApi, tournaments as tournamentsApi } from '@/api/endpoints'
@@ -46,7 +46,9 @@ export function QuickStartPage() {
   const incoming = location.state?.squads ?? null
 
   const [mode, setMode] = useState(incoming ? 'teams' : 'solo')
-  const [names, setNames] = useState(location.state?.names ?? [])
+  // The players box is the source of truth for solo mode, and it is text: the
+  // picker is a textarea, so the list only exists as parsed output of it.
+  const [rosterText, setRosterText] = useState((location.state?.names ?? []).join('\n'))
   const [teams, setTeams] = useState(
     incoming ?? [
       { label: '', members: [] },
@@ -61,6 +63,15 @@ export function QuickStartPage() {
   // Which team a roster click fills. Teams mode has several targets, so one has
   // to be current — otherwise clicking a name would have nowhere to go.
   const [activeTeam, setActiveTeam] = useState(0)
+
+  const names = useMemo(
+    () =>
+      rosterText
+        .split(/[\n,]/)
+        .map((n) => n.trim())
+        .filter(Boolean),
+    [rosterText],
+  )
 
   // Boards the host may write to, so a night's winner can land on a tally
   // board as well as a bracket. Only offered signed in — an anonymous bracket
@@ -154,10 +165,12 @@ export function QuickStartPage() {
   // mode that spans every team — nobody plays for two sides at once.
   const placed = mode === 'teams' ? teams.flatMap((t) => t.members) : names
 
-  /** Put a roster name into the list, or into the team being filled. */
+  /** Put a roster name into the players box, or into the team being filled. */
   function addFromRoster(name) {
     if (mode !== 'teams') {
-      setNames((current) => [...current, name])
+      setRosterText((current) =>
+        current.trim() ? `${current.replace(/\s+$/, '')}\n${name}` : name,
+      )
       return
     }
 
@@ -168,8 +181,25 @@ export function QuickStartPage() {
     )
   }
 
+  /**
+   * Take a roster name back out again, so a click in the saved roster undoes
+   * itself. Without this the picker's toggle calls an undefined handler and
+   * an added name can only be removed by editing the text by hand.
+   */
+  function removeFromRoster(name) {
+    if (mode !== 'teams') {
+      const key = name.toLowerCase()
+      setRosterText(names.filter((n) => n.toLowerCase() !== key).join('\n'))
+      return
+    }
+
+    setTeams((current) =>
+      current.map((team) => ({ ...team, members: team.members.filter((m) => m !== name) })),
+    )
+  }
+
   return (
-    <PageShell>
+    <PageShell className="glass-backdrop">
       <PageHeader
         title="New tournament"
         description="Add names, pick a format, and you have a bracket. No account needed."
@@ -186,18 +216,20 @@ export function QuickStartPage() {
         <SavedRoster
           selected={placed}
           onAdd={addFromRoster}
+          onRemove={removeFromRoster}
           title={mode === 'teams' ? `Add to team ${activeTeam + 1}` : 'Saved roster'}
+          glass
         />
 
-        <div className="card bg-base-100 border-base-300 min-w-0 border">
-          <div className="card-body gap-5">
+        <div className="glass-panel min-w-0">
+          <div className="flex flex-col gap-5 p-5">
             <label className="flex w-full flex-col">
               <span className="label-text mb-1">
                 Title <span className="text-base-content/40">(optional)</span>
               </span>
               <input
                 type="text"
-                className="input input-bordered w-full"
+                className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-10 w-full px-3 text-sm transition-colors focus:outline-none"
                 placeholder="Friday Night Showdown"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -208,7 +240,7 @@ export function QuickStartPage() {
               are already settled and just need writing down, rather than
               randomising. */}
             <div>
-              <div className="border-base-300 bg-base-200/40 mb-4 inline-flex rounded-xl border p-1">
+              <div className="glass-raised mb-4 inline-flex gap-0.5 rounded-xl p-1">
                 {[
                   ['solo', 'Solo players'],
                   ['teams', 'Teams'],
@@ -217,10 +249,10 @@ export function QuickStartPage() {
                     key={value}
                     type="button"
                     onClick={() => setMode(value)}
-                    className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors duration-150 ${
+                    className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-all duration-150 ${
                       mode === value
-                        ? 'bg-primary text-primary-content'
-                        : 'text-base-content/60 hover:text-base-content'
+                        ? 'bg-primary text-primary-content shadow-[inset_0_1px_0_0_oklch(100%_0_0/0.28),0_2px_10px_-2px_var(--color-primary)]'
+                        : 'text-base-content/60 hover:bg-base-content/8 hover:text-base-content'
                     }`}
                   >
                     {label}
@@ -242,15 +274,20 @@ export function QuickStartPage() {
                     onFocusTeam={setActiveTeam}
                   />
                 ) : (
-                  <RosterPicker selected={names} onChange={setNames} />
+                  <RosterPicker
+                    value={rosterText}
+                    onChange={setRosterText}
+                    count={names.length}
+                    glass
+                  />
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="card bg-base-100 border-base-300 min-w-0 border lg:sticky lg:top-20">
-          <div className="card-body gap-5">
+        <div className="glass-panel min-w-0 lg:sticky lg:top-20">
+          <div className="flex flex-col gap-5 p-5">
             {/* Format.
 
                 One row per option with the explanation shown only for the
@@ -259,18 +296,18 @@ export function QuickStartPage() {
                 formats the host was not picking. */}
             <div>
               <span className="text-sm font-medium">Format</span>
-              <div className="border-base-300 mt-2 overflow-hidden rounded-lg border">
+              <div className="glass-inset mt-2 overflow-hidden">
                 {FORMATS.map((option) => (
                   <label
                     key={option.value}
-                    className={`border-base-300 flex cursor-pointer items-center gap-2.5 border-b px-3 py-2 transition-colors last:border-b-0 ${
-                      format === option.value ? 'bg-primary/10' : 'hover:bg-base-content/5'
+                    className={`border-base-content/8 flex cursor-pointer items-center gap-2.5 border-b px-3 py-2 transition-colors duration-150 last:border-b-0 ${
+                      format === option.value ? 'bg-primary/15' : 'hover:bg-base-content/5'
                     }`}
                   >
                     <input
                       type="radio"
                       name="format"
-                      className="radio radio-primary radio-xs"
+                      className="accent-primary h-3.5 w-3.5 shrink-0"
                       checked={format === option.value}
                       onChange={() => setFormat(option.value)}
                     />
@@ -295,7 +332,7 @@ export function QuickStartPage() {
               <label className="flex w-full flex-col">
                 <span className="label-text mb-1">Games per match</span>
                 <select
-                  className="select select-bordered w-full"
+                  className="glass-inset focus:border-primary/50 h-10 w-full px-3 text-sm transition-colors focus:outline-none"
                   value={bestOf}
                   onChange={(e) => setBestOf(Number(e.target.value))}
                 >
@@ -322,7 +359,7 @@ export function QuickStartPage() {
                   <label className="flex w-full cursor-pointer items-start gap-3">
                     <input
                       type="checkbox"
-                      className="checkbox checkbox-primary checkbox-sm mt-0.5 shrink-0"
+                      className="accent-primary mt-0.5 h-4 w-4 shrink-0"
                       checked={thirdPlace}
                       onChange={(e) => setThirdPlace(e.target.checked)}
                     />
@@ -339,7 +376,7 @@ export function QuickStartPage() {
                   <label className="flex w-full cursor-pointer items-start gap-3">
                     <input
                       type="checkbox"
-                      className="checkbox checkbox-primary checkbox-sm mt-0.5 shrink-0"
+                      className="accent-primary mt-0.5 h-4 w-4 shrink-0"
                       checked={bracketReset}
                       onChange={(e) => setBracketReset(e.target.checked)}
                     />
@@ -364,7 +401,7 @@ export function QuickStartPage() {
                 something past Saturday. Signed-in only, since an anonymous
                 bracket has no board of its own to feed. */}
             {isAuthenticated && (
-              <div className="border-base-300 bg-base-200/30 rounded-xl border p-3">
+              <div className="glass-inset p-3">
                 <span className="mb-2 flex items-center gap-1.5 text-sm font-medium">
                   <BarChart3 className="h-4 w-4" />
                   Connect Stats Board
@@ -376,7 +413,7 @@ export function QuickStartPage() {
                   // interrupting the form to ask.
                   <div className="flex gap-2">
                     <input
-                      className="input input-bordered input-sm min-w-0 flex-1 rounded-lg"
+                      className="glass-raised focus:border-primary/50 h-9 min-w-0 flex-1 px-3 text-sm transition-colors focus:outline-none"
                       placeholder="Board name"
                       value={newBoardName}
                       autoFocus
@@ -392,7 +429,7 @@ export function QuickStartPage() {
                     />
                     <button
                       type="button"
-                      className="btn btn-primary btn-sm"
+                      className="bg-primary text-primary-content hover:bg-primary/90 grid h-9 shrink-0 place-items-center rounded-lg px-3 text-sm font-semibold transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
                       disabled={!newBoardName.trim() || createBoard.isPending}
                       onClick={() => createBoard.mutate()}
                     >
@@ -404,7 +441,7 @@ export function QuickStartPage() {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content h-9 shrink-0 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
                       onClick={() => setMakingBoard(false)}
                     >
                       Cancel
@@ -412,7 +449,7 @@ export function QuickStartPage() {
                   </div>
                 ) : (
                   <select
-                    className="select select-bordered select-sm w-full rounded-lg"
+                    className="glass-raised focus:border-primary/50 h-9 w-full px-3 text-sm transition-colors focus:outline-none"
                     value={statsBoard}
                     onChange={(e) => {
                       if (e.target.value === NEW_BOARD) {
@@ -453,7 +490,7 @@ export function QuickStartPage() {
               bracket with several of them looks broken until play starts. Say
               so before the host commits, rather than after. */}
             {warning && (
-              <div className="alert bg-base-100 border-base-300 items-start border py-2 text-sm">
+              <div className="glass-inset flex items-start gap-2.5 p-3 text-sm">
                 <Info className="text-primary mt-0.5 h-4 w-4 shrink-0" />
                 <div>
                   <p>{warning.message}</p>
@@ -463,20 +500,29 @@ export function QuickStartPage() {
             )}
 
             {create.isError && (
-              <div role="alert" className="alert alert-error py-2 text-sm">
+              <div
+                role="alert"
+                className="border-error/30 bg-error/12 text-error rounded-xl border px-3 py-2 text-sm"
+              >
                 {create.error.message}
               </div>
             )}
 
+            {/* The one opaque element on the page — everything around it is
+                glass, so this reads as the way forward without being bigger. */}
             <button
-              className="btn btn-primary btn-lg gap-2"
+              className="group bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none"
               disabled={!canCreate || create.isPending}
               onClick={() => create.mutate()}
             >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full"
+              />
               {create.isPending ? (
                 <span className="loading loading-spinner loading-sm" />
               ) : (
-                <Trophy className="h-5 w-5" />
+                <Trophy className="h-4.5 w-4.5 transition-transform duration-200 ease-out group-hover:-rotate-12" />
               )}
               Create tournament
             </button>

@@ -23,17 +23,37 @@ import { Link } from 'react-router-dom'
  * otherwise. Callers write the action once and get the right element for it.
  */
 
+/**
+ * Shared by every variant: the shape, not the colour.
+ *
+ * `disabled:pointer-events-none` rather than a `cursor-not-allowed`: a disabled
+ * button that still lifts and brightens on hover promises an action that will
+ * not happen, and the 40% opacity is what says it is unavailable.
+ */
+const BASE =
+  'group relative inline-flex items-center justify-center rounded-xl font-semibold ' +
+  'transition-all duration-200 ease-out active:translate-y-0 active:scale-[0.98] ' +
+  'disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none'
+
 const VARIANTS = {
-  primary: 'btn-primary',
-  secondary: 'btn-outline',
-  ghost: 'btn-ghost',
-  danger: 'btn-error btn-outline',
+  // The one opaque thing on a glass page, so it reads as the way forward.
+  primary:
+    'bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 ' +
+    'hover:shadow-primary/30 shadow-md hover:-translate-y-0.5 hover:shadow-lg',
+  // Glass rather than an outline: a translucent surface catching more light is
+  // what "raised" looks like in this material.
+  secondary:
+    'glass-raised hover:border-base-content/30 hover:bg-base-content/5 hover:-translate-y-0.5',
+  ghost: 'text-base-content/70 hover:bg-base-content/8 hover:text-base-content',
+  danger: 'text-error hover:bg-error/10 border border-error/30 hover:border-error/50',
 }
 
+// Heights rather than paddings, so a row of buttons lines up whatever is in
+// them — an icon-only button and a long label are the same height.
 const SIZES = {
-  sm: 'btn-sm',
-  md: '',
-  lg: 'btn-lg',
+  sm: 'h-9 gap-1.5 px-3 text-sm',
+  md: 'h-10 gap-2 px-5 text-sm',
+  lg: 'h-12 gap-2 px-7 text-sm',
 }
 
 // Icon scales with the button rather than being passed a size by each caller,
@@ -61,10 +81,9 @@ export function Button({
   ...rest
 }) {
   const classes = [
-    'btn',
+    BASE,
     VARIANTS[variant] ?? VARIANTS.primary,
-    SIZES[size] ?? '',
-    Icon || loading ? 'gap-2' : '',
+    SIZES[size] ?? SIZES.md,
     block ? 'w-full' : '',
     className,
   ]

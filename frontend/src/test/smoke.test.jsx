@@ -16,6 +16,7 @@ import { clearTokens, getAccessToken, setTokens } from '@/api/tokens'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { SectionLoader } from '@/components/ui/SectionLoader'
 import { EditableTitle } from '@/features/bracket/EditableTitle'
+import { isPhantom, toRounds } from '@/features/bracket/layout'
 import { applyResult, clearResult, scoreForClick } from '@/features/bracket/optimistic'
 import { useReportQueue } from '@/features/bracket/useReportQueue'
 import { RootLayout } from '@/components/layout/RootLayout'
@@ -614,8 +615,12 @@ describe('Button', () => {
     )
 
     const el = screen.getByRole('button', { name: 'Cancel' })
-    expect(el.className).toContain('btn-ghost')
-    expect(el.className).toContain('btn-sm')
+    // Asserted by what the variant and size mean rather than by exact class
+    // names: a ghost button has no solid fill, and `sm` is the 9-unit height.
+    // Pinning literal utility strings made this fail on every restyle while
+    // catching nothing that actually mattered.
+    expect(el.className).toContain('h-9')
+    expect(el.className).not.toContain('bg-primary')
   })
 
   it('falls back to a disabled button rather than an unclickable link', () => {
@@ -830,11 +835,14 @@ describe('AdSlot', () => {
 
 describe('Card', () => {
   it('does not look interactive unless it is', () => {
+    // The glass card signals interactivity by lighting up rather than by
+    // lifting, so this asserts "reacts to hover at all" rather than naming the
+    // specific effect — which is what kept it meaningful across the restyle.
     const { container: plain } = render(<Card>flat</Card>)
-    expect(plain.firstChild.className).not.toContain('hover:shadow')
+    expect(plain.firstChild.className).not.toContain('hover:')
 
     const { container: live } = render(<Card interactive>clickable</Card>)
-    expect(live.firstChild.className).toContain('hover:shadow')
+    expect(live.firstChild.className).toContain('hover:')
   })
 })
 
@@ -909,5 +917,127 @@ describe('layout navigation', () => {
 
     expect(main.className).toContain('pb-[calc(4rem+env(safe-area-inset-bottom))]')
     expect(main.className).toContain('lg:pb-0')
+  })
+})
+
+/**
+ * Hiding byes in the losers bracket.
+ *
+ * A 5-entrant double elimination drops three byes into the losers bracket, and
+ * every match they feed is a walkover: one entrant, no opponent, already
+ * resolved. Rendering those gave a whole "Losers quarterfinal" column of
+ * nobody-versus-somebody, which reads as a broken bracket rather than as byes
+ * working. Plan §8 calls double elimination the place where a display bug
+ * destroys trust fastest, so the boundaries are pinned here.
+ */
+describe('isPhantom', () => {
+  const match = (over) => ({
+    id: 1,
+    bracket: 'losers',
+    a: null,
+    b: null,
+    winner: null,
+    next_match_win: null,
+    next_match_lose: null,
+    ...over,
+  })
+
+  it('keeps a played losers walkover, which is history', () => {
+    // Once something has actually been played it stays, whatever the
+    // arithmetic says — the page should not delete a result.
+    const m = match({ a: 7, b: null, winner: 7 })
+    expect(isPhantom(m, [m])).toBe(false)
+  })
+
+  it('hides an unreachable losers slot at creation, before any result', () => {
+    // The point of doing this structurally: a fresh 5-entrant draw should be
+    // clean immediately, not tidy itself up as results land.
+    const bye = match({ id: 1, bracket: 'main', a: 4, b: null, winner: 4, next_match_lose: 3 })
+    const dead = match({ id: 3 })
+    expect(isPhantom(dead, [bye, dead])).toBe(true)
+  })
+
+  it('keeps a winners-bracket bye, which explains why someone sat out', () => {
+    const m = match({ bracket: 'main', a: 7, b: null, winner: 7 })
+    expect(isPhantom(m, [m])).toBe(false)
+  })
+
+  it('keeps a losers match still waiting on a second entrant that can arrive', () => {
+    // Seated one side, and a feeder that can still send the other. This one is
+    // going to be played, it just is not seated yet — hiding it would make the
+    // bracket jump as the drop lands.
+    const feeder = match({ id: 1, bracket: 'main', a: 1, b: 2, next_match_lose: 3 })
+    const m = match({ id: 3, a: 7, b: null, winner: null })
+    expect(isPhantom(m, [feeder, m])).toBe(false)
+  })
+
+  it('hides a losers slot whose lone entrant has nobody who can ever join them', () => {
+    // The "Team 1 / No opponent / ADVANCES" card from the bug report: seated,
+    // but with no feeder left that could deliver an opponent. It is a corridor,
+    // not a match, and its occupant reappears in the next real slot.
+    const m = match({ a: 7, b: null, winner: null })
+    expect(isPhantom(m, [m])).toBe(true)
+  })
+
+  it('keeps a real contested losers match', () => {
+    const m = match({ a: 7, b: 9, winner: 7 })
+    expect(isPhantom(m, [m])).toBe(false)
+  })
+
+  it('keeps an unplayed final, which is empty but not a phantom', () => {
+    // The most important match on the page, and empty until its feeders land.
+    const feeder = match({ id: 1, bracket: 'main', a: 1, b: 2, next_match_win: 2 })
+    const final = match({ id: 2, bracket: 'final' })
+    expect(isPhantom(final, [feeder, final])).toBe(false)
+  })
+
+  it('hides an empty losers match whose every feeder was a walkover', () => {
+    const left = match({ id: 1, bracket: 'main', a: 1, b: null, winner: 1, next_match_lose: 3 })
+    const right = match({ id: 2, bracket: 'main', a: 2, b: null, winner: 2, next_match_lose: 3 })
+    const drop = match({ id: 3 })
+    expect(isPhantom(drop, [left, right, drop])).toBe(true)
+  })
+
+  it('hides a losers match only one feeder can ever reach', () => {
+    // One drop arriving into an otherwise empty slot is a walkover, not a
+    // match. They pass straight through to the next round.
+    const undecided = match({ id: 1, bracket: 'main', a: 1, b: 2, next_match_lose: 3 })
+    const drop = match({ id: 3 })
+    expect(isPhantom(drop, [undecided, drop])).toBe(true)
+  })
+
+  it('keeps an empty losers match two feeders can still reach', () => {
+    // Capacity two: a real contest, even though nobody is seated yet.
+    const left = match({ id: 1, bracket: 'main', a: 1, b: 2, next_match_lose: 3 })
+    const right = match({ id: 2, bracket: 'main', a: 4, b: 5, next_match_lose: 3 })
+    const drop = match({ id: 3 })
+    expect(isPhantom(drop, [left, right, drop])).toBe(false)
+  })
+
+  it('empties losers round 1 of a freshly created 5-entrant draw', () => {
+    // The shape from the bug report, as it exists the moment the bracket is
+    // generated: three winners-bracket byes resolved at creation, nothing
+    // played. Their losers-bracket slots can never receive anybody, so the
+    // whole first losers round should be gone before a single click.
+    const matches = [
+      // Winners round 1: one real match, three byes already walked over.
+      match({ id: 1, bracket: 'main', round_no: 1, a: 1, b: null, winner: 1, next_match_lose: 10 }),
+      match({ id: 2, bracket: 'main', round_no: 1, a: 4, b: 5, next_match_lose: 10 }),
+      match({ id: 3, bracket: 'main', round_no: 1, a: 3, b: null, winner: 3, next_match_lose: 11 }),
+      match({ id: 4, bracket: 'main', round_no: 1, a: 2, b: null, winner: 2, next_match_lose: 11 }),
+      // Losers round 1: fed only by those byes.
+      match({ id: 10, round_no: 1, next_match_win: 12 }),
+      match({ id: 11, round_no: 1, next_match_win: 12 }),
+      match({ id: 12, round_no: 2 }),
+    ]
+
+    const [first] = toRounds(matches, 'losers')
+    const visible = first.matches.filter((m) => !isPhantom(m, matches))
+
+    // Match 11's two feeders were both byes, so nobody can ever arrive. Match
+    // 10 can only ever take one entrant — the loser of the real match 4-v-5 —
+    // so it is a walkover corridor, not a contest. Neither is a match, and the
+    // losers bracket properly begins at 12.
+    expect(visible.map((m) => m.id)).toEqual([])
   })
 })

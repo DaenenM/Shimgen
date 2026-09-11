@@ -9,7 +9,7 @@ import { scoreFor } from './layout'
  * which is how a host uses this, one game at a time, rather than entering a
  * final score after the fact.
  */
-export function MatchCard({ match, canReport, onReport, onClear }) {
+export function MatchCard({ match, canReport, onReport, onClear, tone }) {
   const decided = Boolean(match.winner)
   const ready = Boolean(match.a && match.b)
   const isSeries = match.best_of > 1
@@ -50,18 +50,37 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
   }
 
   return (
+    // `glass-inset` (8px blur) rather than `glass-panel` (20px): a full
+    // bracket puts thirty of these in one scroll view, and the cheaper blur is
+    // what keeps that from costing frame rate on a phone. A ready match gets a
+    // lit primary edge so the next thing to click is findable at a glance.
     <div
-      className={`bg-base-100 rounded-lg border-2 shadow-sm transition-colors ${
-        decided ? 'border-base-300' : ready ? 'border-primary/60' : 'border-base-300/70'
-      }`}
+      className="glass-inset overflow-hidden transition-all duration-200"
+      style={
+        // Every card carries its round's colour; a ready one is lit brightest,
+        // so the next thing to click announces itself *and* says how far into
+        // the night it is. A still-waiting card keeps a quieter edge of the
+        // same hue rather than going grey — otherwise the final, the one card
+        // the whole page builds toward, is the dullest thing on it until its
+        // feeders land.
+        tone
+          ? ready
+            ? {
+                borderColor: tone.edge,
+                boxShadow: `0 0 0 1px ${tone.glow}, 0 0 20px -6px ${tone.glow}`,
+              }
+            : { borderColor: tone.glow }
+          : undefined
+      }
     >
-      <div className="divide-base-300/60 divide-y">
+      <div className="divide-base-content/8 divide-y">
         <Side
           match={match}
           side="a"
           canReport={canReport && ready}
           onPick={() => pick('a')}
           seriesHint={hintFor('a')}
+          tone={tone}
         />
         <Side
           match={match}
@@ -69,6 +88,7 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
           canReport={canReport && ready}
           onPick={() => pick('b')}
           seriesHint={hintFor('b')}
+          tone={tone}
         />
       </div>
 
@@ -79,7 +99,7 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
           No reset control here: clicking a name already cycles it back, and a
           separate button for the same gesture was clutter on every card. */}
       {isSeries && (
-        <div className="border-base-300/60 flex items-center justify-between border-t px-3 py-1">
+        <div className="border-base-content/8 bg-base-content/[0.03] flex items-center justify-between border-t px-3 py-1">
           <span className="text-base-content/50 text-xs tracking-wide uppercase">
             Bo{match.best_of}
           </span>
@@ -102,7 +122,7 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
  */
 const ROW = 'relative flex h-11 items-center pr-3 pl-4'
 
-function Side({ match, side, canReport, onPick, seriesHint }) {
+function Side({ match, side, canReport, onPick, seriesHint, tone }) {
   const entrantId = side === 'a' ? match.a : match.b
   const label = side === 'a' ? match.a_label : match.b_label
   const isWinner = match.winner && match.winner === entrantId
@@ -156,26 +176,31 @@ function Side({ match, side, canReport, onPick, seriesHint }) {
   const state = isWalkover
     ? ''
     : isWinner
-      ? 'bg-primary/25 text-base-content font-medium rounded-t-md'
+      ? 'text-base-content font-semibold rounded-t-md'
       : decided
         ? 'text-base-content/45 line-through decoration-base-content/35'
         : ''
 
   const base = `${ROW} w-full text-left ${state}`
 
+  // The wash is an inline style rather than a class because the hue comes from
+  // the round, which only the bracket knows.
+  const fill = isWinner && !isWalkover && tone ? { backgroundColor: tone.wash } : undefined
+
   // Rounded at both ends rather than square, so it reads as a deliberate marker
   // rather than as the card's border having changed colour. Inset by a hair
   // top and bottom for the same reason.
   const marker = isWinner && !isWalkover && (
     <span
-      className="bg-primary absolute inset-y-0 left-0 w-1 rounded-tl-full"
+      className="absolute inset-y-0 left-0 w-1 rounded-tl-full"
+      style={{ backgroundColor: tone?.edge ?? 'var(--color-primary)' }}
       aria-hidden="true"
     />
   )
 
   if (!canReport) {
     return (
-      <div className={base}>
+      <div className={base} style={fill}>
         {marker}
         {content}
       </div>
@@ -185,6 +210,7 @@ function Side({ match, side, canReport, onPick, seriesHint }) {
   return (
     <button
       className={`${base} hover:bg-base-content/8 transition-colors`}
+      style={fill}
       onClick={onPick}
       title={seriesHint ?? (isWinner ? `Undo: ${label} won` : `${label} wins`)}
     >

@@ -11,23 +11,69 @@ const FORMAT_LABELS = {
   ffa: 'Free-for-all',
 }
 
-const FORMAT_STYLES = {
-  single: 'bg-primary/10 text-primary border border-primary/20',
-  double: 'bg-info/10 text-info border border-info/20',
-  rr: 'bg-teal-500/10 text-teal-500 border border-teal-500/20',
-  swiss: 'bg-fuchsia-500/10 text-fuchsia-500 border border-fuchsia-500/20',
-  ffa: 'bg-warning/10 text-warning border border-warning/20',
+/**
+ * A hue per format, as its own scale rather than borrowed semantic colours.
+ *
+ * Format is categorical — it says which kind of bracket this is, not whether
+ * something is good or wrong — so it cannot use success/warning/error without
+ * breaking the palette's one-hue-one-meaning rule. These are the same oklch
+ * values the team colours use, which keeps every categorical colour in the app
+ * on one scale. The old version reached for raw `teal-500` and `fuchsia-500`,
+ * which sat outside the palette entirely and did not shift with the theme.
+ */
+const FORMAT_HUES = {
+  single: 250,
+  double: 195,
+  rr: 150,
+  swiss: 300,
+  ffa: 55,
+}
+
+const formatTone = (format) => {
+  const hue = FORMAT_HUES[format]
+  if (hue === undefined) return undefined
+
+  return {
+    // `light-dark()` rather than one fixed lightness: a 72%-L hue is right on a
+    // dark card and a pastel on a white one, which is the same reason the
+    // palette rebuilds the light theme instead of inverting it. The custom
+    // property is set per theme in index.css so this follows a theme switch.
+    color: `light-dark(oklch(48% 0.16 ${hue}), oklch(74% 0.13 ${hue}))`,
+    // A wash rather than a border. At this size a 1px outline plus a fill is
+    // two competing edges on a 20px tall element, and on glass the outline is
+    // what made these read as stickers rather than part of the card.
+    backgroundColor: `light-dark(oklch(48% 0.16 ${hue} / 0.12), oklch(74% 0.13 ${hue} / 0.16))`,
+  }
 }
 
 // One shared shape for every pill in the meta row — format, entrants, and
-// winner all read as the same kind of thing now, just with different tones,
-// rather than format being a pill and the rest being plain text beside it.
-const PILL = 'inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[0.6875rem] font-medium'
+// winner all read as the same kind of thing, just in different tones.
+//
+// Borderless, 12px rather than 11px, and with real horizontal padding: the
+// previous pills were small enough and tight enough to read as badges stamped
+// on the row instead of labels belonging to it.
+const PILL =
+  'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium tracking-tight'
 
 const STATE_DOT = {
   draft: 'bg-base-content/30',
   active: 'bg-success',
   complete: 'bg-base-content/40',
+}
+
+/**
+ * The state pill's tone.
+ *
+ * These use the semantic palette rather than the categorical `FORMAT_HUES`,
+ * because state genuinely carries meaning: `success` is already "good / in
+ * progress" and a live tournament is exactly that. Draft and complete stay
+ * neutral — neither is a state worth colouring the row for, and giving all
+ * three a colour would leave nothing standing out.
+ */
+const STATE_PILL = {
+  draft: 'bg-base-content/8 text-base-content/60',
+  active: 'bg-success/15 text-success',
+  complete: 'bg-base-content/8 text-base-content/60',
 }
 
 export function TournamentCard({
@@ -40,12 +86,16 @@ export function TournamentCard({
   pending = false,
 }) {
   const name = tournament.title || 'Untitled tournament'
+  const tone = formatTone(tournament.format)
 
   return (
-    <li className="group bg-base-100 border-base-300 hover:border-base-content/20 relative min-w-0 rounded-xl border transition-colors">
+    // `glass-inset` rather than `glass-panel`: these are dense list rows, and
+    // a full panel's blur plus drop shadow, stacked twenty deep, reads as
+    // twenty floating cards instead of one list.
+    <li className="group glass-inset hover:border-base-content/25 hover:bg-base-content/5 relative min-w-0 transition-colors duration-200">
       {tournament.favourited_at && (
         <span
-          className="bg-warning absolute inset-y-0 left-0 w-0.5 rounded-l-xl"
+          className="bg-warning absolute inset-y-0 left-0 w-0.5 rounded-l-[0.875rem]"
           aria-hidden="true"
         />
       )}
@@ -69,21 +119,31 @@ export function TournamentCard({
               stays even whether there are two pills (draft, no winner yet)
               or three (format, entrants, winner). */}
           <div className="mt-1 grid grid-flow-col items-center justify-start gap-1.5 pl-3.5">
-            <span className={`${PILL} ${FORMAT_STYLES[tournament.format] ?? 'bg-base-content/10 text-base-content/60 border border-base-content/10'}`}>
+            <span
+              className={`${PILL} ${tone ? '' : 'bg-base-content/10 text-base-content/70'}`}
+              style={tone}
+            >
               {FORMAT_LABELS[tournament.format] ?? tournament.format}
             </span>
 
-            <span className={`${PILL} bg-base-content/10 text-base-content/60 border border-base-content/10`}>
+            <span className={`${PILL} bg-base-content/8 text-base-content/70`}>
               {tournament.entrant_count} {tournament.entrant_count === 1 ? 'entrant' : 'entrants'}
             </span>
 
             {tournament.winner_label ? (
-              <span className={`${PILL} bg-accent/10 text-accent border-accent/20 min-w-0 border`}>
-                <Trophy className="h-3 w-3 shrink-0" />
+              <span className={`${PILL} bg-accent/15 text-accent min-w-0`}>
+                <Trophy className="h-3.5 w-3.5 shrink-0" />
                 <span className="max-w-28 truncate sm:max-w-40">{tournament.winner_label}</span>
               </span>
             ) : (
-              <span className="text-base-content/50 truncate text-xs capitalize">
+              <span
+                className={`${PILL} capitalize ${STATE_PILL[tournament.state] ?? STATE_PILL.draft}`}
+              >
+                {tournament.state === 'active' && (
+                  // A live dot, so an in-progress night is findable by movement
+                  // in a long list rather than only by reading each row.
+                  <span className="bg-success h-1.5 w-1.5 animate-pulse rounded-full" />
+                )}
                 {tournament.state}
               </span>
             )}

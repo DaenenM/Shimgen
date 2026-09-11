@@ -59,7 +59,7 @@ export function EditableTitle({ title, canEdit, onSave, pending }) {
           }}
           // Revealed on hover so the header reads as a title rather than a
           // form, but always reachable by keyboard.
-          className="text-base-content/40 hover:text-base-content hover:bg-base-200 grid h-8 w-8 shrink-0 place-items-center rounded-lg opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
+          className="text-base-content/40 hover:text-base-content hover:bg-base-content/8 grid h-8 w-8 shrink-0 place-items-center rounded-lg opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
           aria-label="Rename tournament"
           title="Rename tournament"
         >
@@ -73,7 +73,7 @@ export function EditableTitle({ title, canEdit, onSave, pending }) {
     <div className="flex min-w-0 items-center gap-2">
       <input
         ref={input}
-        className="input input-bordered w-full max-w-md text-xl font-bold sm:text-2xl"
+        className="glass-inset focus:border-primary/50 h-11 w-full max-w-md px-3 text-xl font-bold transition-colors focus:outline-none sm:text-2xl"
         value={draft}
         autoFocus
         disabled={pending}
@@ -95,7 +95,7 @@ export function EditableTitle({ title, canEdit, onSave, pending }) {
         type="button"
         onClick={commit}
         disabled={pending}
-        className="btn btn-primary btn-sm btn-square"
+        className="bg-primary text-primary-content hover:bg-primary/90 grid h-9 w-9 shrink-0 place-items-center rounded-lg transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
         aria-label="Save name"
       >
         <Check className="h-4 w-4" />
@@ -110,7 +110,7 @@ export function EditableTitle({ title, canEdit, onSave, pending }) {
           setDraft(title ?? '')
           setEditing(false)
         }}
-        className="btn btn-ghost btn-sm btn-square"
+        className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content grid h-9 w-9 shrink-0 place-items-center rounded-lg transition-colors duration-150"
         aria-label="Cancel rename"
       >
         <X className="h-4 w-4" />

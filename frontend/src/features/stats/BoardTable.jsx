@@ -126,7 +126,7 @@ export function BoardTable({ table, canEdit, onAward, onRemoveRow, busyKey }) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[28rem] border-collapse">
         <thead>
-          <tr className="border-base-300 border-b">
+          <tr className="border-base-content/10 border-b">
             <th
               className="w-40 px-3 py-2 text-left"
               aria-sort={sortKey === NAME_KEY ? (descending ? 'descending' : 'ascending') : 'none'}
@@ -208,7 +208,7 @@ export function BoardTable({ table, canEdit, onAward, onRemoveRow, busyKey }) {
             return (
               <tr
                 key={row.id}
-                className={`group/row border-base-300/60 hover:bg-base-200/40 relative border-b transition-colors last:border-0 ${
+                className={`group/row border-base-content/8 hover:bg-base-content/5 relative border-b transition-colors duration-150 last:border-0 ${
                   leading ? 'bg-accent/[0.06]' : ''
                 }`}
               >

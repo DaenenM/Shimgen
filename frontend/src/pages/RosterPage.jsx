@@ -73,12 +73,15 @@ export function RosterPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="glass-backdrop mx-auto max-w-3xl px-4 py-8">
       <PageHeader
         title="My Roster"
         description="Names you've saved. They show up as one-click chips when you build an event."
       >
-        <button className="btn btn-outline btn-sm" onClick={() => setPasting((p) => !p)}>
+        <button
+          className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+          onClick={() => setPasting((p) => !p)}
+        >
           Paste a list
         </button>
       </PageHeader>
@@ -86,29 +89,39 @@ export function RosterPage() {
       <form onSubmit={submitOne} className="mb-4 flex gap-2">
         <input
           type="text"
-          className="input input-bordered flex-1"
+          className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 flex-1 px-3 text-sm transition-colors focus:outline-none"
           placeholder="Add a name…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <button type="submit" className="btn btn-primary btn-square" aria-label="Add player">
+        <button
+          type="submit"
+          className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 grid h-11 w-11 shrink-0 place-items-center rounded-xl shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]"
+          aria-label="Add player"
+        >
           <Plus className="h-5 w-5" />
         </button>
       </form>
 
       {pasting && (
-        <div className="border-base-300 mb-4 space-y-2 rounded-lg border p-3">
+        <div className="glass-inset mb-4 space-y-2 p-3">
           <textarea
-            className="textarea textarea-bordered h-28 w-full font-mono text-sm"
+            className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-28 w-full resize-none p-3 font-mono text-sm transition-colors focus:outline-none"
             placeholder={'One name per line, or comma separated\nMark\nDaniel\nJacob'}
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
           />
           <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost btn-sm" onClick={() => setPasting(false)}>
+            <button
+              className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
+              onClick={() => setPasting(false)}
+            >
               Cancel
             </button>
-            <button className="btn btn-primary btn-sm" onClick={submitPaste}>
+            <button
+              className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+              onClick={submitPaste}
+            >
               Add them
             </button>
           </div>
@@ -116,7 +129,10 @@ export function RosterPage() {
       )}
 
       {add.isError && (
-        <div role="alert" className="alert alert-error mb-4 py-2 text-sm">
+        <div
+          role="alert"
+          className="border-error/30 bg-error/12 text-error mb-4 rounded-xl border px-3 py-2 text-sm"
+        >
           {add.error.message}
         </div>
       )}
@@ -143,13 +159,13 @@ export function RosterPage() {
       )}
 
       {archived.length > 0 && (
-        <div className="border-base-300 mt-8 border-t pt-6">
+        <div className="border-base-content/10 mt-8 border-t pt-6">
           {/* A switch rather than a button: this is a view that is on or off,
               and the count says how many names are behind it. */}
           <label className="flex cursor-pointer items-center gap-3">
             <input
               type="checkbox"
-              className="toggle toggle-primary toggle-sm"
+              className="accent-primary h-4 w-4 shrink-0"
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
             />
@@ -188,11 +204,13 @@ function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
     // An archived row is dimmed and dashed, so the two lists cannot be confused
     // when both are on screen at once.
     <li
-      className={`card border ${
-        archived ? 'border-base-300/60 bg-base-200/30 border-dashed' : 'bg-base-100 border-base-300'
-      }`}
+      className={
+        archived
+          ? 'border-base-content/12 rounded-xl border border-dashed opacity-70'
+          : 'glass-inset'
+      }
     >
-      <div className="card-body flex-row items-center justify-between gap-3 p-3">
+      <div className="flex flex-row items-center justify-between gap-3 p-3">
         <div className="min-w-0">
           <p className={`truncate text-sm font-medium ${archived ? 'text-base-content/60' : ''}`}>
             {player.display_name}
@@ -207,7 +225,7 @@ function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
         <div className="flex gap-1">
           {archived ? (
             <button
-              className="btn btn-primary btn-xs gap-1"
+              className="bg-primary text-primary-content hover:bg-primary/90 inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold transition-colors duration-150"
               onClick={onRestore}
               title="Put them back on the roster"
               aria-label={`Restore ${player.display_name}`}
@@ -217,7 +235,7 @@ function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
             </button>
           ) : (
             <button
-              className="btn btn-ghost btn-xs"
+              className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content inline-flex h-8 items-center rounded-lg px-2.5 text-xs font-medium transition-colors duration-150"
               onClick={onArchive}
               title="Archive: hides them without losing their history"
               aria-label={`Archive ${player.display_name}`}
@@ -227,7 +245,7 @@ function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
           )}
 
           <button
-            className="btn btn-ghost btn-xs text-error"
+            className="text-error hover:bg-error/10 inline-flex h-8 items-center rounded-lg px-2.5 text-xs font-medium transition-colors duration-150"
             onClick={onRemove}
             title="Delete permanently"
             aria-label={`Delete ${player.display_name}`}

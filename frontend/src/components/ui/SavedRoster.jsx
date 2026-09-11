@@ -1,16 +1,42 @@
-import { Check, Plus, Users, X } from '@/components/icons'
+import { Check, Plus, Trash2, Users, X } from '@/components/icons'
 
 import { useRoster } from '@/hooks/useRoster'
 
-export function SavedRoster({ selected, onAdd, onRemove, title = 'Saved roster' }) {
+/**
+ * `glass` is opt-in rather than the default: the Team Generator is the only
+ * page trialling the glass treatment, and the flat card is still correct
+ * everywhere else until that look is signed off.
+ *
+ * `maxHeight` caps the card, scrolling the list past that point while still
+ * shrinking to fit a short roster — so four saved names give a small card, not
+ * a tall empty one. Callers pass the measured height of a sibling (see
+ * `useElementHeight`); CSS alone cannot express "as tall as my sibling, but no
+ * taller than my content", because in a grid the row's height is derived from
+ * the items in it, which makes the constraint circular.
+ */
+export function SavedRoster({
+  selected,
+  onAdd,
+  onRemove,
+  title = 'Saved roster',
+  glass = false,
+  maxHeight = null,
+}) {
+  const surface = glass ? 'glass-panel' : 'card bg-base-100 border-base-300 border'
+
+  // `self-start` keeps the card shrink-wrapped to its contents. The cap is a
+  // max-height rather than a height, so a short roster stays short.
+  const sizing = maxHeight ? 'self-start overflow-hidden' : 'self-start lg:sticky lg:top-20'
+  const capStyle = maxHeight ? { maxHeight: `${maxHeight}px` } : undefined
+
   const { players, forget, isLoading } = useRoster()
 
   const chosen = new Set(selected.map((n) => n.toLowerCase()))
 
   if (isLoading) {
     return (
-      <aside className="card bg-base-100 border-base-300 self-start border">
-        <div className="card-body gap-2 p-3">
+      <aside className={`${surface} ${sizing}`} style={capStyle}>
+        <div className="flex flex-col gap-2 p-3">
           <span className="loading loading-spinner loading-sm self-center" />
         </div>
       </aside>
@@ -18,9 +44,9 @@ export function SavedRoster({ selected, onAdd, onRemove, title = 'Saved roster' 
   }
 
   return (
-    <aside className="card bg-base-100 border-base-300 self-start border lg:sticky lg:top-20">
-      <div className="card-body gap-3 p-3">
-        <div>
+    <aside className={`${surface} ${sizing} flex flex-col`} style={capStyle}>
+      <div className="flex min-h-0 flex-col gap-3 py-3">
+        <div className="px-3">
           <span className="flex items-center gap-1.5 text-sm font-medium">
             <Users className="h-4 w-4" />
             {title}
@@ -33,11 +59,13 @@ export function SavedRoster({ selected, onAdd, onRemove, title = 'Saved roster' 
         </div>
 
         {players.length === 0 ? (
-          <p className="text-base-content/40 py-4 text-center text-sm">
+          <p className="text-base-content/40 px-3 py-4 text-center text-sm">
             Nobody saved yet. The names you add will show up here next time.
           </p>
         ) : (
-          <ul className="max-h-[26rem] space-y-0.5 overflow-y-auto">
+          <ul
+            className={`space-y-0.5 overflow-y-auto pr-1 pl-3 ${maxHeight ? 'min-h-0' : 'max-h-[26rem]'}`}
+          >
             {players.map((player) => {
               const added = chosen.has(player.display_name.toLowerCase())
 
@@ -61,7 +89,13 @@ export function SavedRoster({ selected, onAdd, onRemove, title = 'Saved roster' 
                     }`}
                   >
                     {added ? (
-                      <Check className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:scale-0" />
+                      // Tick at rest, cross on hover — both in one slot so the
+                      // row does not reflow as they swap. The tick says "in";
+                      // the cross says what the click about to happen does.
+                      <span className="relative grid h-3.5 w-3.5 shrink-0 place-items-center">
+                        <Check className="absolute h-3.5 w-3.5 transition-opacity duration-150 group-hover:opacity-0" />
+                        <X className="absolute h-3.5 w-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+                      </span>
                     ) : (
                       <Plus className="h-3.5 w-3.5 shrink-0 opacity-40" />
                     )}
@@ -71,11 +105,11 @@ export function SavedRoster({ selected, onAdd, onRemove, title = 'Saved roster' 
                   <button
                     type="button"
                     onClick={() => forget(player)}
-                    aria-label={`Remove ${player.display_name} from saved roster`}
-                    title="Remove from saved roster"
-                    className="text-base-content/30 hover:text-error hover:bg-error/10 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
+                    aria-label={`Delete ${player.display_name} from saved roster`}
+                    title="Delete from saved roster"
+                    className="text-base-content/30 hover:text-error hover:bg-error/10 mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </li>
               )

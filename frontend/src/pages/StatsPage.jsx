@@ -75,7 +75,7 @@ export function StatsPage() {
 
   if (!isAuthenticated) {
     return (
-      <PageShell>
+      <PageShell className="glass-backdrop">
         <PageHeader title="Stats" />
         <EmptyState
           icon={BarChart3}
@@ -91,7 +91,7 @@ export function StatsPage() {
   const available = data?.results ?? data ?? []
 
   return (
-    <PageShell>
+    <PageShell className="glass-backdrop">
       <PageHeader
         title="Stats"
         description="Tally boards for the nights that never became a bracket."
@@ -104,7 +104,10 @@ export function StatsPage() {
       </PageHeader>
 
       {remove.isError && (
-        <div role="alert" className="alert alert-error mb-4 py-2 text-sm">
+        <div
+          role="alert"
+          className="border-error/30 bg-error/12 text-error mb-4 rounded-xl border px-3 py-2 text-sm"
+        >
           {remove.error.message}
         </div>
       )}
@@ -146,7 +149,10 @@ export function StatsPage() {
           </div>
 
           {create.isError && (
-            <div role="alert" className="alert alert-error py-2 text-sm">
+            <div
+              role="alert"
+              className="border-error/30 bg-error/12 text-error rounded-xl border px-3 py-2 text-sm"
+            >
               {create.error.message}
             </div>
           )}
@@ -189,23 +195,26 @@ export function StatsPage() {
         // A list rather than a grid of cards. Boards are a short, scanned
         // list — you are looking for one name — and a single column keeps every
         // name on the same left edge instead of making the eye zigzag.
-        <ul className="border-base-300 bg-base-100 divide-base-300/60 divide-y overflow-hidden rounded-xl border">
+        <ul className="glass-panel divide-base-content/8 divide-y overflow-hidden">
           {available.map((board) => (
             <li
               key={board.slug}
-              className="group hover:bg-base-200/40 relative flex items-center gap-3 px-4 py-3.5 transition-colors duration-150"
+              className="group hover:bg-base-content/5 relative flex items-center gap-3 px-4 py-3.5 transition-colors duration-150"
             >
               {/* Pinned boards carry a coloured edge, so the ones you chose are
                   findable without reading a single row. */}
               {board.favourited_at && (
-                <span className="bg-warning absolute inset-y-0 left-0 w-1" aria-hidden="true" />
+                <span
+                  className="bg-warning absolute inset-y-0 left-0 w-1 first:rounded-tl-[1.25rem] last:rounded-bl-[1.25rem]"
+                  aria-hidden="true"
+                />
               )}
 
               <span
                 className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg text-lg font-bold ${
                   board.tracks_tournaments
                     ? 'bg-primary/15 text-primary'
-                    : 'bg-base-200 text-base-content/40'
+                    : 'bg-base-content/8 text-base-content/50'
                 }`}
                 aria-hidden="true"
               >
@@ -220,7 +229,9 @@ export function StatsPage() {
                   <span className="truncate font-semibold">{board.name}</span>
 
                   {board.role !== 'owner' && (
-                    <span className="badge badge-ghost badge-sm shrink-0">Shared</span>
+                    <span className="bg-base-content/8 text-base-content/60 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium">
+                      Shared
+                    </span>
                   )}
                 </span>
 

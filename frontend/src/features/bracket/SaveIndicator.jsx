@@ -36,7 +36,7 @@ export function SaveIndicator({ state }) {
       // inheriting a button's hover and active states.
       className={`inline-flex h-8 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors duration-300 ${
         saving
-          ? 'border-base-300 bg-base-100 text-base-content/60'
+          ? 'border-base-content/12 bg-base-content/5 text-base-content/60'
           : 'border-success/30 bg-success/10 text-success'
       }`}
     >

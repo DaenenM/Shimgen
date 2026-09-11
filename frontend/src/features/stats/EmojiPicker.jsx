@@ -48,7 +48,7 @@ export function EmojiPicker({ value, onChange }) {
       </div>
 
       <input
-        className="input input-bordered input-sm w-full rounded-lg"
+        className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-9 w-full px-3 text-sm transition-colors focus:outline-none"
         placeholder="Or paste any emoji"
         value={custom}
         maxLength={16}

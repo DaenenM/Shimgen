@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { RouteErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useScrollToTop } from '@/hooks/useScrollToTop'
@@ -38,11 +38,11 @@ export function RootLayout() {
         notched iPhones, which eats a further ~34px.
       */}
       <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
-        <ErrorBoundary>
+        <RouteErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>
-        </ErrorBoundary>
+        </RouteErrorBoundary>
       </main>
 
       <Footer />

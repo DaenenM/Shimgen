@@ -20,12 +20,12 @@ export function ProfilePage() {
   })
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-8">
+    <div className="glass-backdrop mx-auto max-w-xl px-4 py-8">
       <PageHeader title="Profile" description="How you appear on leaderboards and brackets." />
 
-      <div className="card bg-base-100 border-base-300 border">
+      <div className="glass-panel">
         <form
-          className="card-body gap-4"
+          className="flex flex-col gap-4 p-5 sm:p-6"
           onSubmit={(e) => {
             e.preventDefault()
             save.mutate()
@@ -34,7 +34,7 @@ export function ProfilePage() {
           <label className="form-control">
             <span className="label-text mb-1">Display name</span>
             <input
-              className="input input-bordered w-full"
+              className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder={user?.username}
@@ -46,7 +46,11 @@ export function ProfilePage() {
 
           <label className="form-control">
             <span className="label-text mb-1">Email</span>
-            <input className="input input-bordered w-full" value={user?.email ?? ''} disabled />
+            <input
+              className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none disabled:opacity-50"
+              value={user?.email ?? ''}
+              disabled
+            />
             <span className="text-base-content/50 mt-1 text-xs">
               Your email is how you sign in and cannot be changed here.
             </span>
@@ -54,29 +58,43 @@ export function ProfilePage() {
 
           <label className="form-control">
             <span className="label-text mb-1">Username</span>
-            <input className="input input-bordered w-full" value={user?.username ?? ''} disabled />
+            <input
+              className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none disabled:opacity-50"
+              value={user?.username ?? ''}
+              disabled
+            />
           </label>
 
           {save.isError && (
-            <div role="alert" className="alert alert-error py-2 text-sm">
+            <div
+              role="alert"
+              className="border-error/30 bg-error/12 text-error rounded-xl border px-3 py-2 text-sm"
+            >
               {save.error.message}
             </div>
           )}
 
-          <button type="submit" className="btn btn-primary" disabled={save.isPending}>
+          <button
+            type="submit"
+            className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+            disabled={save.isPending}
+          >
             {save.isPending && <span className="loading loading-spinner loading-sm" />}
             {saved ? 'Saved' : 'Save changes'}
           </button>
         </form>
       </div>
 
-      <div className="card bg-base-100 border-base-300 mt-6 border">
-        <div className="card-body p-4">
+      <div className="glass-panel mt-6">
+        <div className="p-4">
           <h2 className="text-sm font-semibold">Session</h2>
           <p className="text-base-content/60 mb-2 text-sm">
             Signing out clears your tokens on this device.
           </p>
-          <button className="btn btn-outline btn-sm w-fit" onClick={logout}>
+          <button
+            className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 inline-flex h-9 w-fit items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+            onClick={logout}
+          >
             Sign out
           </button>
         </div>

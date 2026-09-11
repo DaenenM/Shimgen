@@ -19,9 +19,13 @@ export function StandingsTable({ rows }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="table">
+      {/* Padding is applied with child selectors rather than a class on every
+          one of the dozen cells — DaisyUI's `table` was supplying it before,
+          and repeating `px-3 py-2` twelve times is how the next column added
+          ends up misaligned. */}
+      <table className="w-full text-sm [&_td]:px-3 [&_td]:py-2 [&_th]:px-3 [&_th]:py-2">
         <thead>
-          <tr>
+          <tr className="border-base-content/10 text-base-content/60 border-b text-xs font-semibold tracking-wide uppercase">
             <th className="w-10">#</th>
             <th>Entrant</th>
             {isPlacement ? (
@@ -46,7 +50,10 @@ export function StandingsTable({ rows }) {
             const first = isPlacement ? row.placement === 1 : index === 0
 
             return (
-              <tr key={row.entrant_id} className={`hover ${first ? 'bg-accent/[0.06]' : ''}`}>
+              <tr
+                key={row.entrant_id}
+                className={`border-base-content/8 hover:bg-base-content/5 border-b transition-colors last:border-b-0 ${first ? 'bg-accent/10' : ''}`}
+              >
                 <td
                   className={`tabular ${first ? 'text-accent font-semibold' : 'text-base-content/50'}`}
                 >

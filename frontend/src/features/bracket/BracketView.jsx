@@ -1,5 +1,5 @@
 import { MatchCard } from './MatchCard'
-import { SECTION_LABELS, isPhantom, roundLabel, sectionsFor, toRounds } from './layout'
+import { SECTION_LABELS, isPhantom, roundLabel, roundTone, sectionsFor, toRounds } from './layout'
 
 /**
  * An elimination bracket, as columns of matches joined by connector lines.
@@ -57,8 +57,10 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
   return (
     <section>
       {showHeading && (
-        <h3 className="text-base-content/70 mb-3 text-sm font-semibold tracking-wide uppercase">
-          {SECTION_LABELS[section]}
+        <h3 className="mb-3">
+          <span className="glass-inset text-base-content/70 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase">
+            {SECTION_LABELS[section]}
+          </span>
         </h3>
       )}
 
@@ -71,8 +73,16 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
             {columns.map(({ roundNo }, index) => (
               <div key={roundNo} className="flex">
                 {index > 0 && <span className={`${ARM} shrink-0`} />}
-                <h4 className="text-base-content/60 w-64 shrink-0 text-center text-sm font-semibold">
-                  {roundLabel(roundNo, totalRounds, section)}
+                <h4 className="w-64 shrink-0 text-center">
+                  <span
+                    className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase"
+                    style={{
+                      color: roundTone(roundNo, totalRounds, section).color,
+                      backgroundColor: roundTone(roundNo, totalRounds, section).wash,
+                    }}
+                  >
+                    {roundLabel(roundNo, totalRounds, section, index + 1)}
+                  </span>
                 </h4>
                 {index < columns.length - 1 && <span className={`${ARM} shrink-0`} />}
               </div>
@@ -90,6 +100,7 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
               canReport={canReport}
               onReport={onReport}
               onClear={onClear}
+              tone={roundTone(round.roundNo, totalRounds, section)}
             />
           ))}
         </div>
@@ -106,7 +117,7 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
  * out — a bye that carried straight through — gets a plain horizontal line
  * instead, so it still visibly leads somewhere.
  */
-function Round({ matches, isFirst, isLast, canReport, onReport, onClear }) {
+function Round({ matches, isFirst, isLast, canReport, onReport, onClear, tone }) {
   // Group by where each match actually advances to, rather than assuming every
   // round halves. A losers bracket alternates: a "minor" round pairs each
   // survivor with a fresh drop from the winners bracket, so two matches feed
@@ -134,7 +145,7 @@ function Round({ matches, isFirst, isLast, canReport, onReport, onClear }) {
         <div className="flex shrink-0 flex-col">
           {matches.map((match) => (
             <div key={match.id} className="flex flex-1 items-center py-1.5">
-              <span className={`${ARM} border-base-content/30 block border-t`} />
+              <span className={`${ARM} border-base-content/25 block border-t`} />
             </div>
           ))}
         </div>
@@ -152,6 +163,7 @@ function Round({ matches, isFirst, isLast, canReport, onReport, onClear }) {
                 canReport={canReport}
                 onReport={(side) => onReport(match.id, side)}
                 onClear={() => onClear(match.id)}
+                tone={tone}
               />
             </div>
           </div>
@@ -180,13 +192,13 @@ function Round({ matches, isFirst, isLast, canReport, onReport, onClear }) {
                   <div className="flex flex-1 flex-col justify-center py-1.5">
                     <span className="flex-1" />
                     <span
-                      className={`${ARM} border-base-content/30 block flex-1 rounded-tr border-t border-r`}
+                      className={`${ARM} border-base-content/25 block flex-1 rounded-tr border-t border-r`}
                     />
                   </div>
                   {/* Lower: up from the card's centre to meet it. */}
                   <div className="flex flex-1 flex-col justify-center py-1.5">
                     <span
-                      className={`${ARM} border-base-content/30 block flex-1 rounded-br border-r border-b`}
+                      className={`${ARM} border-base-content/25 block flex-1 rounded-br border-r border-b`}
                     />
                     <span className="flex-1" />
                   </div>
@@ -197,7 +209,7 @@ function Round({ matches, isFirst, isLast, canReport, onReport, onClear }) {
                 // flat is what makes the progression legible.
                 group.matches.map((match) => (
                   <div key={match.id} className="flex flex-1 items-center py-1.5">
-                    <span className={`${ARM} border-base-content/30 block border-t`} />
+                    <span className={`${ARM} border-base-content/25 block border-t`} />
                   </div>
                 ))
               )}

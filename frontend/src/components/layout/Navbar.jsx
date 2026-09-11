@@ -40,11 +40,12 @@ export function Navbar() {
       // Phones navigate from the bottom tab bar instead: two navigations on one
       // small screen is redundant, and the top one costs a sixth of the
       // viewport before any content is shown.
-      className="border-base-300/80 bg-base-100/80 sticky top-0 z-30 hidden border-b backdrop-blur-xl lg:block"
+      className="glass-chrome glass-chrome-top sticky top-0 z-30 hidden lg:block"
       // The blur is what makes a sticky bar feel like it belongs to the page
-      // rather than sitting on top of it — content passes under, tinted.
+      // rather than sitting on top of it — content passes under, tinted. The
+      // saturation in `glass-chrome` is what keeps that from going grey.
     >
-      <div className="mx-auto flex h-16 max-w-[92rem] items-center gap-3 px-4">
+      <div className="mx-auto flex h-[4.25rem] max-w-[92rem] items-center gap-3 px-4">
         <Brand />
 
         <nav className="flex flex-1 justify-center">
@@ -105,15 +106,17 @@ function NavItem({ to, label, icon: Icon, end }) {
       end={end}
       className={({ isActive }) =>
         [
-          'group relative flex items-center gap-2 px-3 py-2 text-sm font-medium',
+          'group relative flex items-center gap-2 px-3.5 py-2 text-[0.9375rem] font-semibold',
           'transition-colors duration-200',
-          isActive ? 'text-primary' : 'text-base-content/60 hover:text-base-content',
+          // Idle lifted from /60 to /75: at 15px semibold the old tone read as
+          // disabled rather than merely not-current.
+          isActive ? 'text-primary' : 'text-base-content/75 hover:text-base-content',
         ].join(' ')
       }
     >
       {({ isActive }) => (
         <>
-          <Icon className="h-4 w-4" />
+          <Icon className="h-4.5 w-4.5" />
           {label}
 
           {/* Grown from the centre rather than swept from the left: a symmetric
@@ -121,8 +124,10 @@ function NavItem({ to, label, icon: Icon, end }) {
               reads as something loading. */}
           <span
             aria-hidden
-            className={`bg-primary absolute inset-x-2 bottom-0 h-[2px] origin-center rounded-full transition-transform duration-300 ease-out ${
-              isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+            className={`bg-primary absolute inset-x-2.5 bottom-0 h-[2.5px] origin-center rounded-full transition-transform duration-300 ease-out ${
+              isActive
+                ? 'shadow-primary/60 scale-x-100 shadow-[0_0_8px_0_var(--color-primary)]'
+                : 'scale-x-0 group-hover:scale-x-100'
             }`}
           />
         </>
@@ -136,14 +141,14 @@ function SignedOutActions() {
     <>
       <Link
         to={paths.login}
-        className="text-base-content/60 hover:text-base-content hidden px-3 py-2 text-sm font-medium transition-colors duration-200 sm:block"
+        className="text-base-content/75 hover:text-base-content hidden px-3.5 py-2 text-[0.9375rem] font-semibold transition-colors duration-200 sm:block"
       >
         Log in
       </Link>
 
       <Link
         to={paths.register}
-        className="bg-primary text-primary-content hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-200"
+        className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 rounded-xl px-4.5 py-2 text-[0.9375rem] font-semibold shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]"
       >
         Sign up
       </Link>
@@ -194,11 +199,8 @@ function AccountMenu({ user, onLogout }) {
         <ChevronDown className="text-base-content/40 h-4 w-4 transition-transform duration-200 group-focus-within:rotate-180" />
       </button>
 
-      <ul
-        tabIndex={0}
-        className="dropdown-content border-base-300 bg-base-100 z-40 mt-2 w-56 rounded-xl border p-1.5 shadow-2xl"
-      >
-        <li className="border-base-300/60 mb-1 border-b px-3 py-2">
+      <ul tabIndex={0} className="dropdown-content glass-raised z-40 mt-2 w-56 p-1.5">
+        <li className="border-base-content/10 mb-1 border-b px-3 py-2">
           <p className="truncate text-sm font-semibold">{user?.display_name || user?.username}</p>
           <p className="text-base-content/50 truncate text-xs">{user?.email}</p>
         </li>
@@ -208,7 +210,7 @@ function AccountMenu({ user, onLogout }) {
         <MenuLink to={paths.friends} label="Friends" icon={Users} badge={waiting} />
         <MenuLink to={paths.profile} label="Profile" />
 
-        <li className="border-base-300/60 mt-1 border-t pt-1">
+        <li className="border-base-content/10 mt-1 border-t pt-1">
           <button
             onClick={onLogout}
             className="text-error hover:bg-error/10 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-all duration-150 hover:pl-4"

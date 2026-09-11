@@ -72,7 +72,7 @@ export function TeamBuilder({ teams, onChange, activeTeam = 0, onFocusTeam = () 
       <button
         type="button"
         onClick={addTeam}
-        className="border-base-300 text-base-content/60 hover:border-primary/60 hover:text-primary flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 text-sm font-medium transition-colors duration-150"
+        className="border-base-content/15 text-base-content/60 hover:border-primary/50 hover:bg-primary/5 hover:text-primary flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 text-sm font-medium transition-colors duration-150"
       >
         <Plus className="h-4 w-4" />
         Add a team
@@ -142,7 +142,7 @@ function TeamCard({ team, index, assigned, active, onFocus, onUpdate, onRemove, 
     <li
       onClick={onFocus}
       className={`rounded-xl border p-2.5 transition-colors duration-150 ${
-        active ? 'border-primary/60 bg-primary/5' : 'border-base-300 bg-base-200/40'
+        active ? 'border-primary/50 bg-primary/10' : 'glass-inset hover:border-base-content/25'
       }`}
     >
       <div className="mb-1.5 flex items-center gap-2">
@@ -151,7 +151,7 @@ function TeamCard({ team, index, assigned, active, onFocus, onUpdate, onRemove, 
         </span>
 
         <input
-          className="input input-bordered input-sm flex-1 rounded-lg font-medium"
+          className="glass-raised focus:border-primary/50 h-8 min-w-0 flex-1 px-2.5 text-sm font-medium transition-colors focus:outline-none"
           placeholder={`Team ${index + 1}`}
           value={team.label}
           onChange={(e) => onUpdate({ label: e.target.value })}
@@ -198,7 +198,7 @@ function TeamCard({ team, index, assigned, active, onFocus, onUpdate, onRemove, 
           the page height, spent on controls nobody was using at that moment. */}
       <div className="flex items-start gap-1.5">
         <textarea
-          className="textarea textarea-bordered min-h-0 flex-1 resize-none rounded-lg py-1.5 text-sm transition-all duration-150"
+          className="glass-raised focus:border-primary/50 min-h-0 flex-1 resize-none px-2.5 py-1.5 text-sm transition-all duration-150 focus:outline-none"
           rows={draft || focused ? 3 : 1}
           placeholder={'Names…'}
           value={draft}

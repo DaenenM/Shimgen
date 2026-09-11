@@ -73,14 +73,17 @@ export function MobileTabBar() {
       {menuOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/40"
+            // Light blur rather than a heavier dim: the sheet above it is
+            // glass, and a near-black scrim behind glass defeats the point of
+            // the material — there is nothing left to see through it.
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
             aria-hidden="true"
             onClick={() => setMenuOpen(false)}
           />
 
-          <div className="border-base-300 bg-base-100 fixed right-2 bottom-[4.5rem] left-2 z-50 overflow-hidden rounded-2xl border shadow-2xl">
+          <div className="glass-raised fixed right-2 bottom-[4.5rem] left-2 z-50 overflow-hidden rounded-2xl">
             {isAuthenticated && (
-              <div className="border-base-300/60 border-b px-4 py-3">
+              <div className="border-base-content/10 border-b px-4 py-3">
                 <p className="truncate text-sm font-semibold">{user?.name ?? 'Signed in'}</p>
               </div>
             )}
@@ -91,7 +94,7 @@ export function MobileTabBar() {
                   key={link.to}
                   to={link.to}
                   onClick={() => setMenuOpen(false)}
-                  className="hover:bg-base-200 flex min-h-11 items-center rounded-xl px-3 text-sm font-medium transition-colors"
+                  className="hover:bg-base-content/8 flex min-h-11 items-center rounded-xl px-3 text-sm font-medium transition-colors"
                 >
                   {link.label}
                 </Link>
@@ -118,7 +121,7 @@ export function MobileTabBar() {
         // `pb-[env(safe-area-inset-bottom)]` keeps the bar clear of the home
         // indicator on notched iPhones, where the last few pixels are not
         // tappable.
-        className="border-base-300/80 bg-base-100/90 fixed inset-x-0 bottom-0 z-50 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
+        className="glass-chrome glass-chrome-bottom fixed inset-x-0 bottom-0 z-50 pb-[env(safe-area-inset-bottom)]"
         aria-label="Primary"
       >
         {/* No max-width: five equal tabs should span the phone, not sit in a

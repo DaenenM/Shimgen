@@ -12,8 +12,8 @@
  */
 
 const CONTROL =
-  'w-full rounded-lg border-base-300 bg-base-100 min-h-11 transition-colors ' +
-  'focus:border-primary focus:outline-none'
+  'glass-inset w-full min-h-11 px-3 text-sm transition-colors ' +
+  'focus:border-primary/50 focus:outline-none placeholder:text-base-content/35'
 
 /**
  * A labelled control.
@@ -36,14 +36,14 @@ export function Field({ label, hint, error, children, className = '' }) {
 }
 
 export function TextInput({ className = '', ...rest }) {
-  return <input className={`input input-bordered ${CONTROL} ${className}`} {...rest} />
+  return <input className={`${CONTROL} ${className}`} {...rest} />
 }
 
 export function TextArea({ className = '', rows = 4, ...rest }) {
   return (
     <textarea
       rows={rows}
-      className={`textarea textarea-bordered border-base-300 bg-base-100 focus:border-primary w-full rounded-lg transition-colors focus:outline-none ${className}`}
+      className={`glass-inset focus:border-primary/50 placeholder:text-base-content/35 w-full resize-none p-3 text-sm transition-colors focus:outline-none ${className}`}
       {...rest}
     />
   )
@@ -51,7 +51,7 @@ export function TextArea({ className = '', rows = 4, ...rest }) {
 
 export function Select({ className = '', children, ...rest }) {
   return (
-    <select className={`select select-bordered ${CONTROL} ${className}`} {...rest}>
+    <select className={`${CONTROL} ${className}`} {...rest}>
       {children}
     </select>
   )
@@ -76,16 +76,16 @@ export function ChoiceGroup({ name, value, onChange, options, columns = 2, class
         return (
           <label
             key={String(option.value)}
-            className={`flex min-h-11 cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${
+            className={`flex min-h-11 cursor-pointer items-start gap-2.5 rounded-xl border p-3 transition-colors duration-150 ${
               selected
-                ? 'border-primary bg-primary/5'
-                : 'border-base-300 hover:border-base-content/20'
+                ? 'border-primary/50 bg-primary/10'
+                : 'glass-inset hover:border-base-content/25 hover:bg-base-content/5'
             }`}
           >
             <input
               type="radio"
               name={name}
-              className="radio radio-primary radio-sm mt-0.5 shrink-0"
+              className="accent-primary mt-0.5 h-4 w-4 shrink-0"
               checked={selected}
               onChange={() => onChange(option.value)}
             />

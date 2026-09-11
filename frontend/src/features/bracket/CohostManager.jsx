@@ -54,18 +54,22 @@ export function CohostManager({ cohosts, creatorId, onAdd, onRemove, pending }) 
     <div className="relative" ref={container}>
       <button
         type="button"
-        className="btn btn-outline btn-sm gap-2"
+        className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98]"
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         title="Choose who else can report results"
       >
         <UserPlus className="h-4 w-4" />
         Permissions
-        {helpers.length > 0 && <span className="badge badge-sm">{helpers.length}</span>}
+        {helpers.length > 0 && (
+          <span className="bg-base-content/10 text-base-content/70 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums">
+            {helpers.length}
+          </span>
+        )}
       </button>
 
       {open && (
-        <div className="border-base-300 bg-base-100 absolute right-0 z-20 mt-2 w-80 rounded-xl border p-3 shadow-lg">
+        <div className="glass-raised absolute right-0 z-20 mt-2 w-80 p-3">
           <p className="mb-1 text-sm font-medium">Permission to edit</p>
           <p className="text-base-content/50 mb-3 text-xs">
             They can report results and rename this tournament.
@@ -76,7 +80,7 @@ export function CohostManager({ cohosts, creatorId, onAdd, onRemove, pending }) 
               {helpers.map((role) => (
                 <li
                   key={role.id}
-                  className="bg-base-200 border-base-300 flex items-center gap-1 rounded-full border py-1 pr-1 pl-2.5 text-xs"
+                  className="bg-base-content/8 border-base-content/10 flex items-center gap-1 rounded-full border py-1 pr-1 pl-2.5 text-xs"
                 >
                   <span className="max-w-[10rem] truncate">{role.user.name}</span>
                   <button

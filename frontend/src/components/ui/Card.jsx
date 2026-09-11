@@ -30,10 +30,10 @@ export function Card({
   return (
     <Tag
       className={[
-        'bg-base-100 border-base-300 rounded-xl border',
+        'glass-panel',
         PADDING[padding] ?? PADDING.md,
         interactive
-          ? 'hover:border-base-content/20 transition-[border-color,box-shadow] duration-150 hover:shadow-md'
+          ? 'hover:border-base-content/25 hover:bg-base-content/5 transition-colors duration-200'
           : '',
         className,
       ]
@@ -55,7 +55,7 @@ export function Card({
 export function CardHeader({ title, description, children, className = '' }) {
   return (
     <div
-      className={`border-base-300/60 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5 ${className}`}
+      className={`border-base-content/10 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5 ${className}`}
     >
       <div className="min-w-0">
         <h2 className="truncate text-base font-semibold">{title}</h2>

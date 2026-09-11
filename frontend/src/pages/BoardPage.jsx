@@ -180,7 +180,10 @@ export function BoardPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
         <h1 className="text-xl font-semibold">No such board</h1>
-        <Link to={paths.stats} className="btn btn-primary btn-sm mt-4">
+        <Link
+          to={paths.stats}
+          className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 mt-4 inline-flex h-10 items-center rounded-xl px-5 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0"
+        >
           Back to stats
         </Link>
       </div>
@@ -201,7 +204,7 @@ export function BoardPage() {
   }
 
   return (
-    <PageShell>
+    <PageShell className="glass-backdrop">
       <Link
         to={paths.stats}
         className="text-base-content/60 hover:text-base-content mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
@@ -219,14 +222,25 @@ export function BoardPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-ghost gap-2" onClick={share}>
+          <button
+            className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
+            onClick={share}
+          >
             {copied ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
             {copied ? 'Copied' : 'Share'}
           </button>
 
+          {/* Solid while editing, glass at rest. The mode is the thing worth
+              signalling: "Done" is the way out of a state the board is
+              currently in, so it gets the page's one opaque treatment, while
+              "Edit" is just another header control beside Share. */}
           {canEdit && (
             <button
-              className={`btn gap-2 ${editing ? 'btn-primary' : 'btn-ghost'}`}
+              className={`flex h-9 items-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out active:translate-y-0 active:scale-[0.98] ${
+                editing
+                  ? 'bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 shadow-md hover:-translate-y-0.5 hover:shadow-lg'
+                  : 'glass-raised hover:border-base-content/30 hover:bg-base-content/5 hover:-translate-y-0.5'
+              }`}
               onClick={() => setEditing((on) => !on)}
             >
               {editing ? <Check className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
@@ -237,7 +251,7 @@ export function BoardPage() {
       </div>
 
       {!canEdit && (
-        <div className="alert bg-base-100 border-base-300 mb-6 items-start border py-2 text-sm">
+        <div className="glass-inset mb-6 flex items-start gap-2.5 p-3 text-sm">
           <Users className="text-primary mt-0.5 h-4 w-4 shrink-0" />
           <p>You are viewing this board. Ask its owner for access to add wins.</p>
         </div>
@@ -301,7 +315,7 @@ function TableCard({
   const [addingRows, setAddingRows] = useState(false)
 
   return (
-    <div className="card bg-base-100 border-base-300 border">
+    <div className="glass-panel">
       <div className="card-body gap-4 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {editing ? (
@@ -313,14 +327,14 @@ function TableCard({
           {editing && (
             <div className="flex gap-2">
               <button
-                className="btn btn-ghost btn-sm gap-1.5"
+                className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
                 onClick={() => setAddingRows((on) => !on)}
               >
                 <UserPlus className="h-4 w-4" />
                 Players
               </button>
               <button
-                className="btn btn-ghost btn-sm gap-1.5"
+                className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
                 onClick={() => setAddingColumn((on) => !on)}
               >
                 <Plus className="h-4 w-4" />
@@ -390,7 +404,7 @@ function TableName({ name, onRename }) {
 
   return (
     <input
-      className="input input-bordered input-sm w-48 rounded-lg text-lg font-semibold"
+      className="glass-inset focus:border-primary/50 h-10 w-48 px-3 text-lg font-semibold transition-colors focus:outline-none"
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
@@ -412,11 +426,11 @@ function AddColumn({ onAdd, onCancel }) {
   const [emoji, setEmoji] = useState('\u{1F531}')
 
   return (
-    <div className="border-base-300 bg-base-200/40 space-y-3 rounded-xl border p-3">
+    <div className="glass-inset space-y-3 p-3">
       <label className="flex w-full flex-col">
         <span className="label-text mb-1 text-sm">Column name</span>
         <input
-          className="input input-bordered input-sm w-full rounded-lg"
+          className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-9 w-full px-3 text-sm transition-colors focus:outline-none"
           placeholder="Wins"
           value={name}
           autoFocus
@@ -431,14 +445,17 @@ function AddColumn({ onAdd, onCancel }) {
 
       <div className="flex gap-2">
         <button
-          className="btn btn-primary btn-sm gap-1.5"
+          className="bg-primary text-primary-content hover:bg-primary/90 flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
           disabled={!name.trim()}
           onClick={() => onAdd({ name: name.trim(), emoji })}
         >
           <Plus className="h-4 w-4" />
           Add column
         </button>
-        <button className="btn btn-ghost btn-sm" onClick={onCancel}>
+        <button
+          className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
+          onClick={onCancel}
+        >
           Cancel
         </button>
       </div>
@@ -467,7 +484,7 @@ function AddRows({ roster, existing, onAdd, onDone }) {
   const unused = roster.filter((p) => !taken.has(p.display_name.toLowerCase()))
 
   return (
-    <div className="border-base-300 bg-base-200/40 space-y-3 rounded-xl border p-3">
+    <div className="glass-inset space-y-3 p-3">
       {unused.length > 0 && (
         <div>
           <span className="text-base-content/60 mb-1.5 block text-xs font-semibold tracking-wide uppercase">
@@ -484,7 +501,7 @@ function AddRows({ roster, existing, onAdd, onDone }) {
                     names: player.id ? [] : [player.display_name],
                   })
                 }
-                className="border-base-300 bg-base-100 hover:border-primary/60 hover:text-primary h-8 rounded-full border px-3 text-sm transition-colors duration-150"
+                className="glass-raised hover:border-primary/50 hover:text-primary h-8 rounded-full px-3 text-sm transition-colors duration-150"
               >
                 {player.display_name}
               </button>
@@ -494,7 +511,7 @@ function AddRows({ roster, existing, onAdd, onDone }) {
       )}
 
       <textarea
-        className="textarea textarea-bordered w-full rounded-lg text-sm"
+        className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 w-full resize-none p-3 text-sm transition-colors focus:outline-none"
         rows={2}
         placeholder={'One name per line, or comma separated'}
         value={pasted}
@@ -507,7 +524,7 @@ function AddRows({ roster, existing, onAdd, onDone }) {
 
       <div className="flex flex-wrap gap-2">
         <button
-          className="btn btn-primary btn-sm gap-1.5"
+          className="bg-primary text-primary-content hover:bg-primary/90 flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
           disabled={!pasted.trim()}
           onClick={addPasted}
         >
@@ -517,7 +534,10 @@ function AddRows({ roster, existing, onAdd, onDone }) {
 
         {/* The panel closes here rather than after each add, so a run of
             players is one visit instead of one visit per name. */}
-        <button className="btn btn-ghost btn-sm gap-1.5" onClick={onDone}>
+        <button
+          className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
+          onClick={onDone}
+        >
           <Check className="h-4 w-4" />
           Done
         </button>
@@ -539,7 +559,7 @@ function AddTable({ onAdd, pending }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="border-base-300 text-base-content/60 hover:border-primary/60 hover:text-primary mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-sm font-medium transition-colors duration-150"
+        className="border-base-content/15 text-base-content/60 hover:border-primary/50 hover:bg-primary/5 hover:text-primary mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-sm font-medium transition-colors duration-150"
       >
         <Plus className="h-4 w-4" />
         Add a table
@@ -548,12 +568,12 @@ function AddTable({ onAdd, pending }) {
   }
 
   return (
-    <div className="card bg-base-100 border-base-300 mt-5 border">
+    <div className="glass-panel mt-5">
       <div className="card-body gap-3 p-4">
         <label className="flex w-full flex-col">
           <span className="label-text mb-1 text-sm">Table name</span>
           <input
-            className="input input-bordered input-sm w-full rounded-lg"
+            className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-9 w-full px-3 text-sm transition-colors focus:outline-none"
             placeholder="Teams"
             value={name}
             autoFocus
@@ -571,13 +591,13 @@ function AddTable({ onAdd, pending }) {
               className={`flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 transition-colors ${
                 tracks === value
                   ? 'border-primary bg-primary/5'
-                  : 'border-base-300 hover:border-base-content/20'
+                  : 'glass-inset hover:border-base-content/25'
               }`}
             >
               <input
                 type="radio"
                 name="table-kind"
-                className="radio radio-primary radio-xs mt-0.5"
+                className="accent-primary mt-0.5 h-4 w-4 shrink-0"
                 checked={tracks === value}
                 onChange={() => setTracks(value)}
               />
@@ -600,7 +620,7 @@ function AddTable({ onAdd, pending }) {
 
         <div className="flex gap-2">
           <button
-            className="btn btn-primary btn-sm gap-1.5"
+            className="bg-primary text-primary-content hover:bg-primary/90 flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
             disabled={!name.trim() || pending}
             onClick={() => {
               onAdd({ name: name.trim(), emoji, tracks_tournaments: tracks })
@@ -611,7 +631,10 @@ function AddTable({ onAdd, pending }) {
             <Plus className="h-4 w-4" />
             Add table
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+          <button
+            className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
+            onClick={() => setOpen(false)}
+          >
             Cancel
           </button>
         </div>
@@ -630,7 +653,7 @@ function People({ people, onAdd, onRemove, error, onDeleteBoard, boardName }) {
   const [confirming, setConfirming] = useState(false)
 
   return (
-    <div className="card bg-base-100 border-base-300 mt-5 border">
+    <div className="glass-panel mt-5">
       <div className="card-body gap-4 p-4 sm:p-5">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -654,7 +677,10 @@ function People({ people, onAdd, onRemove, error, onDeleteBoard, boardName }) {
         />
 
         {error && (
-          <div role="alert" className="alert alert-error py-2 text-sm">
+          <div
+            role="alert"
+            className="border-error/30 bg-error/12 text-error rounded-xl border px-3 py-2 text-sm"
+          >
             {error}
           </div>
         )}
@@ -664,7 +690,7 @@ function People({ people, onAdd, onRemove, error, onDeleteBoard, boardName }) {
             {people.map((person) => (
               <li
                 key={person.id}
-                className="border-base-300 bg-base-200/40 group flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
+                className="glass-inset group flex items-center justify-between gap-2 px-3 py-2 text-sm"
               >
                 <span className="min-w-0 truncate font-medium">
                   {person.display_name || person.username}
@@ -683,7 +709,7 @@ function People({ people, onAdd, onRemove, error, onDeleteBoard, boardName }) {
 
         {/* Deleting takes everyone's accumulated history with it, so it asks
             first rather than living one click away. */}
-        <div className="border-base-300 mt-2 border-t pt-4">
+        <div className="border-base-content/10 mt-2 border-t pt-4">
           <button
             className="text-base-content/50 hover:text-error text-sm transition-colors"
             onClick={() => setConfirming(true)}

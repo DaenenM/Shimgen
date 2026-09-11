@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Play, Share2, Trophy, Users } from '@/components/icons'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { tournaments as tournamentsApi } from '@/api/endpoints'
@@ -210,8 +210,18 @@ export function TournamentDetailPage() {
   const everyMatchDecided =
     tournament?.matches?.length > 0 && tournament.matches.every((m) => m.winner || !m.a || !m.b)
 
+  // Only on the edge that *completes* the bracket. Firing on every change of
+  // this flag also caught the opposite edge — undoing a result on a finished
+  // bracket — which sent the write immediately instead of letting it batch,
+  // and `sendBatch` replaces the cache with the server's reply. So an undo was
+  // the one click whose outcome visibly waited on the network: it applied
+  // instantly, then snapped to whatever came back a second later. Undoing goes
+  // through the normal queue like every other click.
+  const wasComplete = useRef(everyMatchDecided)
+
   useEffect(() => {
-    if (everyMatchDecided) flush()
+    if (everyMatchDecided && !wasComplete.current) flush()
+    wasComplete.current = everyMatchDecided
   }, [everyMatchDecided, flush])
 
   const start = useMutation({
@@ -264,7 +274,7 @@ export function TournamentDetailPage() {
 
   if (!tournament) {
     return (
-      <PageShell width="wide">
+      <PageShell width="wide" className="glass-backdrop">
         <EmptyState
           title="Tournament not found"
           description="It may have been deleted, or the link may be wrong."
@@ -305,7 +315,7 @@ export function TournamentDetailPage() {
   }
 
   return (
-    <PageShell width="wide">
+    <PageShell width="wide" className="glass-backdrop">
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -319,14 +329,15 @@ export function TournamentDetailPage() {
             {FORMAT_LABELS[tournament.format] ?? tournament.format} · {tournament.entrants.length}{' '}
             entrants
             <span
-              className={`badge badge-sm ml-2 ${
-                tournament.state === 'complete'
-                  ? 'badge-neutral'
-                  : tournament.state === 'active'
-                    ? 'badge-success'
-                    : 'badge-ghost'
+              className={`ml-2 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium capitalize ${
+                tournament.state === 'active'
+                  ? 'bg-success/15 text-success'
+                  : 'bg-base-content/8 text-base-content/60'
               }`}
             >
+              {tournament.state === 'active' && (
+                <span className="bg-success h-1.5 w-1.5 animate-pulse rounded-full" />
+              )}
               {tournament.state}
             </span>
           </p>
@@ -350,18 +361,18 @@ export function TournamentDetailPage() {
 
           {tournament.is_host && tournament.state === 'draft' && (
             <button
-              className="btn btn-primary btn-sm gap-2"
+              className="group bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
               onClick={() => start.mutate()}
               disabled={start.isPending}
             >
-              <Play className="h-4 w-4" />
+              <Play className="h-4 w-4 transition-transform duration-200 ease-out group-hover:scale-110" />
               Start
             </button>
           )}
 
           {tournament.is_host && isList && tournament.state === 'active' && (
             <button
-              className="btn btn-outline btn-sm"
+              className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 items-center rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
               onClick={() => nextRound.mutate()}
               disabled={nextRound.isPending}
             >
@@ -370,7 +381,7 @@ export function TournamentDetailPage() {
           )}
 
           <button
-            className="btn btn-outline btn-sm gap-2"
+            className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98]"
             onClick={copyLink}
             title="Copy a read-only link anyone can open without an account"
           >
@@ -385,13 +396,16 @@ export function TournamentDetailPage() {
       )}
 
       {(syncError || start.isError || nextRound.isError) && (
-        <div role="alert" className="alert alert-error mb-4 py-2 text-sm">
+        <div
+          role="alert"
+          className="border-error/30 bg-error/12 text-error mb-4 rounded-xl border px-3 py-2 text-sm"
+        >
           {syncError ?? (start.error || nextRound.error).message}
         </div>
       )}
 
       {!canReport && tournament.state !== 'draft' && (
-        <div className="alert bg-base-100 border-base-300 mb-6 border py-2 text-sm">
+        <div className="glass-inset mb-6 px-3 py-2 text-sm">
           You're viewing this as a spectator. Only the host and co-hosts can report results.
         </div>
       )}
@@ -435,8 +449,8 @@ export function TournamentDetailPage() {
             a permanent card for a URL nobody reads was dead weight. */}
         {tournament.rules && (
           <aside>
-            <div className="card bg-base-100 border-base-300 border">
-              <div className="card-body p-4">
+            <div className="glass-panel">
+              <div className="p-4">
                 <h3 className="mb-1 text-sm font-semibold">Rules</h3>
                 <p className="text-base-content/70 text-xs whitespace-pre-wrap">
                   {tournament.rules}
@@ -458,8 +472,8 @@ export function TournamentDetailPage() {
           </h2>
           <p className="text-base-content/60 mb-4 text-sm">How everyone is placed so far.</p>
 
-          <div className="card bg-base-100 border-base-300 border">
-            <div className="card-body p-4">
+          <div className="glass-panel">
+            <div className="p-4">
               <StandingsTable rows={standings} />
             </div>
           </div>

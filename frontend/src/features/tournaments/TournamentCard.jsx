@@ -19,33 +19,17 @@ const FORMAT_STYLES = {
   ffa: 'bg-warning/10 text-warning border border-warning/20',
 }
 
-/**
- * State as a dot rather than a pill.
- *
- * A row of coloured badges competes with the titles beside them for attention,
- * and "draft / active / complete" is three states — a legend the eye learns in
- * one glance. The dot carries the colour and the word rides with it in muted
- * text, so the card reads as a name first and a status second.
- */
+// One shared shape for every pill in the meta row — format, entrants, and
+// winner all read as the same kind of thing now, just with different tones,
+// rather than format being a pill and the rest being plain text beside it.
+const PILL = 'inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[0.6875rem] font-medium'
+
 const STATE_DOT = {
   draft: 'bg-base-content/30',
-  // Green for live, not the brand blue. Blue is what a control looks like
-  // everywhere else on the page, so a blue dot read as something to press.
   active: 'bg-success',
-  // The trophy beside it carries "finished"; a second colour here would only
-  // compete with it.
   complete: 'bg-base-content/40',
 }
 
-/**
- * One tournament in the list.
- *
- * Deliberately one row on every screen size, not a stacked block on phones.
- * The earlier version gave actions their own divided row underneath, which made
- * each card about ninety pixels tall — three of them filled a phone screen and
- * the list stopped being scannable. Everything here fits on one line because
- * the meta is short and the actions are a fixed 3×32px cluster.
- */
 export function TournamentCard({
   tournament,
   archived = false,
@@ -59,8 +43,6 @@ export function TournamentCard({
 
   return (
     <li className="group bg-base-100 border-base-300 hover:border-base-content/20 relative min-w-0 rounded-xl border transition-colors">
-      {/* Pinned tournaments carry a coloured edge, so the ones chosen are
-          findable without reading a single row. */}
       {tournament.favourited_at && (
         <span
           className="bg-warning absolute inset-y-0 left-0 w-0.5 rounded-l-xl"
@@ -69,9 +51,6 @@ export function TournamentCard({
       )}
 
       <div className="flex items-center gap-2 py-2.5 pr-2 pl-3.5 sm:gap-3 sm:pr-3 sm:pl-4">
-        {/* The link covers its own area rather than wrapping the card, so the
-            action buttons can sit alongside — a button nested in an anchor is
-            invalid and swallows its own clicks. */}
         <Link to={paths.tournament(tournament.id, name)} className="min-w-0 flex-1 py-0.5">
           <div className="flex min-w-0 items-center gap-2">
             <span
@@ -85,47 +64,32 @@ export function TournamentCard({
             </h3>
           </div>
 
-          {/* One muted line. The winner is the part worth reading on a
-              finished night, so it is `shrink-0` and the format/entrant text
-              gives way first — truncating the winner off the end, which is
-              what happens if both sides are allowed to shrink, loses the only
-              thing that distinguishes one completed row from another.
-
-              The state word is dropped once there is a winner: "Complete" next
-              to a trophy is saying the same thing twice in a line with no room
-              to spare. */}
-          <p className="text-base-content/60 mt-1 flex min-w-0 items-center gap-1.5 pl-3.5 text-xs">
-            <span
-              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6875rem] font-medium ${
-                FORMAT_STYLES[tournament.format] ?? 'bg-base-content/10 text-base-content/60'
-              }`}
-            >
+          {/* Grid instead of flex: each pill sits in its own column, sized to
+              its own content, with a fixed gap between them — so spacing
+              stays even whether there are two pills (draft, no winner yet)
+              or three (format, entrants, winner). */}
+          <div className="mt-1 grid grid-flow-col items-center justify-start gap-1.5 pl-3.5">
+            <span className={`${PILL} ${FORMAT_STYLES[tournament.format] ?? 'bg-base-content/10 text-base-content/60 border border-base-content/10'}`}>
               {FORMAT_LABELS[tournament.format] ?? tournament.format}
             </span>
 
-            <span className="min-w-0 truncate">
+            <span className={`${PILL} bg-base-content/10 text-base-content/60 border border-base-content/10`}>
               {tournament.entrant_count} {tournament.entrant_count === 1 ? 'entrant' : 'entrants'}
-              {!tournament.winner_label && (
-                <>
-                  {' · '}
-                  <span className="capitalize">{tournament.state}</span>
-                </>
-              )}
             </span>
 
-            {tournament.winner_label && (
-              <span className="text-accent flex min-w-0 shrink-0 items-center gap-1 font-medium">
+            {tournament.winner_label ? (
+              <span className={`${PILL} bg-accent/10 text-accent border-accent/20 min-w-0 border`}>
                 <Trophy className="h-3 w-3 shrink-0" />
                 <span className="max-w-28 truncate sm:max-w-40">{tournament.winner_label}</span>
               </span>
+            ) : (
+              <span className="text-base-content/50 truncate text-xs capitalize">
+                {tournament.state}
+              </span>
             )}
-          </p>
+          </div>
         </Link>
 
-        {/* Always visible on touch — `group-hover` never fires on a phone, so
-            hiding these behind it made every action on this page unreachable
-            there. Dimmed rather than hidden on desktop, which keeps the list
-            calm without making the controls a secret. */}
         <div className="flex shrink-0 items-center">
           <button
             type="button"
@@ -141,8 +105,6 @@ export function TournamentCard({
             <Star className="h-4 w-4" fill={tournament.favourited_at ? 'currentColor' : 'none'} />
           </button>
 
-          {/* Archive before delete, and the softer of the two: for a finished
-              season it is almost always the one the host actually wants. */}
           <button
             type="button"
             onClick={() => (archived ? onRestore(tournament.id) : onArchive(tournament.id))}

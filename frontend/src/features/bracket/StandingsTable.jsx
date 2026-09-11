@@ -1,3 +1,5 @@
+import { useDragScroll } from '@/hooks/useDragScroll'
+
 /**
  * The podium.
  *
@@ -41,6 +43,10 @@ const PODIUM = {
  * got. This renders whichever arrived.
  */
 export function StandingsTable({ rows }) {
+  // Called before the early return: hooks cannot be conditional, and an empty
+  // table still has to run the same ones a full one does.
+  const scroller = useDragScroll()
+
   if (!rows || rows.length === 0) {
     return (
       <p className="text-base-content/60 py-6 text-center text-sm">
@@ -52,7 +58,7 @@ export function StandingsTable({ rows }) {
   const isPlacement = rows[0].placement !== undefined
 
   return (
-    <div className="overflow-x-auto">
+    <div ref={scroller} className="overflow-x-auto">
       {/* Padding is applied with child selectors rather than a class on every
           one of the dozen cells — DaisyUI's `table` was supplying it before,
           and repeating `px-3 py-2` twelve times is how the next column added

@@ -117,6 +117,51 @@ export function roundLabel(roundNo, totalRounds, section = 'main', displayNo = r
   return `${prefix}Round ${displayNo}`
 }
 
+/**
+ * How wide a bracket draws itself, by how many columns it has to fit.
+ *
+ * A 28-entrant draw is five columns in the winners bracket and six in the
+ * losers, and at full size that is far wider than any laptop — so the whole
+ * thing became a side-scroller and no single view showed the shape of the
+ * tournament, which is the one thing a bracket is for.
+ *
+ * Two invariants hold across every tier, and both have broken before:
+ *
+ *  - **`gap` is exactly twice `arm`.** The two arms of a connector sit inside
+ *    the gap, so any other ratio leaves the elbow short of the card or running
+ *    past it.
+ *  - **`card` is used by the heading row and the card column alike.** They are
+ *    separate flex rows that have to agree, or every round label drifts
+ *    sideways from the column it names.
+ *
+ * Only horizontal measurements shrink. Row height is fixed in `MatchCard` so a
+ * slot does not resize the instant a name lands in it, and names already
+ * truncate — so a narrower card loses some of a long team name and nothing
+ * else. Losing the tail of "Team 28" beats losing the bracket.
+ *
+ * Lives here rather than in `BracketView` because it is a pure function, and a
+ * component file that also exports one breaks Fast Refresh.
+ */
+const SIZES = {
+  // Four columns or fewer: a quarterfinal onward, which fits comfortably.
+  roomy: { card: 'w-52 sm:w-64', gap: 'w-10 sm:w-16', arm: 'w-5 sm:w-8' },
+  // Five columns — the winners bracket of a 17-32 entrant draw.
+  compact: { card: 'w-40 sm:w-48', gap: 'w-8 sm:w-10', arm: 'w-4 sm:w-5' },
+  // Six or more, which is where a losers bracket of that size lands.
+  tight: { card: 'w-32 sm:w-40', gap: 'w-6 sm:w-8', arm: 'w-3 sm:w-4' },
+}
+
+/**
+ * Picked per section rather than per tournament: the winners and losers
+ * brackets are independent scrollers with different column counts, and sizing
+ * both to the wider one would shrink the winners bracket for no reason.
+ */
+export function sizeFor(columnCount) {
+  if (columnCount >= 6) return SIZES.tight
+  if (columnCount === 5) return SIZES.compact
+  return SIZES.roomy
+}
+
 /** Which bracket sections this tournament actually uses, in display order. */
 export function sectionsFor(matches) {
   const present = new Set(matches.map((m) => m.bracket))

@@ -17,7 +17,8 @@ import { clearTokens, getAccessToken, setTokens } from '@/api/tokens'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { SectionLoader } from '@/components/ui/SectionLoader'
 import { EditableTitle } from '@/features/bracket/EditableTitle'
-import { isPhantom, toRounds } from '@/features/bracket/layout'
+import { isPhantom, sizeFor, toRounds } from '@/features/bracket/layout'
+import { useDragScroll } from '@/hooks/useDragScroll'
 import { applyResult, clearResult, scoreForClick } from '@/features/bracket/optimistic'
 import { useReportQueue } from '@/features/bracket/useReportQueue'
 import { RootLayout } from '@/components/layout/RootLayout'
@@ -1334,6 +1335,179 @@ describe('TournamentCard readOnly', () => {
  * invisible — nothing breaks, data is simply somewhere it should not be — so
  * the predicate is pinned rather than trusted.
  */
+/**
+ * A deep bracket has to fit the screen.
+ *
+ * 28 entrants is five columns in the winners bracket and six in the losers, and
+ * at full card width that is wider than any laptop — so the page became a
+ * side-scroller and no single view showed the shape of the tournament.
+ *
+ * The two invariants are what the connector geometry rests on, and both have
+ * broken before: the gap is exactly two arms, and the heading row and the card
+ * column are sized from the same token.
+ */
+/**
+ * Dragging the background to pan.
+ *
+ * The danger is not the panning, it is what panning must not do: reporting a
+ * result is a click on a team name, and a tally is a click on `+1`. A gesture
+ * that navigates must never record one of those by accident, and a hand that
+ * wobbles two pixels while clicking must still be clicking.
+ */
+describe('drag to scroll', () => {
+  const mountScroller = ({ wide = true } = {}) => {
+    function Panner() {
+      const ref = useDragScroll()
+      return (
+        <div ref={ref} data-testid="scroller" style={{ width: 100, overflow: 'auto' }}>
+          <button type="button" onClick={() => reported.push('clicked')}>
+            Team 10
+          </button>
+          <span data-testid="background">background</span>
+        </div>
+      )
+    }
+
+    const reported = []
+    const view = render(<Panner />)
+    const element = screen.getByTestId('scroller')
+
+    // jsdom lays nothing out, so overflow has to be asserted by hand — the hook
+    // refuses to pan an element that does not actually scroll.
+    Object.defineProperty(element, 'scrollWidth', { value: wide ? 500 : 100, configurable: true })
+    Object.defineProperty(element, 'clientWidth', { value: 100, configurable: true })
+
+    return { element, reported, view }
+  }
+
+  const pointer = (type, props) =>
+    new window.PointerEvent(type, { pointerType: 'mouse', button: 0, bubbles: true, ...props })
+
+  it('pans the scroller when the pointer travels', () => {
+    const { element } = mountScroller()
+
+    element.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 0 }))
+    element.dispatchEvent(pointer('pointermove', { clientX: 140, clientY: 0 }))
+
+    // Dragged left by 60, so the content moves 60 the other way.
+    expect(element.scrollLeft).toBe(60)
+  })
+
+  it('ignores movement below the threshold, so a shaky click is still a click', () => {
+    const { element } = mountScroller()
+
+    element.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 0 }))
+    element.dispatchEvent(pointer('pointermove', { clientX: 198, clientY: 1 }))
+
+    expect(element.scrollLeft).toBe(0)
+  })
+
+  it('never starts a drag on a control', () => {
+    const { element } = mountScroller()
+    const button = screen.getByRole('button')
+
+    button.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 0 }))
+    element.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 0 }))
+
+    expect(element.scrollLeft).toBe(0)
+  })
+
+  it('leaves a scroller that does not overflow alone', () => {
+    const { element } = mountScroller({ wide: false })
+
+    element.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 0 }))
+    element.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 0 }))
+
+    expect(element.scrollLeft).toBe(0)
+  })
+
+  it('swallows the click that ends a real drag', () => {
+    // Releasing over a card after panning across the bracket would otherwise
+    // report whoever happens to be under the cursor.
+    const { element } = mountScroller()
+    const button = screen.getByRole('button')
+
+    element.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 0 }))
+    element.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 0 }))
+    element.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 0 }))
+
+    const click = new window.MouseEvent('click', { bubbles: true, cancelable: true })
+    button.dispatchEvent(click)
+
+    expect(click.defaultPrevented).toBe(true)
+  })
+
+  it('lets a plain click through untouched', () => {
+    const { element } = mountScroller()
+    const button = screen.getByRole('button')
+
+    element.dispatchEvent(pointer('pointerdown', { clientX: 200, clientY: 0 }))
+    element.dispatchEvent(pointer('pointerup', { clientX: 200, clientY: 0 }))
+
+    const click = new window.MouseEvent('click', { bubbles: true, cancelable: true })
+    button.dispatchEvent(click)
+
+    expect(click.defaultPrevented).toBe(false)
+  })
+
+  it('ignores touch, which already has momentum scrolling of its own', () => {
+    const { element } = mountScroller()
+
+    element.dispatchEvent(
+      new window.PointerEvent('pointerdown', {
+        pointerType: 'touch',
+        button: 0,
+        bubbles: true,
+        clientX: 200,
+      }),
+    )
+    element.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 0 }))
+
+    expect(element.scrollLeft).toBe(0)
+  })
+})
+
+describe('bracket sizing by depth', () => {
+  const REM = { 'w-52': 13, 'w-64': 16, 'w-48': 12, 'w-40': 10, 'w-32': 8 }
+  const rem = (token, prefix) => {
+    const match = token.split(' ').find((part) => part.startsWith(prefix))
+    return REM[match.replace(`${prefix}`, 'w-')]
+  }
+
+  it('draws a shallow bracket at full size', () => {
+    expect(sizeFor(3)).toEqual(sizeFor(4))
+    expect(sizeFor(4).card).toBe('w-52 sm:w-64')
+  })
+
+  it('steps down at five columns, and again at six', () => {
+    const roomy = rem(sizeFor(4).card, 'sm:w-')
+    const compact = rem(sizeFor(5).card, 'sm:w-')
+    const tight = rem(sizeFor(6).card, 'sm:w-')
+
+    expect(compact).toBeLessThan(roomy)
+    expect(tight).toBeLessThan(compact)
+  })
+
+  it('keeps shrinking no further past six, so the deepest brackets stay legible', () => {
+    expect(sizeFor(9)).toEqual(sizeFor(6))
+  })
+
+  it('keeps the gap exactly two arms wide at every tier', () => {
+    // The two arms of a connector sit inside the gap. Any other ratio leaves
+    // the elbow short of the card or running past it.
+    for (const count of [3, 5, 6, 12]) {
+      const { gap, arm } = sizeFor(count)
+      const widths = (token) => token.split(' ').map((part) => Number(part.match(/\d+/)[0]))
+
+      const [gapBase, gapWide] = widths(gap)
+      const [armBase, armWide] = widths(arm)
+
+      expect(gapBase).toBe(armBase * 2)
+      expect(gapWide).toBe(armWide * 2)
+    }
+  })
+})
+
 describe('persisted cache allowlist', () => {
   const query = (queryKey, status = 'success') => ({ queryKey, state: { status } })
 

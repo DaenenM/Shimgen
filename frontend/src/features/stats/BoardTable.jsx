@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Pencil, Trash2, User, Users, X, Zap } from '@/compo
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useDragScroll } from '@/hooks/useDragScroll'
 import { useIsSmallScreen } from '@/hooks/useMediaQuery'
 
 import { TallyCell } from './TallyCell'
@@ -55,6 +56,11 @@ export function BoardTable({
   // an unreadable smear, which is exactly what a real Pummel Party tally looks
   // like on a phone.
   const isSmall = useIsSmallScreen()
+
+  // Drag the table sideways by its background. The tally cells and sort headers
+  // are buttons, so the hook leaves them alone — a mis-aimed tap on `+1` is
+  // still a tap on `+1`, however much the hand moves afterwards.
+  const scroller = useDragScroll()
 
   /**
    * How a cell draws itself.
@@ -165,7 +171,7 @@ export function BoardTable({
   const wide = !isSmall
 
   return (
-    <div className={wide ? 'overflow-x-auto' : ''}>
+    <div ref={scroller} className={wide ? 'overflow-x-auto' : ''}>
       <table className={`w-full border-collapse ${wide ? 'min-w-[28rem]' : ''}`}>
         <thead>
           <tr className="border-base-content/10 border-b">

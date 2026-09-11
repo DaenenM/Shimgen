@@ -113,9 +113,9 @@ export function DashboardPage() {
                   <span
                     className={`badge badge-sm ${
                       tournament.state === 'complete'
-                        ? 'badge-success'
+                        ? 'badge-neutral'
                         : tournament.state === 'active'
-                          ? 'badge-primary'
+                          ? 'badge-success'
                           : 'badge-ghost'
                     }`}
                   >

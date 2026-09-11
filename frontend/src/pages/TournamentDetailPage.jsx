@@ -321,9 +321,9 @@ export function TournamentDetailPage() {
             <span
               className={`badge badge-sm ml-2 ${
                 tournament.state === 'complete'
-                  ? 'badge-success'
+                  ? 'badge-neutral'
                   : tournament.state === 'active'
-                    ? 'badge-primary'
+                    ? 'badge-success'
                     : 'badge-ghost'
               }`}
             >
@@ -453,7 +453,7 @@ export function TournamentDetailPage() {
       <div className="mt-10 grid gap-6 lg:grid-cols-[20rem_1fr]">
         <section>
           <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
-            <Trophy className="h-5 w-5" />
+            <Trophy className="text-accent h-5 w-5" />
             Standings
           </h2>
           <p className="text-base-content/60 mb-4 text-sm">How everyone is placed so far.</p>

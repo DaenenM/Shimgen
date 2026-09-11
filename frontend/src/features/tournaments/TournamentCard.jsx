@@ -4,11 +4,19 @@ import { Link } from 'react-router-dom'
 import { paths } from '@/routes/paths'
 
 const FORMAT_LABELS = {
-  single: 'Single elim',
-  double: 'Double elim',
+  single: 'Single elimination',
+  double: 'Double elimination',
   rr: 'Round robin',
   swiss: 'Swiss',
   ffa: 'Free-for-all',
+}
+
+const FORMAT_STYLES = {
+  single: 'bg-primary/10 text-primary border border-primary/20',
+  double: 'bg-info/10 text-info border border-info/20',
+  rr: 'bg-teal-500/10 text-teal-500 border border-teal-500/20',
+  swiss: 'bg-fuchsia-500/10 text-fuchsia-500 border border-fuchsia-500/20',
+  ffa: 'bg-warning/10 text-warning border border-warning/20',
 }
 
 /**
@@ -21,8 +29,12 @@ const FORMAT_LABELS = {
  */
 const STATE_DOT = {
   draft: 'bg-base-content/30',
-  active: 'bg-primary',
-  complete: 'bg-success',
+  // Green for live, not the brand blue. Blue is what a control looks like
+  // everywhere else on the page, so a blue dot read as something to press.
+  active: 'bg-success',
+  // The trophy beside it carries "finished"; a second colour here would only
+  // compete with it.
+  complete: 'bg-base-content/40',
 }
 
 /**
@@ -83,9 +95,15 @@ export function TournamentCard({
               to a trophy is saying the same thing twice in a line with no room
               to spare. */}
           <p className="text-base-content/60 mt-1 flex min-w-0 items-center gap-1.5 pl-3.5 text-xs">
-            <span className="min-w-0 truncate">
+            <span
+              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6875rem] font-medium ${
+                FORMAT_STYLES[tournament.format] ?? 'bg-base-content/10 text-base-content/60'
+              }`}
+            >
               {FORMAT_LABELS[tournament.format] ?? tournament.format}
-              {' · '}
+            </span>
+
+            <span className="min-w-0 truncate">
               {tournament.entrant_count} {tournament.entrant_count === 1 ? 'entrant' : 'entrants'}
               {!tournament.winner_label && (
                 <>
@@ -96,7 +114,7 @@ export function TournamentCard({
             </span>
 
             {tournament.winner_label && (
-              <span className="text-warning flex min-w-0 shrink-0 items-center gap-1 font-medium">
+              <span className="text-accent flex min-w-0 shrink-0 items-center gap-1 font-medium">
                 <Trophy className="h-3 w-3 shrink-0" />
                 <span className="max-w-28 truncate sm:max-w-40">{tournament.winner_label}</span>
               </span>

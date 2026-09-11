@@ -38,26 +38,38 @@ export function StandingsTable({ rows }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.entrant_id} className="hover">
-              <td className="text-base-content/50 tabular">
-                {isPlacement ? row.placement : index + 1}
-              </td>
-              <td className="font-medium">{row.label}</td>
+          {rows.map((row, index) => {
+            // First place, however this table is ranked. On a knockout that is
+            // the champion; on points it is whoever leads. Either way it is the
+            // line the table was opened to find, so it gets the victory colour
+            // and nothing else does.
+            const first = isPlacement ? row.placement === 1 : index === 0
 
-              {isPlacement ? (
-                <td className="tabular text-right">{ordinal(row.placement)}</td>
-              ) : (
-                <>
-                  <td className="tabular text-right">{row.played}</td>
-                  <td className="tabular text-right">{row.wins}</td>
-                  <td className="tabular text-right">{row.draws}</td>
-                  <td className="tabular text-right">{row.losses}</td>
-                  <td className="tabular text-right font-semibold">{row.points}</td>
-                </>
-              )}
-            </tr>
-          ))}
+            return (
+              <tr key={row.entrant_id} className={`hover ${first ? 'bg-accent/[0.06]' : ''}`}>
+                <td
+                  className={`tabular ${first ? 'text-accent font-semibold' : 'text-base-content/50'}`}
+                >
+                  {isPlacement ? row.placement : index + 1}
+                </td>
+                <td className="font-medium">{row.label}</td>
+
+                {isPlacement ? (
+                  <td className="tabular text-right">{ordinal(row.placement)}</td>
+                ) : (
+                  <>
+                    {/* Played is a volume, not a verdict, so it stays neutral —
+                        colouring it would rank turning up alongside winning. */}
+                    <td className="tabular text-base-content/70 text-right">{row.played}</td>
+                    <td className="tabular text-success text-right">{row.wins}</td>
+                    <td className="tabular text-base-content/70 text-right">{row.draws}</td>
+                    <td className="tabular text-error/85 text-right">{row.losses}</td>
+                    <td className="tabular text-right font-semibold">{row.points}</td>
+                  </>
+                )}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

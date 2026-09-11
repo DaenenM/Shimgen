@@ -11,6 +11,28 @@ import { generateTeams, splitEvenly } from '@/features/teams/generate'
 import { useRoster } from '@/hooks/useRoster'
 import { paths } from '@/routes/paths'
 
+/**
+ * A colour per generated team.
+ *
+ * Six hues at one fixed lightness and chroma, so no team looks more important
+ * than another — which is the whole point of a random split. Varying only hue
+ * is what keeps that true; drop the lightness on one and it reads as the B
+ * team.
+ *
+ * Carried on a left edge and the team's number rather than as a card wash: four
+ * tinted cards side by side is a swatch book, and the names inside them are
+ * what people are actually trying to read.
+ */
+const TEAM_HUES = [250, 150, 80, 25, 300, 195]
+
+const teamTone = (index) => {
+  const hue = TEAM_HUES[index % TEAM_HUES.length]
+  return {
+    edge: `oklch(70% 0.13 ${hue})`,
+    wash: `oklch(70% 0.13 ${hue} / 0.14)`,
+  }
+}
+
 const CONSTRAINT_LABELS = {
   apart: 'Keep apart',
   together: 'Keep together',
@@ -246,9 +268,12 @@ export function TeamGeneratorPage() {
                             glance rather than by reading each row. */}
                         <span
                           className={`mr-2 rounded px-1.5 py-0.5 text-xs font-semibold ${
+                            /* Red against green: the pair is an opposition, and
+                               pairing red with the brand blue made only half of
+                               it mean anything. */
                             c.kind === 'apart'
                               ? 'bg-error/15 text-error'
-                              : 'bg-primary/15 text-primary'
+                              : 'bg-success/15 text-success'
                           }`}
                         >
                           {CONSTRAINT_LABELS[c.kind]}
@@ -302,9 +327,23 @@ export function TeamGeneratorPage() {
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 {result.teams.map((team, index) => (
-                  <div key={index} className="card bg-base-100 border-base-300 border">
+                  <div
+                    key={index}
+                    className="card bg-base-100 border-base-300 overflow-hidden border"
+                    style={{ borderLeft: `3px solid ${teamTone(index).edge}` }}
+                  >
                     <div className="card-body gap-2 p-4">
                       <div className="flex items-center justify-between gap-2">
+                        <span
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-xs font-bold"
+                          style={{
+                            backgroundColor: teamTone(index).wash,
+                            color: teamTone(index).edge,
+                          }}
+                          aria-hidden="true"
+                        >
+                          {index + 1}
+                        </span>
                         <label className="group flex min-w-0 flex-1 items-center gap-1.5">
                           <input
                             className="input input-ghost input-sm w-full min-w-0 px-1 text-sm font-semibold focus:outline-none"

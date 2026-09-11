@@ -100,7 +100,7 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
  * so without a fixed height the card grew or shrank the instant a name landed
  * in it, which read as a flicker on every click.
  */
-const ROW = 'flex h-11 items-center px-3'
+const ROW = 'relative flex h-11 items-center pr-3 pl-4'
 
 function Side({ match, side, canReport, onPick, seriesHint }) {
   const entrantId = side === 'a' ? match.a : match.b
@@ -146,28 +146,49 @@ function Side({ match, side, canReport, onPick, seriesHint }) {
   )
 
   // Losers grey out, winners are highlighted. A walkover gets neither: it was
-  // never contested, so tinting it green would claim a result that never
-  // happened.
+  // never contested, so tinting it would claim a result that never happened.
+  //
+  // The brand blue, matching the rest of the page: this is the one colour the
+  // eye is already tracking everywhere else, so a winner reads instantly
+  // without learning a second key. The left edge carries most of the signal —
+  // a wash alone turns a 32-match bracket into a field of tinted boxes, while
+  // an edge marker stays legible stacked that deep.
   const state = isWalkover
     ? ''
     : isWinner
-      ? 'bg-primary/25 text-base-content'
+      ? 'bg-primary/25 text-base-content font-medium rounded-t-md'
       : decided
         ? 'text-base-content/45 line-through decoration-base-content/35'
         : ''
 
   const base = `${ROW} w-full text-left ${state}`
 
+  // Rounded at both ends rather than square, so it reads as a deliberate marker
+  // rather than as the card's border having changed colour. Inset by a hair
+  // top and bottom for the same reason.
+  const marker = isWinner && !isWalkover && (
+    <span
+      className="bg-primary absolute inset-y-0 left-0 w-1 rounded-tl-full"
+      aria-hidden="true"
+    />
+  )
+
   if (!canReport) {
-    return <div className={base}>{content}</div>
+    return (
+      <div className={base}>
+        {marker}
+        {content}
+      </div>
+    )
   }
 
   return (
     <button
-      className={`${base} hover:bg-primary/20 transition-colors`}
+      className={`${base} hover:bg-base-content/8 transition-colors`}
       onClick={onPick}
       title={seriesHint ?? (isWinner ? `Undo: ${label} won` : `${label} wins`)}
     >
+      {marker}
       {content}
     </button>
   )

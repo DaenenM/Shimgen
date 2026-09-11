@@ -13,38 +13,100 @@
     light;
 }
 
-/* ── Brand palette ────────────────────────────────────────────────────────────
-   Overrides on top of DaisyUI's dark theme. Colours are oklch because it keeps
-   perceived lightness consistent across hues — a cyan and an amber at the same
-   L actually look equally bright, which hex does not give you. */
+/* ── Palette ──────────────────────────────────────────────────────────────────
+   Colours are oklch because it holds perceived lightness steady across hues: a
+   blue and an amber at the same L actually look equally bright, which hex does
+   not give you. That matters here because the same handful of hues has to work
+   as text, as an icon, as a 10%-opacity background wash and as a filled button.
+
+   The rule the whole palette rests on is **one hue, one meaning**:
+
+     primary (blue)    interactive — buttons, links, focus, the active nav item
+     accent  (amber)   victory — trophies, champions, the top of a board
+     success (green)   good / in progress — a win, a live tournament
+     error   (red)     destructive / a loss
+     warning (orange)  attention — pinned rows, unsaved work, bye warnings
+
+   Nothing borrows. Before this, amber was doing trophies *and* pins, and the
+   brand cyan was doing buttons *and* "this tournament is active", so neither
+   colour told you anything on sight. */
+
 [data-theme='dark'] {
-  /* Lifted off near-black. The original palette bottomed out around 17% L,
-     which reads as a void rather than a surface and leaves too little room
-     between the page, its cards and their borders for any of them to be
-     distinguishable. Everything here is raised, and the steps between the
-     three base tones widened, so cards visibly sit on the page. */
-  --color-base-100: oklch(30% 0.016 265); /* cards, modals                     */
-  --color-base-200: oklch(25% 0.018 265); /* page background                   */
-  --color-base-300: oklch(39% 0.018 265); /* borders, dividers                 */
-  --color-base-content: oklch(97% 0.006 265); /* body text — near-white        */
+  /* Four steps with real distance between them. The page floor drops so cards
+     can sit above it without being lightened into glare, and the border tone
+     comes down from 39% so a list of twelve rows reads as rows rather than as
+     twelve outlined boxes. */
+  --color-base-100: oklch(26% 0.014 260); /* cards, modals, nav bars           */
+  --color-base-200: oklch(21% 0.015 260); /* page background                   */
+  --color-base-300: oklch(34% 0.015 260); /* borders, dividers                 */
+  --color-base-content: oklch(96% 0.005 260); /* body text                     */
 
-  /* Cyan carries the brand: buttons, links, the active nav item. Light enough
-     that its content colour is near-black rather than white, which is what
-     makes a filled button read as a solid block of colour instead of a glow. */
-  --color-primary: oklch(76% 0.14 195);
-  --color-primary-content: oklch(18% 0.03 195);
+  /* Blue rather than the old cyan. Cyan at 195° sits next door to the green
+     used for success, so an active tournament and a finished one were a few
+     degrees apart; blue reads as a control, which is what primary is for. */
+  --color-primary: oklch(70% 0.13 250);
+  --color-primary-content: oklch(99% 0 0);
 
-  /* A desaturated slate for secondary emphasis. Deliberately quiet — with a
-     bright primary and a bright accent already competing, a third loud hue
-     just makes the page noisy. */
-  --color-secondary: oklch(62% 0.05 230);
-  --color-secondary-content: oklch(97% 0.005 230);
+  /* Deliberately quiet. With a bright primary and a bright accent already on
+     the page, a third loud hue just makes it noisy. */
+  --color-secondary: oklch(58% 0.04 260);
+  --color-secondary-content: oklch(97% 0.005 260);
 
-  --color-accent: oklch(78% 0.17 75); /* amber — winners, highlights           */
-  --color-accent-content: oklch(20% 0.03 75);
+  /* Amber, and only ever victory. */
+  --color-accent: oklch(80% 0.16 80);
+  --color-accent-content: oklch(22% 0.04 80);
 
-  --color-neutral: oklch(26% 0.02 265);
-  --color-neutral-content: oklch(92% 0.01 265);
+  --color-neutral: oklch(30% 0.015 260);
+  --color-neutral-content: oklch(93% 0.008 260);
+
+  --color-success: oklch(72% 0.15 150);
+  --color-success-content: oklch(20% 0.04 150);
+
+  /* Pushed to 55° — orange, not amber. It has to be separable from accent at a
+     glance, because a pinned row and a won tournament can sit in the same list
+     one above the other. */
+  --color-warning: oklch(76% 0.15 55);
+  --color-warning-content: oklch(22% 0.04 55);
+
+  --color-error: oklch(66% 0.19 25);
+  --color-error-content: oklch(99% 0 0);
+
+  --color-info: oklch(72% 0.11 230);
+  --color-info-content: oklch(20% 0.03 230);
+}
+
+/* Light is rebuilt rather than inverted. The surfaces flip, but the brand hues
+   have to drop in lightness and gain chroma or they disappear against white —
+   the dark theme's 70%-L blue on a white card is a pastel. */
+[data-theme='light'] {
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(97% 0.004 260);
+  --color-base-300: oklch(90% 0.008 260);
+  --color-base-content: oklch(25% 0.015 260);
+
+  --color-primary: oklch(52% 0.16 250);
+  --color-primary-content: oklch(99% 0 0);
+
+  --color-secondary: oklch(50% 0.04 260);
+  --color-secondary-content: oklch(99% 0 0);
+
+  --color-accent: oklch(62% 0.14 80);
+  --color-accent-content: oklch(99% 0 0);
+
+  --color-neutral: oklch(30% 0.015 260);
+  --color-neutral-content: oklch(99% 0 0);
+
+  --color-success: oklch(55% 0.14 150);
+  --color-success-content: oklch(99% 0 0);
+
+  --color-warning: oklch(62% 0.14 55);
+  --color-warning-content: oklch(99% 0 0);
+
+  --color-error: oklch(55% 0.19 25);
+  --color-error-content: oklch(99% 0 0);
+
+  --color-info: oklch(52% 0.12 230);
+  --color-info-content: oklch(99% 0 0);
 }
 
 @layer base {

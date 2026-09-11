@@ -10,6 +10,23 @@ import { TallyCell } from './TallyCell'
 const NAME_KEY = 'name'
 
 /**
+ * What each kind of column is worth, as colour.
+ *
+ * Every number on this board used to be body text, so "games played", "won",
+ * "lost" and "tournaments won" were four columns of identical white digits and
+ * telling a good line from a bad one meant reading the headers each time.
+ *
+ * Only the columns that carry a verdict get a hue. Games played is a volume,
+ * not a result, and a hand-counted column means whatever its crew decided it
+ * means — colouring either would be asserting something the data does not say.
+ */
+const ROLE_TONE = {
+  tournaments_won: 'text-accent',
+  won: 'text-success',
+  lost: 'text-error/85',
+}
+
+/**
  * One section of a board — "Solo", "Teams".
  *
  * Sorted by the leading column to begin with, so the board reads as a standing:
@@ -145,7 +162,9 @@ export function BoardTable({ table, canEdit, onAward, onRemoveRow, busyKey }) {
                   <span className="text-base" aria-hidden="true">
                     {column.emoji}
                   </span>
-                  <span className="text-base-content/70">{column.name}</span>
+                  <span className={ROLE_TONE[column.role] ?? 'text-base-content/70'}>
+                    {column.name}
+                  </span>
                   {column.role !== 'manual' && (
                     <span
                       title="Kept up to date by linked tournaments"
@@ -176,46 +195,65 @@ export function BoardTable({ table, canEdit, onAward, onRemoveRow, busyKey }) {
             </tr>
           )}
 
-          {sorted.map((row) => (
-            <tr
-              key={row.id}
-              className="group/row border-base-300/60 hover:bg-base-200/40 border-b transition-colors last:border-0"
-            >
-              <td className="px-3 py-2">
-                <span className="truncate font-medium">{row.display_name}</span>
-              </td>
+          {sorted.map((row, index) => {
+            /* The board exists to say who is in front, so the front row is
+               marked — but only when the sort still means "in front". Sort by
+               name, or ascending, and the top row is just the first one
+               alphabetically or the worst score, which is not a lead.
 
-              {columns.map((column) => (
-                <td key={column.id} className="px-3 py-2">
-                  <TallyCell
-                    count={row.counts?.[column.id] ?? 0}
-                    emoji={column.emoji}
-                    display={displayFor(column)}
-                    // Automatic columns are computed from the bracket, so they
-                    // have no +/- : editing one by hand would be overwritten
-                    // the next time a result was reported, which is worse than
-                    // not offering it.
-                    canEdit={canEdit && column.role === 'manual'}
-                    busy={busyKey === `${row.id}:${column.id}`}
-                    onAward={(delta) => onAward(row.id, column.id, delta)}
-                  />
-                </td>
-              ))}
+               Only first. Tinting the top three flattens the gap between the
+               winner and the pack, which is the one thing a standing is for. */
+            const leading = index === 0 && sortKey !== NAME_KEY && descending && sorted.length > 1
 
-              {canEdit && (
-                <td className="px-2 py-2">
-                  <button
-                    type="button"
-                    onClick={() => onRemoveRow(row)}
-                    aria-label={`Remove ${row.display_name}`}
-                    className="text-base-content/30 hover:text-error hover:bg-error/10 grid h-7 w-7 place-items-center rounded-lg opacity-0 transition-all duration-150 group-hover/row:opacity-100 focus-visible:opacity-100"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+            return (
+              <tr
+                key={row.id}
+                className={`group/row border-base-300/60 hover:bg-base-200/40 relative border-b transition-colors last:border-0 ${
+                  leading ? 'bg-accent/[0.06]' : ''
+                }`}
+              >
+                <td className="relative px-3 py-2">
+                  {leading && (
+                    <span
+                      className="bg-accent absolute inset-y-0 left-0 w-0.5"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="truncate font-medium">{row.display_name}</span>
                 </td>
-              )}
-            </tr>
-          ))}
+
+                {columns.map((column) => (
+                  <td key={column.id} className={`px-3 py-2 ${ROLE_TONE[column.role] ?? ''}`}>
+                    <TallyCell
+                      count={row.counts?.[column.id] ?? 0}
+                      emoji={column.emoji}
+                      display={displayFor(column)}
+                      // Automatic columns are computed from the bracket, so they
+                      // have no +/- : editing one by hand would be overwritten
+                      // the next time a result was reported, which is worse than
+                      // not offering it.
+                      canEdit={canEdit && column.role === 'manual'}
+                      busy={busyKey === `${row.id}:${column.id}`}
+                      onAward={(delta) => onAward(row.id, column.id, delta)}
+                    />
+                  </td>
+                ))}
+
+                {canEdit && (
+                  <td className="px-2 py-2">
+                    <button
+                      type="button"
+                      onClick={() => onRemoveRow(row)}
+                      aria-label={`Remove ${row.display_name}`}
+                      className="text-base-content/30 hover:text-error hover:bg-error/10 grid h-7 w-7 place-items-center rounded-lg opacity-0 transition-all duration-150 group-hover/row:opacity-100 focus-visible:opacity-100"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                )}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

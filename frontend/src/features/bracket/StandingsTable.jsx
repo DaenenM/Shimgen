@@ -1,4 +1,38 @@
 /**
+ * The podium.
+ *
+ * Gold is `--color-accent` rather than a colour of its own: hue 80 is already
+ * the app's victory colour — the winner pill on a tournament card, the trophy
+ * on the bracket — and a second, slightly different gold beside it would read
+ * as a mistake.
+ *
+ * Silver and bronze are built to match, on the same `light-dark()` pattern the
+ * format pills and round tones use, so all three invert with the theme instead
+ * of being pastel on white and muddy on black.
+ *
+ * Silver is deliberately almost colourless — hue 260 at 0.02 chroma. Any more
+ * and it reads as blue, which collides with `--color-primary`; any less and it
+ * is indistinguishable from the neutral rows around it.
+ */
+const PODIUM = {
+  1: {
+    text: 'var(--color-accent)',
+    wash: 'color-mix(in oklch, var(--color-accent) 14%, transparent)',
+    edge: 'var(--color-accent)',
+  },
+  2: {
+    text: 'light-dark(oklch(52% 0.02 260), oklch(84% 0.02 260))',
+    wash: 'light-dark(oklch(52% 0.02 260 / 0.12), oklch(84% 0.02 260 / 0.13))',
+    edge: 'light-dark(oklch(52% 0.02 260), oklch(84% 0.02 260))',
+  },
+  3: {
+    text: 'light-dark(oklch(50% 0.09 50), oklch(74% 0.10 50))',
+    wash: 'light-dark(oklch(50% 0.09 50 / 0.12), oklch(74% 0.10 50 / 0.14))',
+    edge: 'light-dark(oklch(50% 0.09 50), oklch(74% 0.10 50))',
+  },
+}
+
+/**
  * Standings.
  *
  * The API returns one of two shapes depending on format: points-based rows for
@@ -47,22 +81,48 @@ export function StandingsTable({ rows }) {
             // the champion; on points it is whoever leads. Either way it is the
             // line the table was opened to find, so it gets the victory colour
             // and nothing else does.
-            const first = isPlacement ? row.placement === 1 : index === 0
+            // A knockout ranks by how far you got, and several entrants
+            // genuinely share a placement — four quarter-finalists are all
+            // 5th. So the medal comes from the placement itself, not from
+            // where the row happens to sit in the list.
+            const rank = isPlacement ? row.placement : index + 1
+            const medal = PODIUM[rank]
 
             return (
               <tr
                 key={row.entrant_id}
-                className={`border-base-content/8 hover:bg-base-content/5 border-b transition-colors last:border-b-0 ${first ? 'bg-accent/10' : ''}`}
+                className="border-base-content/8 hover:bg-base-content/5 relative border-b transition-colors last:border-b-0"
+                style={medal ? { backgroundColor: medal.wash } : undefined}
               >
-                <td
-                  className={`tabular ${first ? 'text-accent font-semibold' : 'text-base-content/50'}`}
-                >
-                  {isPlacement ? row.placement : index + 1}
+                <td className="tabular relative">
+                  {/* A lit edge rather than a heavier fill: three tinted rows
+                      stacked would otherwise swamp the table, and the edge is
+                      what keeps the podium readable at a glance. */}
+                  {medal && (
+                    <span
+                      className="absolute inset-y-0 left-0 w-0.5"
+                      style={{ backgroundColor: medal.edge }}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span
+                    className={medal ? 'font-bold' : 'text-base-content/50'}
+                    style={medal ? { color: medal.text } : undefined}
+                  >
+                    {rank}
+                  </span>
                 </td>
-                <td className="font-medium">{row.label}</td>
+                <td className="font-medium" style={medal ? { color: medal.text } : undefined}>
+                  {row.label}
+                </td>
 
                 {isPlacement ? (
-                  <td className="tabular text-right">{ordinal(row.placement)}</td>
+                  <td
+                    className={`tabular text-right ${medal ? 'font-semibold' : ''}`}
+                    style={medal ? { color: medal.text } : undefined}
+                  >
+                    {ordinal(row.placement)}
+                  </td>
                 ) : (
                   <>
                     {/* Played is a volume, not a verdict, so it stays neutral —

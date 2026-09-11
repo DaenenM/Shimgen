@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .google import GoogleAuthError, get_or_create_user, verify_token
-from .models import Friendship, User
+from .models import Friendship, User, sync_roster_entry
 from .serializers import (
     FriendRequestSerializer,
     FriendshipSerializer,
@@ -206,6 +206,11 @@ class FriendshipViewSet(viewsets.ModelViewSet):
 
         friendship.status = Friendship.Status.ACCEPTED
         friendship.save(update_fields=["status", "updated_at"])
+
+        # Both directions: a friendship is mutual, so each of them gets the
+        # other as a linked roster entry rather than only the accepter.
+        sync_roster_entry(friendship.from_user, friendship.to_user)
+        sync_roster_entry(friendship.to_user, friendship.from_user)
 
         return Response(self.get_serializer(friendship).data)
 

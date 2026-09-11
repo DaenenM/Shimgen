@@ -19,6 +19,8 @@ class PlayerSerializer(serializers.ModelSerializer):
 
     user = PublicUserSerializer(read_only=True)
     linked = serializers.SerializerMethodField()
+    is_friend = serializers.SerializerMethodField()
+    is_self = serializers.SerializerMethodField()
 
     class Meta:
         model = Player
@@ -27,6 +29,8 @@ class PlayerSerializer(serializers.ModelSerializer):
             "display_name",
             "user",
             "linked",
+            "is_friend",
+            "is_self",
             "last_used_at",
             "archived",
             "created_at",
@@ -35,6 +39,34 @@ class PlayerSerializer(serializers.ModelSerializer):
 
     def get_linked(self, obj) -> bool:
         return obj.user_id is not None
+
+    def get_is_self(self, obj) -> bool:
+        """
+        Whether this row is the roster's owner.
+
+        No prefetch needed, unlike `is_friend`: the answer is already on the row.
+        """
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+
+        return obj.user_id == request.user.id
+
+    def get_is_friend(self, obj) -> bool:
+        """
+        Whether this roster entry is someone the owner is actually friends with.
+
+        Narrower than `linked`, and deliberately so: a co-host who claimed a
+        bracket is linked to an account without being a friend. Only a friend's
+        entry follows their name, so only a friend's entry should say it does.
+
+        Reads a set the view prefetches once — computing it per row would be a
+        query per name on a page whose whole point is showing all of them.
+        """
+        if obj.user_id is None:
+            return False
+
+        return obj.user_id in self.context.get("friend_ids", frozenset())
 
     def create(self, validated_data):
         # The roster always belongs to whoever is signed in; taking `owner` from

@@ -19,7 +19,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from apps.accounts.models import are_friends
+from apps.accounts.models import are_friends, friend_ids_for
 from apps.groups.models import Player
 
 from .awarding import ensure_automatic_columns
@@ -64,12 +64,18 @@ class StatsBoardViewSet(viewsets.ModelViewSet):
             return StatsBoardDetailSerializer
         return StatsBoardSerializer
 
+    def get_serializer_context(self):
+        # The detail view renders every row, and each row reports whether it is
+        # a friend. Resolved once per request rather than per row.
+        return {**super().get_serializer_context(), "friend_ids": friend_ids_for(self.request.user)}
+
     def get_queryset(self):
         # The list row reports table, player and editor counts, so the tree is
         # prefetched rather than walked per board — otherwise ten boards is
-        # thirty round trips.
+        # thirty round trips. `rows__player__user` is what keeps `is_friend`
+        # from costing a query per name.
         base = StatsBoard.objects.select_related("owner").prefetch_related(
-            "access", "tables__columns", "tables__rows"
+            "access", "tables__columns", "tables__rows__player__user"
         )
 
         # A single-object action resolves any board, because reads are
@@ -83,7 +89,15 @@ class StatsBoardViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return StatsBoard.objects.none()
 
-        return base.filter(models.Q(owner=user) | models.Q(access__user=user)).distinct()
+        # Three ways a board is yours to see: you own it, you were given access,
+        # or you are counted on it. The last is what makes a friend added to
+        # someone's board find it in their own list rather than needing the
+        # share link — they are already on it.
+        return base.filter(
+            models.Q(owner=user)
+            | models.Q(access__user=user)
+            | models.Q(tables__rows__player__user=user)
+        ).distinct()
 
     def perform_create(self, serializer):
         board = serializer.save(owner=self.request.user)
@@ -277,9 +291,12 @@ class StatsTableViewSet(viewsets.ModelViewSet):
     serializer_class = StatsTableSerializer
     permission_classes = [BoardPermission]
 
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), "friend_ids": friend_ids_for(self.request.user)}
+
     def get_queryset(self):
         return StatsTable.objects.select_related("board").prefetch_related(
-            "columns", "rows__entries"
+            "columns", "rows__entries", "rows__player__user"
         )
 
     @extend_schema(request=dict, responses={201: StatsColumnSerializer})
@@ -393,10 +410,15 @@ class StatsColumnViewSet(viewsets.ModelViewSet):
 
 
 class StatsRowViewSet(viewsets.ModelViewSet):
-    """Rename or remove a competitor."""
+    """Rename a competitor, swap them for a real account, or remove them."""
 
     serializer_class = StatsRowSerializer
     permission_classes = [BoardPermission]
 
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), "friend_ids": friend_ids_for(self.request.user)}
+
     def get_queryset(self):
-        return StatsRow.objects.select_related("table__board").prefetch_related("entries")
+        return StatsRow.objects.select_related("table__board", "player__user").prefetch_related(
+            "entries"
+        )

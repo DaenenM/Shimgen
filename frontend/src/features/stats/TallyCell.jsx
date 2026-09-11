@@ -21,10 +21,15 @@ export function TallyCell({ count, emoji, canEdit, onAward, busy, display = 'emo
   const asNumber = display === 'number'
 
   // A number rather than a row of marks: centred under its header, with the
-  // same +/- either side so a hand-counted column can still be adjusted. The
-  // controls appear on hover, so a table at rest reads as figures rather than
-  // a form — but a column fed by a bracket has none at all, since editing one
-  // by hand would be overwritten the next time a result was reported.
+  // same +/- either side so a hand-counted column can still be adjusted.
+  //
+  // On a wide screen the controls appear on hover, so a table at rest reads as
+  // figures rather than a form. On a phone they are simply there: a touch
+  // screen has no hover, so hiding them behind one made a hand-counted board
+  // impossible to add to — and the phone only ever gets this number layout.
+  //
+  // A column fed by a bracket has none at all, since editing one by hand would
+  // be overwritten the next time a result was reported.
   if (asNumber) {
     return (
       <div className="flex items-center justify-center gap-1">
@@ -34,7 +39,7 @@ export function TallyCell({ count, emoji, canEdit, onAward, busy, display = 'emo
             onClick={() => onAward(-1)}
             disabled={busy || count === 0}
             aria-label="Take one away"
-            className="text-base-content/30 hover:text-error hover:bg-error/10 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover/row:opacity-100 focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-0"
+            className="text-base-content/30 hover:text-error hover:bg-error/10 grid h-6 w-6 shrink-0 place-items-center rounded-md transition-all duration-150 focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-0 sm:opacity-0 sm:group-hover/row:opacity-100"
           >
             <Minus className="h-3.5 w-3.5" />
           </button>
@@ -54,7 +59,7 @@ export function TallyCell({ count, emoji, canEdit, onAward, busy, display = 'emo
             onClick={() => onAward(1)}
             disabled={busy}
             aria-label="Add one"
-            className="text-base-content/30 hover:text-primary hover:bg-primary/10 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover/row:opacity-100 focus-visible:opacity-100"
+            className="text-base-content/30 hover:text-primary hover:bg-primary/10 grid h-6 w-6 shrink-0 place-items-center rounded-md transition-all duration-150 focus-visible:opacity-100 sm:opacity-0 sm:group-hover/row:opacity-100"
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
@@ -97,7 +102,7 @@ export function TallyCell({ count, emoji, canEdit, onAward, busy, display = 'emo
           // start flush against the name and the row reads as a tally. Hidden
           // until the row is hovered: taking a win back is the rare action, and
           // a column of minus buttons makes the board look like a form.
-          className="text-base-content/30 hover:text-error hover:bg-error/10 grid h-7 w-7 shrink-0 place-items-center rounded-lg opacity-0 transition-all duration-150 group-hover/row:opacity-100 focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-0"
+          className="text-base-content/30 hover:text-error hover:bg-error/10 grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-all duration-150 focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-0 sm:opacity-0 sm:group-hover/row:opacity-100"
         >
           <Minus className="h-3.5 w-3.5" />
         </button>

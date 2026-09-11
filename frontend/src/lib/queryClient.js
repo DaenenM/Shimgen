@@ -65,6 +65,9 @@ export const queryClient = new QueryClient({
 export const queryKeys = {
   auth: {
     me: ['auth', 'me'],
+    // Keyed by term so each query caches separately — backspacing to something
+    // already typed comes back from cache rather than over the network.
+    search: (term) => ['auth', 'search', term],
   },
   tournaments: {
     all: ['tournaments'],

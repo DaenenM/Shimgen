@@ -1,4 +1,5 @@
-import { Check, Plus, Trash2, Users, X } from '@/components/icons'
+import { Check, Plus, Trash2, User, Users, X } from '@/components/icons'
+import { useMemo } from 'react'
 
 import { useRoster } from '@/hooks/useRoster'
 
@@ -30,6 +31,34 @@ export function SavedRoster({
   const capStyle = maxHeight ? { maxHeight: `${maxHeight}px` } : undefined
 
   const { players, forget, isLoading } = useRoster()
+
+  /**
+   * You first, then friends alphabetically, then everybody else as they came.
+   *
+   * Your own name is the one most likely to be wanted and the one nobody should
+   * have to hunt for, so it is pinned rather than sorted among the rest.
+   *
+   * A partition rather than one comparator, because the two halves are ordered
+   * by different rules. The server sends the roster most-recently-played first,
+   * which is deliberate — the names from last Saturday are the ones you want
+   * nearest the top — and that ordering is kept for everyone who is not a
+   * friend rather than being flattened into one alphabetical list.
+   *
+   * Sorted here rather than in `useRoster` or the queryset: six other
+   * components read the same hook, and the picker, the team builder and the
+   * board all want the recency order untouched.
+   */
+  const ordered = useMemo(() => {
+    const me = players.filter((player) => player.is_self)
+    const friends = players.filter((player) => player.is_friend && !player.is_self)
+    const rest = players.filter((player) => !player.is_friend && !player.is_self)
+
+    friends.sort((a, b) =>
+      a.display_name.localeCompare(b.display_name, undefined, { sensitivity: 'base' }),
+    )
+
+    return [...me, ...friends, ...rest]
+  }, [players])
 
   const chosen = new Set(selected.map((n) => n.toLowerCase()))
 
@@ -66,7 +95,7 @@ export function SavedRoster({
           <ul
             className={`space-y-0.5 overflow-y-auto pr-1 pl-3 ${maxHeight ? 'min-h-0' : 'max-h-[26rem]'}`}
           >
-            {players.map((player) => {
+            {ordered.map((player) => {
               const added = chosen.has(player.display_name.toLowerCase())
 
               return (
@@ -100,6 +129,38 @@ export function SavedRoster({
                       <Plus className="h-3.5 w-3.5 shrink-0 opacity-40" />
                     )}
                     <span className="truncate font-medium">{player.display_name}</span>
+
+                    {/* Friends only, not merely linked: a co-host who claimed a
+                        bracket has an account attached without being someone
+                        you play with. This is what says the row keeps itself up
+                        to date with their name.
+
+                        The glyph replaces a "Friend" pill, so the meaning it
+                        used to carry in words now lives in the title and the
+                        accessible label — an icon on its own tells a screen
+                        reader nothing. */}
+                    {player.is_self ? (
+                      <User
+                        // Amber, matching the roster page's own linked-account
+                        // icon: the same glyph should not mean one thing in one
+                        // list and something else in another.
+                        className="text-accent ml-auto h-3.5 w-3.5 shrink-0"
+                        aria-label="You"
+                        role="img"
+                      >
+                        <title>You — adding this attaches your account</title>
+                      </User>
+                    ) : (
+                      player.is_friend && (
+                        <Users
+                          className="text-primary ml-auto h-3.5 w-3.5 shrink-0"
+                          aria-label="Friend"
+                          role="img"
+                        >
+                          <title>Friend — this name follows their account</title>
+                        </Users>
+                      )
+                    )}
                   </button>
 
                   <button

@@ -3,7 +3,7 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from .models import Friendship, User
+from .models import Friendship, User, sync_roster_entries_for, sync_self_roster_entry
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -15,6 +15,36 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ("id", "username", "email", "display_name", "name", "avatar", "date_joined")
         read_only_fields = ("id", "email", "date_joined")
+
+    def update(self, instance, validated_data):
+        """
+        Save the profile, then push the new name into friends' rosters.
+
+        A roster entry linked to an account is that person, so it should follow
+        their name rather than freezing whatever it was on the day they were
+        added. Only friends see the change: a name typed by hand belongs to
+        whoever typed it.
+        """
+        user = super().update(instance, validated_data)
+        sync_roster_entries_for(user)
+        return user
+
+    def validate_username(self, value):
+        """
+        Enforce the handle's case-insensitive uniqueness here as well as in the
+        database, so a taken name comes back as a field error rather than a 500
+        from the constraint.
+        """
+        value = value.strip()
+
+        taken = User.objects.filter(username__iexact=value)
+        if self.instance is not None:
+            taken = taken.exclude(pk=self.instance.pk)
+
+        if taken.exists():
+            raise serializers.ValidationError("That username is taken.")
+
+        return value
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
@@ -60,7 +90,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
+        # From the first bracket onward, your own name is already a chip.
+        sync_self_roster_entry(user)
+        return user
 
 
 class FriendshipSerializer(serializers.ModelSerializer):
@@ -83,21 +116,28 @@ class FriendshipSerializer(serializers.ModelSerializer):
 
 
 class FriendRequestSerializer(serializers.Serializer):
-    """Sending a request, addressed by username or email."""
+    """
+    Sending a request, addressed by @handle.
 
-    identifier = serializers.CharField(help_text="The username or email of the person to add.")
+    Username only, and deliberately not email. A handle is the thing somebody
+    can read out across a room or paste into a group chat without giving away
+    an address, which is what makes it the right identifier here — and it is
+    why usernames are unique while display names are free to collide.
+
+    A leading `@` is accepted and stripped: people type the handle the way they
+    see it written.
+    """
+
+    identifier = serializers.CharField(help_text="The @handle of the person to add.")
 
     def validate_identifier(self, value):
-        value = value.strip()
+        value = value.strip().lstrip("@")
         request_user = self.context["request"].user
 
-        target = (
-            User.objects.filter(username__iexact=value).first()
-            or User.objects.filter(email__iexact=value).first()
-        )
+        target = User.objects.filter(username__iexact=value).first()
 
         if target is None:
-            raise serializers.ValidationError("No account found with that name or email.")
+            raise serializers.ValidationError("No account found with that username.")
         if target.id == request_user.id:
             raise serializers.ValidationError("You cannot add yourself.")
 

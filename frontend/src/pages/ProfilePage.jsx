@@ -8,10 +8,12 @@ import { useAuth } from '@/hooks/useAuth'
 export function ProfilePage() {
   const { user, setUser, logout } = useAuth()
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
+  const [username, setUsername] = useState(user?.username ?? '')
   const [saved, setSaved] = useState(false)
 
   const save = useMutation({
-    mutationFn: () => auth.updateMe({ display_name: displayName.trim() }),
+    mutationFn: () =>
+      auth.updateMe({ display_name: displayName.trim(), username: username.trim() }),
     onSuccess: (updated) => {
       setUser(updated)
       setSaved(true)
@@ -26,6 +28,10 @@ export function ProfilePage() {
       <div className="glass-panel">
         <form
           className="flex flex-col gap-4 p-5 sm:p-6"
+          // No credentials on this form either — the email below is disabled
+          // and shown for reference only.
+          autoComplete="off"
+          data-lpignore="true"
           onSubmit={(e) => {
             e.preventDefault()
             save.mutate()
@@ -40,7 +46,8 @@ export function ProfilePage() {
               placeholder={user?.username}
             />
             <span className="text-base-content/50 mt-1 text-xs">
-              Falls back to your username when empty.
+              Shown on brackets and leaderboards. Does not have to be unique — falls back to your
+              username when empty.
             </span>
           </label>
 
@@ -56,13 +63,34 @@ export function ProfilePage() {
             </span>
           </label>
 
+          {/* The handle, and the one field here that has to be unique — it is
+              how a friend request is addressed. Display names are free to
+              collide precisely because this cannot. */}
           <label className="form-control">
             <span className="label-text mb-1">Username</span>
-            <input
-              className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none disabled:opacity-50"
-              value={user?.username ?? ''}
-              disabled
-            />
+            <div className="glass-inset focus-within:border-primary/50 flex h-11 w-full items-center px-3 transition-colors">
+              <span className="text-base-content/40 shrink-0 text-sm">@</span>
+              <input
+                // Not `autoComplete="username"`, which is the hint that invites
+                // a password manager to treat this as a sign-in field and offer
+                // to fill — and then to save — an email here. This is a profile
+                // field: the browser has nothing useful to contribute.
+                name="profile-handle"
+                id="profile-handle"
+                className="placeholder:text-base-content/35 min-w-0 flex-1 bg-transparent pl-0.5 text-sm focus:outline-none"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/^@/, ''))}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                autoComplete="off"
+                data-lpignore="true"
+                aria-label="Your username"
+              />
+            </div>
+            <span className="text-base-content/50 mt-1 text-xs">
+              Letters, numbers and underscores. This is what friends type to add you.
+            </span>
           </label>
 
           {save.isError && (

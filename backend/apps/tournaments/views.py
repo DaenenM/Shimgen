@@ -27,6 +27,7 @@ from .brackets.single_elimination import generate_single_elimination
 from .brackets.swiss import generate_swiss, pair_next_round
 from .models import Entrant, Match, Participation, Role, Tournament
 from .ratings import apply_match_result
+from .restage import restage_tournament
 from .serializers import (
     BatchReportSerializer,
     CreateTournamentSerializer,
@@ -126,6 +127,11 @@ class TournamentViewSet(viewsets.ModelViewSet):
         # protected by its claim token rather than by a login.
         if self.action in ("update", "partial_update", "destroy", "generate", "reset"):
             return [IsTournamentHost()]
+        # Restaging creates a tournament owned by the caller, so it needs an
+        # account to own it — the anonymous quick-start path has nowhere to put
+        # the clone.
+        if self.action == "restage":
+            return [IsAuthenticated()]
         if self.action in ("list", "retrieve", "create", "claim", "standings"):
             return [AllowAny()]
         # Same rule as reporting one result: host, co-host or linked player —
@@ -432,6 +438,10 @@ class TournamentViewSet(viewsets.ModelViewSet):
         linked is a no-op rather than an error, so a double-tap on a phone
         cannot strip the board and put it back.
 
+        `stats_table` names one table on a board directly, which is what a board
+        with a Solo and a Teams table needs — picking the board alone lets the
+        server choose, and it cannot know which of the two tonight belongs to.
+
         Numbers are brought up to date immediately: `_link_stats` enrols the
         players and syncs whatever has been played so far, so a board linked
         halfway through a night shows that night's results rather than only the
@@ -443,13 +453,22 @@ class TournamentViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only the host can change the stats board.")
 
         slug = request.data.get("stats_board") or ""
+        table_id = request.data.get("stats_table") or None
 
         current = getattr(tournament, "stats_link", None)
         current_slug = None
+        current_table_id = None
         if current is not None and current.stats_table is not None:
             current_slug = current.stats_table.board.slug
+            current_table_id = current.stats_table.id
 
-        if slug:
+        if table_id:
+            # Compared as strings: the id arrives from JSON as either, and a
+            # mismatch here would relink on every request — stripping the
+            # night's numbers off and putting them straight back.
+            if str(table_id) != str(current_table_id):
+                _link_stats(tournament, None, table_id, None, request.user)
+        elif slug:
             if slug != current_slug:
                 _link_stats(tournament, slug, None, None, request.user)
         else:
@@ -457,6 +476,53 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         tournament = self.get_queryset().get(pk=tournament.pk)
         return Response(TournamentDetailSerializer(tournament, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"])
+    def restage(self, request, pk=None):
+        """
+        Run it back: a fresh draft with the same entrants, named as the next in
+        the series.
+
+        The crew that plays the same night every week was retyping eight team
+        names and their rosters each time, and the alternative — regenerating
+        the original — destroys the record of what already happened.
+
+        `reshuffle` clears the seeds so round one is paired afresh. Without it
+        the clone reproduces last week's matchups exactly, which is what a
+        rematch means.
+
+        Host-only: a clone carries the co-hosts and the board link over, which
+        is a decision about the host's own list rather than about reporting.
+        """
+        tournament = self.get_object()
+
+        if not acts_as_host(tournament, request.user):
+            raise PermissionDenied("Only the host can run a tournament back.")
+
+        clone = restage_tournament(
+            tournament,
+            user=request.user,
+            reshuffle=bool(request.data.get("reshuffle")),
+        )
+
+        # The host role is created here rather than in the clone helper, so it
+        # follows the same path a freshly created tournament takes.
+        if request.user.is_authenticated:
+            Role.objects.get_or_create(
+                tournament=clone, user=request.user, defaults={"role": Role.Kind.HOST}
+            )
+
+        # Generated after the entrants are copied, and with random seeding only
+        # when reshuffling — "manual" honours the seeds carried over, which is
+        # what reproduces the original's matchups.
+        if clone.entrants.count() >= 2:
+            _generate(clone, "random" if request.data.get("reshuffle") else "manual")
+
+        clone = self.get_queryset().get(pk=clone.pk)
+        return Response(
+            TournamentDetailSerializer(clone, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=True, methods=["post"], url_path="cohosts")
     def add_cohost(self, request, pk=None):

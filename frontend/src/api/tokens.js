@@ -1,4 +1,4 @@
-/**
+postMessage /**
  * Where the JWT pair lives.
  *
  * localStorage is a deliberate trade-off. It is readable by any script on the

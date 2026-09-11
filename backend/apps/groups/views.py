@@ -28,6 +28,17 @@ class PlayerViewSet(viewsets.ModelViewSet):
     serializer_class = PlayerSerializer
     permission_classes = [IsOwner]
 
+    def get_serializer_context(self):
+        """
+        Resolve the owner's friends once, not once per roster entry.
+
+        `is_friend` on each row would otherwise be a query per name, and the
+        roster picker renders every name there is.
+        """
+        from apps.accounts.models import friend_ids_for
+
+        return {**super().get_serializer_context(), "friend_ids": friend_ids_for(self.request.user)}
+
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:

@@ -55,11 +55,13 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
     enabled: open,
   })
 
-  // Only boards the host may write to. Linking writes onto someone else's
-  // record, so offering one they cannot edit would be an error waiting to be
-  // refused by the server.
+  // Only boards the host may write to, and only boards built to receive a
+  // tournament. Linking writes onto someone else's record, so offering one they
+  // cannot edit would be an error waiting to be refused — and linking a
+  // hand-counted board would restructure it, adding the four columns a bracket
+  // fills to a table made for counting by hand.
   const editable = (data?.results ?? data ?? []).filter(
-    (item) => item.role === 'owner' || item.role === 'editor',
+    (item) => (item.role === 'owner' || item.role === 'editor') && item.tracks_tournaments,
   )
 
   /**
@@ -171,7 +173,7 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
                   <Option
                     key={item.slug}
                     label={item.name}
-                    hint={item.tracks_tournaments ? 'Tracks tournaments' : 'Hand-counted'}
+                    hint="Tracks tournaments"
                     selected={board?.slug === item.slug}
                     onSelect={() => {
                       onLink(item.slug)

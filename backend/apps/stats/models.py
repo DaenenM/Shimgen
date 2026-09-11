@@ -78,14 +78,33 @@ class StatsBoard(TimeStampedModel):
         super().save(*args, **kwargs)
 
     def role_for(self, user) -> str | None:
-        """`owner`, `editor`, or None — the single answer to "what may they do"."""
+        """
+        `owner`, `editor`, `viewer`, or None — the one answer to "what may they
+        do".
+
+        **viewer** is derived rather than granted: somebody listed on the board
+        can see it. Being counted on a crew's board is already a statement that
+        you play with them, so needing a share link to look at your own record
+        was a gap rather than a safeguard — and it is read-only, because
+        `may_edit` asks for owner or editor.
+        """
         if not getattr(user, "is_authenticated", False):
             return None
         if self.owner_id == user.id:
             return "owner"
 
         access = self.access.filter(user=user).first()
-        return access.role if access else None
+        if access:
+            return access.role
+
+        if self.has_row_for(user):
+            return "viewer"
+
+        return None
+
+    def has_row_for(self, user) -> bool:
+        """Whether `user` appears as a competitor on any of this board's tables."""
+        return StatsRow.objects.filter(table__board=self, player__user=user).exists()
 
     def may_edit(self, user) -> bool:
         """Whether `user` may add marks and link tournaments."""

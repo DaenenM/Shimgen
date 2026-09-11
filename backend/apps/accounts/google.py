@@ -111,6 +111,14 @@ def get_or_create_user(claims: dict) -> tuple[User, bool]:
     user.set_unusable_password()
     user.save(update_fields=["password"])
 
+    # Imported here rather than at module scope: `models` reaches into this
+    # module for verification, and a top-level import would close that circle.
+    from .models import sync_self_roster_entry
+
+    # Same as a password signup — your own name is a chip from the first
+    # bracket onward, rather than something to retype every time.
+    sync_self_roster_entry(user)
+
     return user, True
 
 

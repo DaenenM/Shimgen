@@ -298,23 +298,89 @@
     isolation: isolate;
   }
 
-  .glass-backdrop::before {
+  /* One blob each, rather than two gradients in a single layer, so the two can
+     drift independently — and so each is moved with `transform`, which the
+     compositor handles on its own thread. Animating the gradients' own
+     positions instead would repaint a viewport-sized gradient every frame,
+     which is exactly the kind of thing that makes a bracket page stutter while
+     it is being scrolled. */
+  .glass-backdrop::before,
+  .glass-backdrop::after {
     content: '';
     position: fixed;
-    inset: 0;
     z-index: -1;
     pointer-events: none;
-    background:
-      radial-gradient(
-        60rem 40rem at 12% 8%,
-        color-mix(in oklch, var(--color-primary) 20%, transparent),
-        transparent 60%
-      ),
-      radial-gradient(
-        50rem 36rem at 75% 70%,
-        color-mix(in oklch, var(--color-accent) 16%, transparent),
-        transparent 62%
-      );
+
+    /* Oversized and inset negatively, by comfortably more than the furthest a
+       blob travels: a layer sized to the viewport — or only barely larger than
+       it — pulls its own soft edge into frame as it moves, which reads as a
+       dark corner sliding in rather than as the light shifting.
+
+       Note that each blob below is positioned in absolute units measured from a
+       corner of this layer, NOT as a percentage of it. A percentage is relative
+       to the layer's own size, so widening this inset walked the blobs off the
+       screen entirely — at -72rem the layer is ~234rem across and `at 22%` puts
+       the blue blob 21rem to the left of the viewport. Absolute offsets keep a
+       blob where it was put, whatever this value becomes. */
+    inset: -72rem;
+
+    /* A hint, not a promise — it keeps the layer on its own compositor surface
+       so the drift never triggers a repaint of the page behind it. */
+    will-change: transform;
+  }
+
+  .glass-backdrop::before {
+    background: radial-gradient(
+      60rem 40rem at calc(72rem + 12vw) calc(72rem + 8vh),
+      color-mix(in oklch, var(--color-primary) 20%, transparent),
+      transparent 60%
+    );
+    /* Duration scales with distance, so a longer sweep is a longer animation
+       rather than a faster one — roughly 0.64rem a second either way. At 68s a
+       blob takes over a minute to reach the far end, which keeps it reading as
+       the light shifting rather than as something animating on the page.
+
+       `alternate` is the boomerang — it eases out to the destination and back
+       to where it started, so there is no jump when the cycle restarts, which
+       a `from`/`to` loop would give on every repeat. */
+    animation: mesh-drift-a 68s ease-in-out infinite alternate;
+  }
+
+  .glass-backdrop::after {
+    background: radial-gradient(
+      50rem 36rem at calc(72rem + 75vw) calc(72rem + 70vh),
+      color-mix(in oklch, var(--color-accent) 16%, transparent),
+      transparent 62%
+    );
+    /* A different duration from its partner on purpose: matched timings would
+       have the two meet at the same point every cycle, which reads as a loop.
+       68 and 94 share only a factor of two, so the pair drifts in and out of
+       phase over many minutes rather than repeating a visible pattern. */
+    animation: mesh-drift-b 94s ease-in-out infinite alternate;
+  }
+
+  /* Translation only — no scale, and nothing that touches layout.
+     
+     The two travel in opposite directions, so the gap between them opens and
+     closes across a cycle rather than the pair sliding as one. Kept well inside
+     the negative inset above, which is what stops either edge reaching the
+     viewport at the far end of the drift. */
+  @keyframes mesh-drift-a {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(36rem, 24rem, 0);
+    }
+  }
+
+  @keyframes mesh-drift-b {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-42rem, -28rem, 0);
+    }
   }
 }
 

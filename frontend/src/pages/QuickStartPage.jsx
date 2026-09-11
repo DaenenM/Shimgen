@@ -144,10 +144,16 @@ export function QuickStartPage() {
     },
   })
 
-  // Only boards the host may write to: linking to one you cannot edit would be
-  // refused by the server, so it should not be offered.
+  // Only boards the host may write to, and only boards built to receive a
+  // tournament.
+  //
+  // Linking a hand-counted board does not merely record alongside the tally —
+  // it gives that table the four automatic columns a bracket fills, which is a
+  // structural change to a board somebody made to count by hand. Offering it
+  // and then silently rewriting it is the worse half of that; leaving it out of
+  // the list keeps the board the thing its owner built.
   const editableBoards = (boardList?.results ?? boardList ?? []).filter(
-    (board) => board.role === 'owner' || board.role === 'editor',
+    (board) => (board.role === 'owner' || board.role === 'editor') && board.tracks_tournaments,
   )
 
   const isElimination = format === 'single' || format === 'double'
@@ -296,23 +302,51 @@ export function QuickStartPage() {
                 formats the host was not picking. */}
             <div>
               <span className="text-sm font-medium">Format</span>
-              <div className="glass-inset mt-2 overflow-hidden">
+              {/* Individual rounded rows rather than a bordered box of them.
+                  A single `glass-inset` frame divided by hairlines reads as a
+                  table — the shape a settings list had a decade ago — where
+                  every other chooser on the site (the board picker, the
+                  permissions list, the mobile sheet) gives each option its own
+                  rounded surface and tints the chosen one. */}
+              <div className="mt-2 flex flex-col gap-1">
                 {FORMATS.map((option) => (
                   <label
                     key={option.value}
-                    className={`border-base-content/8 flex cursor-pointer items-center gap-2.5 border-b px-3 py-2 transition-colors duration-150 last:border-b-0 ${
-                      format === option.value ? 'bg-primary/15' : 'hover:bg-base-content/5'
+                    className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all duration-200 ${
+                      format === option.value
+                        ? 'border-primary/40 bg-primary/12 shadow-primary/10 border shadow-sm'
+                        : 'glass-inset hover:border-base-content/25 hover:bg-base-content/5'
                     }`}
                   >
+                    {/* The browser's own radio chrome, which `accent-primary`
+                        only tints, draws a ring around a smaller inner dot —
+                        two concentric circles that read as a form control from
+                        a decade ago. `appearance-none` takes that away so the
+                        indicator can be a single solid dot.
+
+                        Still a real <input>: it keeps the radiogroup semantics
+                        and arrow-key navigation the native control provides,
+                        which a styled <div> would have to reimplement. The
+                        focus ring is put back by hand, because `appearance-none`
+                        removes that too. */}
                     <input
                       type="radio"
                       name="format"
-                      className="accent-primary h-3.5 w-3.5 shrink-0"
+                      // One solid blue dot. `appearance-none` drops the
+                      // browser's own chrome; the 1px border then only marks
+                      // the empty state, and goes transparent when checked so
+                      // the fill has no ring sitting against it. Colouring that
+                      // border blue instead left a visible seam where the two
+                      // blues met, which is what read as a hard edge.
+                      //
+                      // The focus outline is put back by hand, because
+                      // `appearance-none` removes that too.
+                      className="border-base-content/30 checked:bg-primary focus-visible:outline-primary h-3.5 w-3.5 shrink-0 appearance-none rounded-full border transition-all duration-200 checked:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2"
                       checked={format === option.value}
                       onChange={() => setFormat(option.value)}
                     />
                     <span
-                      className={`text-sm ${
+                      className={`text-sm transition-colors duration-200 ${
                         format === option.value ? 'text-primary font-semibold' : 'font-medium'
                       }`}
                     >
@@ -330,7 +364,7 @@ export function QuickStartPage() {
             {/* Options */}
             <div className="grid gap-4">
               <label className="flex w-full flex-col">
-                <span className="label-text mb-1">Games per match</span>
+                <span className="label-text mb-1">Games per bracket</span>
                 <select
                   className="glass-inset focus:border-primary/50 h-10 w-full px-3 text-sm transition-colors focus:outline-none"
                   value={bestOf}

@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Field, TextInput } from '@/components/ui/Field'
 import { SaveIndicator } from '@/features/bracket/SaveIndicator'
+import { StandingsTable } from '@/features/bracket/StandingsTable'
 import { BoardTable } from '@/features/stats/BoardTable'
 import { TournamentCard } from '@/features/tournaments/TournamentCard'
 import { generateTeams, splitEvenly } from '@/features/teams/generate'
@@ -1433,5 +1434,287 @@ describe('optimistic undo unwinds the whole chain', () => {
     expect(byId(after, 10).winner).toBe(4)
     expect(byId(after, 10).a_label).toBe('Team 2')
     expect(byId(after, 10).b_label).toBe('Team 4')
+  })
+})
+
+/**
+ * The friend-suggestion dropdown.
+ *
+ * The API module is mocked rather than the network, because what is worth
+ * pinning here is not that a request goes out — it is which of the people who
+ * come back are offered. Suggesting somebody you are already connected to
+ * produces a guaranteed 400 from the server ("you are already friends", "a
+ * request is already pending"), and a suggestion that cannot be acted on is
+ * worse than no suggestion.
+ */
+vi.mock('@/api/endpoints', () => ({
+  auth: { searchUsers: vi.fn() },
+  friends: {
+    list: vi.fn(() => Promise.resolve([])),
+    pending: vi.fn(() => Promise.resolve([])),
+    sent: vi.fn(() => Promise.resolve([])),
+    request: vi.fn(() => Promise.resolve({})),
+    accept: vi.fn(),
+    remove: vi.fn(),
+  },
+  // Not used below, but `vi.mock` is hoisted and replaces this module for the
+  // whole file. Anything another test reaches through a component would be
+  // `undefined` without a stub here.
+  boards: { list: vi.fn(() => Promise.resolve([])), create: vi.fn() },
+  roster: { list: vi.fn(() => Promise.resolve([])) },
+  tournaments: { list: vi.fn(() => Promise.resolve([])) },
+}))
+
+describe('friend suggestions', () => {
+  const mountFriends = async () => {
+    const { FriendsPage } = await import('@/pages/FriendsPage')
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <FriendsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  const type = (value) =>
+    fireEvent.change(screen.getByLabelText('Find someone by their username'), {
+      target: { value },
+    })
+
+  it('strips an @ that was pasted in, since the field draws its own', async () => {
+    await mountFriends()
+    type('@shim')
+
+    expect(screen.getByLabelText('Find someone by their username').value).toBe('shim')
+  })
+
+  it('says nothing is open until two characters are typed', async () => {
+    // The server refuses a shorter term, so asking sooner is a guaranteed empty
+    // round trip.
+    await mountFriends()
+    type('s')
+
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('offers people who came back from the search', async () => {
+    const { auth } = await import('@/api/endpoints')
+    auth.searchUsers.mockResolvedValue({
+      count: 1,
+      results: [{ id: 2, username: 'shimbob', name: 'ShimBob' }],
+    })
+
+    await mountFriends()
+    type('shim')
+
+    // The handle is what addresses the request, so it is on the row alongside
+    // the display name people actually recognise.
+    expect(await screen.findByText('@shimbob')).toBeTruthy()
+    expect(screen.getByText('ShimBob')).toBeTruthy()
+  })
+
+  it('drops anyone already connected, whichever side sent the request', async () => {
+    const { auth, friends } = await import('@/api/endpoints')
+
+    // Already a friend, and the friendship is stored directionally — this one
+    // arrived from them, so they are `from_user`.
+    friends.list.mockResolvedValue([
+      { id: 9, direction: 'incoming', from_user: { id: 2, name: 'ShimBob' }, to_user: { id: 1 } },
+    ])
+    auth.searchUsers.mockResolvedValue({
+      count: 2,
+      results: [
+        { id: 2, username: 'shimbob', name: 'ShimBob' },
+        { id: 3, username: 'shimlord', name: 'ShimLord' },
+      ],
+    })
+
+    await mountFriends()
+    type('shim')
+
+    expect(await screen.findByText('@shimlord')).toBeTruthy()
+    expect(screen.queryByText('@shimbob')).toBeNull()
+  })
+
+  it('reads the paginated envelope the list endpoint actually returns', async () => {
+    // The bug this pins: /auth/users/ is a ListAPIView, so DRF wraps it in
+    // {count, results}. Filtering that object directly threw "filter is not a
+    // function" and took the whole page down through the error boundary.
+    const { auth } = await import('@/api/endpoints')
+    auth.searchUsers.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [{ id: 4, username: 'enveloped', name: 'Enveloped' }],
+    })
+
+    await mountFriends()
+    type('envel')
+
+    expect(await screen.findByText('@enveloped')).toBeTruthy()
+  })
+
+  it('says so plainly when a handle matches nobody', async () => {
+    // An empty panel reads as still loading, and the handle may simply not
+    // exist.
+    const { auth } = await import('@/api/endpoints')
+    auth.searchUsers.mockResolvedValue({ count: 0, results: [] })
+
+    await mountFriends()
+    type('nobody')
+
+    expect(await screen.findByText(/No one found/)).toBeTruthy()
+  })
+})
+
+describe('standings podium', () => {
+  const show = (rows) => render(<StandingsTable rows={rows} />)
+
+  // The number cell carries the medal edge, so it is the row's own marker.
+  const rowFor = (container, label) =>
+    [...container.querySelectorAll('tbody tr')].find((tr) => tr.textContent.includes(label))
+
+  const tinted = (tr) => tr.getAttribute('style')?.includes('background-color')
+
+  it('gives the top three a tint and leaves the rest plain', () => {
+    const { container } = show([
+      { entrant_id: 1, label: 'Gold', placement: 1 },
+      { entrant_id: 2, label: 'Silver', placement: 2 },
+      { entrant_id: 3, label: 'Bronze', placement: 3 },
+      { entrant_id: 4, label: 'Fourth', placement: 4 },
+    ])
+
+    expect(tinted(rowFor(container, 'Gold'))).toBe(true)
+    expect(tinted(rowFor(container, 'Silver'))).toBe(true)
+    expect(tinted(rowFor(container, 'Bronze'))).toBe(true)
+    expect(tinted(rowFor(container, 'Fourth'))).toBeFalsy()
+  })
+
+  it('keeps gold on the palette accent, which is already the victory colour', () => {
+    // A second, slightly different gold beside the winner pill and the trophy
+    // would read as a mistake rather than as a set.
+    const { container } = show([{ entrant_id: 1, label: 'Gold', placement: 1 }])
+
+    expect(rowFor(container, 'Gold').getAttribute('style')).toContain('--color-accent')
+  })
+
+  it('medals every entrant who genuinely shares a placement', () => {
+    // A bracket ranks by how far you got, and everyone knocked out at the same
+    // depth shares a position — a 5-entrant draw really does produce three
+    // second places and no third. Keying off the row index instead would hand
+    // one of them silver and the others bronze and fourth, which is a result
+    // nobody achieved.
+    const { container } = show([
+      { entrant_id: 1, label: 'Winner', placement: 1 },
+      { entrant_id: 2, label: 'Tied A', placement: 2 },
+      { entrant_id: 3, label: 'Tied B', placement: 2 },
+      { entrant_id: 4, label: 'Tied C', placement: 2 },
+    ])
+
+    expect(tinted(rowFor(container, 'Tied A'))).toBe(true)
+    expect(tinted(rowFor(container, 'Tied B'))).toBe(true)
+    expect(tinted(rowFor(container, 'Tied C'))).toBe(true)
+
+    // All three carry the same tone, rather than descending through the medals.
+    const tone = (label) => rowFor(container, label).getAttribute('style')
+    expect(tone('Tied B')).toBe(tone('Tied A'))
+    expect(tone('Tied C')).toBe(tone('Tied A'))
+  })
+
+  it('ranks a points table by position, since it has no placement to read', () => {
+    const { container } = show([
+      { entrant_id: 1, label: 'Top', played: 3, wins: 3, draws: 0, losses: 0, points: 9 },
+      { entrant_id: 2, label: 'Next', played: 3, wins: 2, draws: 0, losses: 1, points: 6 },
+      { entrant_id: 3, label: 'Third', played: 3, wins: 1, draws: 0, losses: 2, points: 3 },
+      { entrant_id: 4, label: 'Last', played: 3, wins: 0, draws: 0, losses: 3, points: 0 },
+    ])
+
+    expect(tinted(rowFor(container, 'Top'))).toBe(true)
+    expect(tinted(rowFor(container, 'Third'))).toBe(true)
+    expect(tinted(rowFor(container, 'Last'))).toBeFalsy()
+  })
+
+  it('still says when there is nothing to show', () => {
+    render(<StandingsTable rows={[]} />)
+    expect(screen.getByText(/Standings appear once results are in/)).toBeTruthy()
+  })
+})
+
+describe('saved roster ordering', () => {
+  // `useRoster` reads the server through the mocked endpoints module, so the
+  // rows come back in the order this list gives them — which is what lets the
+  // non-friend half be checked for being left alone.
+  const mountRoster = async (rows) => {
+    const { roster } = await import('@/api/endpoints')
+    roster.list.mockResolvedValue({ count: rows.length, results: rows })
+
+    const { SavedRoster } = await import('@/components/ui/SavedRoster')
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    const signedIn = {
+      user: { id: 1, username: 'me', name: 'Me' },
+      status: 'ready',
+      isAuthenticated: true,
+      isLoading: false,
+      login: () => {},
+      loginWithGoogle: () => {},
+      register: () => {},
+      logout: () => {},
+    }
+
+    const view = render(
+      <QueryClientProvider client={client}>
+        <AuthContext.Provider value={signedIn}>
+          <MemoryRouter>
+            <SavedRoster selected={[]} onAdd={() => {}} onRemove={() => {}} />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </QueryClientProvider>,
+    )
+
+    // The names render inside the toggle button on each row.
+    await screen.findByText(rows[0].display_name)
+    return view
+  }
+
+  const namesInOrder = (container) =>
+    [...container.querySelectorAll('li button[aria-pressed] span.truncate')].map(
+      (node) => node.textContent,
+    )
+
+  it('puts friends at the top, in alphabetical order', async () => {
+    const { container } = await mountRoster([
+      { id: 1, display_name: 'Zara', is_friend: false },
+      { id: 2, display_name: 'Trevor', is_friend: true },
+      { id: 3, display_name: 'Benis', is_friend: true },
+      { id: 4, display_name: 'Adam', is_friend: false },
+    ])
+
+    expect(namesInOrder(container)).toEqual(['Benis', 'Trevor', 'Zara', 'Adam'])
+  })
+
+  it('leaves everyone else in the order the server sent them', async () => {
+    // The roster arrives most-recently-played first, which is deliberate — the
+    // names from last Saturday belong near the top. Only the friends half is
+    // re-sorted; flattening the whole list alphabetically would throw that away.
+    const { container } = await mountRoster([
+      { id: 1, display_name: 'Zara', is_friend: false },
+      { id: 2, display_name: 'Adam', is_friend: false },
+      { id: 3, display_name: 'Mike', is_friend: false },
+    ])
+
+    expect(namesInOrder(container)).toEqual(['Zara', 'Adam', 'Mike'])
+  })
+
+  it('sorts friends case-insensitively', async () => {
+    const { container } = await mountRoster([
+      { id: 1, display_name: 'zoe', is_friend: true },
+      { id: 2, display_name: 'Adam', is_friend: true },
+    ])
+
+    expect(namesInOrder(container)).toEqual(['Adam', 'zoe'])
   })
 })

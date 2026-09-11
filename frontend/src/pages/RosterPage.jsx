@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, Plus, Trash2, Users } from '@/components/icons'
+import { Archive, ArchiveRestore, Plus, Trash2, User, Users } from '@/components/icons'
 import { useState } from 'react'
 
 import { roster as rosterApi } from '@/api/endpoints'
@@ -200,6 +200,19 @@ export function RosterPage() {
 }
 
 function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
+  // No words for either kind of linked row: the icon beside the name says it,
+  // and spelling the same fact out underneath was saying it twice. Being
+  // archived is the one state the row cannot show any other way.
+  const status = archived ? 'Archived' : null
+
+  const played = player.last_used_at
+    ? `last played ${new Date(player.last_used_at).toLocaleDateString()}`
+    : null
+
+  // Joined rather than concatenated with a hard separator, so whichever half is
+  // missing does not leave a dangling dot.
+  const meta = [status, played].filter(Boolean).join(' · ')
+
   return (
     // An archived row is dimmed and dashed, so the two lists cannot be confused
     // when both are on screen at once.
@@ -212,14 +225,39 @@ function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
     >
       <div className="flex flex-row items-center justify-between gap-3 p-3">
         <div className="min-w-0">
-          <p className={`truncate text-sm font-medium ${archived ? 'text-base-content/60' : ''}`}>
-            {player.display_name}
+          <p
+            className={`flex items-center gap-2 truncate text-sm font-medium ${archived ? 'text-base-content/60' : ''}`}
+          >
+            <span className="truncate">{player.display_name}</span>
+
+            {/* The meta line below already says "Follows their name", so here
+                the glyph is reinforcement rather than the only signal. */}
+            {player.is_friend ? (
+              <Users className="text-primary h-3.5 w-3.5 shrink-0" aria-label="Friend" role="img" />
+            ) : (
+              // An account attached without being a friend — somebody who
+              // claimed a bracket, say. Amber rather than the friend blue:
+              // `--color-accent` is the hue the backdrop mesh already warms the
+              // page with, so a second kind of link reads as related to the
+              // first without being mistaken for it.
+              player.linked && (
+                <User
+                  className="text-accent h-3.5 w-3.5 shrink-0"
+                  aria-label="Linked account"
+                  role="img"
+                />
+              )
+            )}
           </p>
-          <p className="text-base-content/50 text-xs">
-            {archived ? 'Archived' : player.linked ? 'Linked account' : 'Name only'}
-            {player.last_used_at &&
-              ` · last played ${new Date(player.last_used_at).toLocaleDateString()}`}
-          </p>
+          {/* A plain roster entry says nothing here. "Name only" described the
+              absence of a link, which is the ordinary case — most of a roster
+              is names somebody typed — so it was a label on nothing.
+
+              Computed above the markup rather than nested further: with the
+              fallback gone the ternary would have ended in an empty string,
+              and the separator below would then have rendered a stray
+              " · last played" with nothing in front of it. */}
+          {meta && <p className="text-base-content/50 text-xs">{meta}</p>}
         </div>
 
         <div className="flex gap-1">

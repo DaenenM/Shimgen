@@ -11,6 +11,8 @@ username when one is not supplied — `username` is still unique and still used 
 the public handle, so it cannot simply be left blank.
 """
 
+import re
+
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager as BaseUserManager
 
@@ -38,12 +40,28 @@ class UserManager(BaseUserManager):
         return user
 
     def _unique_username(self, base: str) -> str:
-        """Return `base`, or base2, base3… if it is already taken."""
-        candidate = base or "player"
+        """
+        Return `base`, or base2, base3… if it is already taken.
+
+        The base is scrubbed to the handle charset first. An email local part is
+        free to contain dots and plus-addressing — `first.last+games@x.com` — and
+        a username is not, so deriving one verbatim produced an account that
+        could never be saved once usernames became a validated handle.
+
+        Matched case-insensitively, because that is how the handle's uniqueness
+        constraint works. Checking exactly would happily return "Shim" while
+        "shim" exists, and the insert would then fail on the constraint instead
+        of here.
+        """
+        cleaned = re.sub(r"[^A-Za-z0-9_]", "", base or "")
+        candidate = cleaned or "player"
+        stem = candidate
         suffix = 2
-        while self.filter(username=candidate).exists():
-            candidate = f"{base}{suffix}"
+
+        while self.filter(username__iexact=candidate).exists():
+            candidate = f"{stem}{suffix}"
             suffix += 1
+
         return candidate
 
     def create_user(self, email=None, password=None, **extra_fields):

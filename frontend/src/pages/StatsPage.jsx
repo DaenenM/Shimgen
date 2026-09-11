@@ -228,10 +228,19 @@ export function StatsPage() {
                 <span className="flex items-center gap-2">
                   <span className="truncate font-semibold">{board.name}</span>
 
-                  {board.role !== 'owner' && (
+                  {/* "Shared" means somebody handed you the board; a viewer
+                      simply appears on it. Saying the wrong one invites a
+                      person to try editing a board they cannot. */}
+                  {board.role === 'viewer' ? (
                     <span className="bg-base-content/8 text-base-content/60 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium">
-                      Shared
+                      You&rsquo;re on this
                     </span>
+                  ) : (
+                    board.role !== 'owner' && (
+                      <span className="bg-base-content/8 text-base-content/60 shrink-0 rounded-md px-2 py-0.5 text-xs font-medium">
+                        Shared
+                      </span>
+                    )
                   )}
                 </span>
 

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
   Check,
   Link2,
   Plus,
@@ -13,10 +15,9 @@ import {
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
-import { boards as boardsApi } from '@/api/endpoints'
+import { boards as boardsApi, friends as friendsApi } from '@/api/endpoints'
 import { PageShell } from '@/components/layout/PageShell'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { FriendPicker } from '@/components/ui/FriendPicker'
 import { SkeletonPage } from '@/components/ui/Skeleton'
 import { BoardTable } from '@/features/stats/BoardTable'
 import { EmojiPicker } from '@/features/stats/EmojiPicker'
@@ -39,6 +40,21 @@ export function BoardPage() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const { players: roster } = useRoster()
+
+  // Only asked for by the owner, and only the people who can actually be given
+  // access: sharing a board is limited to friends, the same rule co-hosting a
+  // bracket follows.
+  const { data: friendships } = useQuery({
+    queryKey: queryKeys.friends.accepted,
+    queryFn: friendsApi.list,
+  })
+
+  // A friendship is stored directionally, so which side is "them" depends on
+  // who sent the original request.
+  const friendList = (friendships ?? [])
+    .map((item) => (item.direction === 'outgoing' ? item.to_user : item.from_user))
+    .filter(Boolean)
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
 
   const [editing, setEditing] = useState(false)
   const [busyKey, setBusyKey] = useState(null)
@@ -126,6 +142,20 @@ export function BoardPage() {
     },
   })
 
+  /**
+   * Rename the board itself.
+   *
+   * Owner only, like every other structural change — an editor may tally all
+   * night without being able to reshape what everyone's history lives under.
+   *
+   * The slug is stable and carries the readable name only as decoration, so a
+   * rename does not move the board or break a link somebody already holds.
+   */
+  const renameBoard = useMutation({
+    mutationFn: (name) => boardsApi.update(slug, { name }),
+    onSuccess: refresh,
+  })
+
   const addTable = useMutation({
     mutationFn: (payload) => boardsApi.addTable(slug, payload),
     onSuccess: refresh,
@@ -141,6 +171,33 @@ export function BoardPage() {
     onSuccess: refresh,
   })
 
+  /**
+   * Swap two tables' positions.
+   *
+   * Two PATCHes rather than one bulk call: `position` is an ordinary writable
+   * field and a swap only ever touches a pair, so the endpoint that already
+   * exists does the job. Sent together and refreshed once — refreshing after
+   * the first would repaint the board while both tables shared a position.
+   */
+  const moveTable = useMutation({
+    mutationFn: ({ a, b }) =>
+      Promise.all([
+        boardsApi.updateTable(a.id, { position: b.position }),
+        boardsApi.updateTable(b.id, { position: a.position }),
+      ]),
+    onSuccess: refresh,
+  })
+
+  const updateColumn = useMutation({
+    mutationFn: ({ id, ...payload }) => boardsApi.updateColumn(id, payload),
+    onSuccess: refresh,
+  })
+
+  const removeColumn = useMutation({
+    mutationFn: (id) => boardsApi.removeColumn(id),
+    onSuccess: refresh,
+  })
+
   const addColumn = useMutation({
     mutationFn: ({ tableId, ...payload }) => boardsApi.addColumn(tableId, payload),
     onSuccess: refresh,
@@ -153,6 +210,44 @@ export function BoardPage() {
 
   const removeRow = useMutation({
     mutationFn: (id) => boardsApi.removeRow(id),
+    onSuccess: refresh,
+  })
+
+  /**
+   * Point an existing row at a friend's account.
+   *
+   * The row is kept and re-linked rather than replaced, so the tallies already
+   * on it stay where they are — which is the whole reason to do this instead of
+   * deleting the old name and adding a new one.
+   *
+   * The label is updated too: the row should read as the person it now is.
+   */
+  const swapRow = useMutation({
+    mutationFn: ({ id, player, label }) => boardsApi.updateRow(id, { player, label }),
+    onSuccess: refresh,
+  })
+
+  /**
+   * Rename a competitor on the board.
+   *
+   * Writes `label`, the row's own name, so the tallies and any account link
+   * stay exactly where they are — this changes what the row is called, not who
+   * it is.
+   */
+  const renameRow = useMutation({
+    mutationFn: ({ id, label }) => boardsApi.updateRow(id, { label }),
+    onSuccess: refresh,
+  })
+
+  /**
+   * Cut a row loose from the account behind it.
+   *
+   * The row, its name and its tallies all stay — only the link goes. That is
+   * what makes this safe to offer: the board keeps its history, and the person
+   * simply stops being tied to it. Linking again is one swap away.
+   */
+  const unlinkRow = useMutation({
+    mutationFn: (id) => boardsApi.updateRow(id, { player: null }),
     onSuccess: refresh,
   })
 
@@ -214,8 +309,12 @@ export function BoardPage() {
       </Link>
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{board.name}</h1>
+        <div className="min-w-0">
+          {editing && isOwner ? (
+            <BoardName name={board.name} onRename={(name) => renameBoard.mutate(name)} />
+          ) : (
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{board.name}</h1>
+          )}
           {board.description && (
             <p className="text-base-content/60 mt-1 text-sm">{board.description}</p>
           )}
@@ -258,12 +357,24 @@ export function BoardPage() {
       )}
 
       <div className="space-y-5">
-        {board.tables.map((table) => (
+        {board.tables.map((table, index) => (
           <TableCard
             key={table.id}
             table={table}
             canEdit={canEdit}
             editing={editing}
+            // Disabled at the ends rather than hidden, so the control cluster
+            // keeps its width as a table reaches the top or the bottom.
+            onMoveUp={
+              index > 0 ? () => moveTable.mutate({ a: table, b: board.tables[index - 1] }) : null
+            }
+            onMoveDown={
+              index < board.tables.length - 1
+                ? () => moveTable.mutate({ a: table, b: board.tables[index + 1] })
+                : null
+            }
+            onEditColumn={(id, payload) => updateColumn.mutate({ id, ...payload })}
+            onRemoveColumn={(id) => removeColumn.mutate(id)}
             roster={roster}
             busyKey={busyKey}
             onAward={(row, column, delta) => {
@@ -271,6 +382,9 @@ export function BoardPage() {
               award.mutate({ row, column, delta })
             }}
             onRemoveRow={(row) => removeRow.mutate(row.id)}
+            onSwapRow={(id, player, label) => swapRow.mutate({ id, player, label })}
+            onRenameRow={(id, label) => renameRow.mutate({ id, label })}
+            onUnlinkRow={(id) => unlinkRow.mutate(id)}
             onAddColumn={(payload) => addColumn.mutate({ tableId: table.id, ...payload })}
             onAddRows={(payload) => addRows.mutate({ tableId: table.id, ...payload })}
             onRename={(name) => renameTable.mutate({ id: table.id, name })}
@@ -286,6 +400,7 @@ export function BoardPage() {
       {editing && isOwner && (
         <People
           people={board.people}
+          friends={friendList}
           onAdd={(userId) => addPerson.mutate(userId)}
           onRemove={(userId) => removePerson.mutate(userId)}
           error={addPerson.error?.message}
@@ -310,6 +425,13 @@ function TableCard({
   onAddRows,
   onRename,
   onRemove,
+  onMoveUp,
+  onMoveDown,
+  onEditColumn,
+  onRemoveColumn,
+  onSwapRow,
+  onRenameRow,
+  onUnlinkRow,
 }) {
   const [addingColumn, setAddingColumn] = useState(false)
   const [addingRows, setAddingRows] = useState(false)
@@ -325,7 +447,31 @@ function TableCard({
           )}
 
           {editing && (
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {/* Arrows rather than drag: no new dependency, works from the
+                  keyboard, and a board holds a handful of tables — the
+                  precision dragging buys is precision nobody needs here. */}
+              <div className="flex items-center">
+                <button
+                  className="text-base-content/50 hover:bg-base-content/8 hover:text-base-content grid h-8 w-8 place-items-center rounded-lg transition-colors duration-150 disabled:pointer-events-none disabled:opacity-25"
+                  onClick={() => onMoveUp?.()}
+                  disabled={!onMoveUp}
+                  aria-label={`Move the ${table.name} table up`}
+                  title="Move up"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </button>
+                <button
+                  className="text-base-content/50 hover:bg-base-content/8 hover:text-base-content grid h-8 w-8 place-items-center rounded-lg transition-colors duration-150 disabled:pointer-events-none disabled:opacity-25"
+                  onClick={() => onMoveDown?.()}
+                  disabled={!onMoveDown}
+                  aria-label={`Move the ${table.name} table down`}
+                  title="Move down"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </button>
+              </div>
+
               <button
                 className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
                 onClick={() => setAddingRows((on) => !on)}
@@ -377,12 +523,59 @@ function TableCard({
         <BoardTable
           table={table}
           canEdit={canEdit && !editing ? true : canEdit}
+          editing={editing}
           busyKey={busyKey}
           onAward={onAward}
           onRemoveRow={onRemoveRow}
+          onEditColumn={onEditColumn}
+          onRemoveColumn={onRemoveColumn}
+          onSwapRow={onSwapRow}
+          onRenameRow={onRenameRow}
+          onUnlinkRow={onUnlinkRow}
+          // Friends and yourself. Swapping a row onto somebody's account
+          // attaches their record to this board, and a friendship is the
+          // consent that makes that reasonable — your own account needs no
+          // such permission, and tallying yourself under a typed name is
+          // exactly as common as doing it for somebody else.
+          friends={roster.filter((player) => player.is_friend || player.is_self)}
         />
       </div>
     </div>
+  )
+}
+
+/**
+ * The board's name, editable in place.
+ *
+ * Same gesture as the table names one level down: commits on blur as well as
+ * Enter, because renaming and then clicking straight back into the board is the
+ * natural thing to do and losing the edit for want of a keypress is the kind of
+ * thing you only notice afterwards.
+ */
+function BoardName({ name, onRename }) {
+  const [draft, setDraft] = useState(name)
+
+  const commit = () => {
+    const next = draft.trim()
+    if (next && next !== name) onRename(next)
+    else setDraft(name)
+  }
+
+  return (
+    <input
+      className="glass-inset focus:border-primary/50 h-11 w-full max-w-sm px-3 text-2xl font-bold tracking-tight transition-colors focus:outline-none sm:text-3xl"
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+        if (event.key === 'Escape') {
+          setDraft(name)
+          event.currentTarget.blur()
+        }
+      }}
+      aria-label="Board name"
+    />
   )
 }
 
@@ -425,40 +618,50 @@ function AddColumn({ onAdd, onCancel }) {
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('\u{1F531}')
 
+  // One row rather than a stack of labelled blocks. A column is a short name
+  // and a glyph; the full-width field and the two headings around it made a
+  // two-word answer look like a form worth filling in.
   return (
-    <div className="glass-inset space-y-3 p-3">
-      <label className="flex w-full flex-col">
-        <span className="label-text mb-1 text-sm">Column name</span>
+    <div className="glass-inset space-y-2 p-2.5">
+      <div className="flex flex-wrap items-center gap-2">
         <input
-          className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-9 w-full px-3 text-sm transition-colors focus:outline-none"
-          placeholder="Wins"
+          className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-9 w-40 px-3 text-sm transition-colors focus:outline-none"
+          placeholder="Column name"
           value={name}
           autoFocus
           onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && name.trim()) onAdd({ name: name.trim(), emoji })
+            if (e.key === 'Escape') onCancel()
+          }}
+          aria-label="Column name"
         />
-      </label>
 
-      <div>
-        <span className="label-text mb-1.5 block text-sm">Mark</span>
-        <EmojiPicker value={emoji} onChange={setEmoji} />
+        <span className="text-base-content/40 text-xs">marked</span>
+
+        <span className="grid h-9 w-9 shrink-0 place-items-center text-lg" aria-hidden="true">
+          {emoji}
+        </span>
+
+        <div className="ml-auto flex gap-2">
+          <button
+            className="bg-primary text-primary-content hover:bg-primary/90 flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
+            disabled={!name.trim()}
+            onClick={() => onAdd({ name: name.trim(), emoji })}
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </button>
+          <button
+            className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center rounded-lg px-3 text-sm font-medium transition-colors duration-150"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
 
-      <div className="flex gap-2">
-        <button
-          className="bg-primary text-primary-content hover:bg-primary/90 flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
-          disabled={!name.trim()}
-          onClick={() => onAdd({ name: name.trim(), emoji })}
-        >
-          <Plus className="h-4 w-4" />
-          Add column
-        </button>
-        <button
-          className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-      </div>
+      <EmojiPicker value={emoji} onChange={setEmoji} />
     </div>
   )
 }
@@ -649,8 +852,11 @@ function AddTable({ onAdd, pending }) {
  * Owner-only, because an editor who could hand out access could hand it to
  * anyone — which would leave the owner's control over the board nominal.
  */
-function People({ people, onAdd, onRemove, error, onDeleteBoard, boardName }) {
+function People({ people, friends, onAdd, onRemove, error, onDeleteBoard, boardName }) {
   const [confirming, setConfirming] = useState(false)
+
+  // Keyed by account id, which is what both halves of the toggle address.
+  const granted = new Set(people.map((person) => person.user))
 
   return (
     <div className="glass-panel mt-5">
@@ -666,16 +872,6 @@ function People({ people, onAdd, onRemove, error, onDeleteBoard, boardName }) {
           </p>
         </div>
 
-        {/* Chosen from your friends rather than typed as an email: editing
-            writes into everyone's history, and a friendship is a mutual act in
-            a way that knowing an address is not. */}
-        <FriendPicker
-          selected={people.map((person) => person.user)}
-          exclude={people.map((person) => person.user)}
-          onToggle={(person) => onAdd(person.id)}
-          emptyHint="Add someone as a friend first, then you can share this board with them."
-        />
-
         {error && (
           <div
             role="alert"
@@ -685,25 +881,51 @@ function People({ people, onAdd, onRemove, error, onDeleteBoard, boardName }) {
           </div>
         )}
 
-        {people.length > 0 && (
-          <ul className="space-y-1.5">
-            {people.map((person) => (
-              <li
-                key={person.id}
-                className="glass-inset group flex items-center justify-between gap-2 px-3 py-2 text-sm"
-              >
-                <span className="min-w-0 truncate font-medium">
-                  {person.display_name || person.username}
-                </span>
-                <button
-                  onClick={() => onRemove(person.user)}
-                  aria-label={`Remove ${person.display_name || person.username}`}
-                  className="text-base-content/40 hover:text-error hover:bg-error/10 grid h-7 w-7 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
+        {/* One list, not two. This used to stack a picker above a separate
+            row of removable names, so the same person appeared in one place or
+            the other depending on state and granting and revoking were two
+            different gestures. Every friend now has exactly one row that
+            toggles — the same treatment the tournament permissions popover
+            uses, where a tick means "in" and becomes a cross on hover to say
+            what the click will do. */}
+        {friends.length === 0 ? (
+          <div className="border-base-content/10 rounded-xl border border-dashed p-4 text-center">
+            <Users className="text-base-content/30 mx-auto h-6 w-6" />
+            <p className="text-base-content/60 mt-2 text-sm">
+              Add someone as a friend first, then you can share this board with them.
+            </p>
+          </div>
+        ) : (
+          <ul className="max-h-64 space-y-0.5 overflow-y-auto pr-1">
+            {friends.map((person) => {
+              const added = granted.has(person.id)
+
+              return (
+                <li key={person.id} className="group flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => (added ? onRemove(person.id) : onAdd(person.id))}
+                    aria-pressed={added}
+                    title={added ? `Remove ${person.name}` : `Let ${person.name} add wins`}
+                    className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1.5 text-left text-sm transition-colors duration-150 ${
+                      added
+                        ? 'text-success hover:bg-error/10 hover:text-error'
+                        : 'hover:bg-primary/10 hover:text-primary'
+                    }`}
+                  >
+                    {added ? (
+                      <span className="relative grid h-3.5 w-3.5 shrink-0 place-items-center">
+                        <Check className="absolute h-3.5 w-3.5 transition-opacity duration-150 group-hover:opacity-0" />
+                        <X className="absolute h-3.5 w-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+                      </span>
+                    ) : (
+                      <Plus className="h-3.5 w-3.5 shrink-0 opacity-40" />
+                    )}
+                    <span className="truncate font-medium">{person.name}</span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
 

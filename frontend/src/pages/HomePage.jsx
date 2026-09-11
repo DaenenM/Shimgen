@@ -84,7 +84,7 @@ export function HomePage() {
         )}
       </section>
 
-      <section className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Feature
           icon={Trophy}
           title="Every format, done properly"

@@ -59,8 +59,13 @@ class TournamentViewSet(viewsets.ModelViewSet):
             "mode",
             "created_by",
             # The list says whether deleting a row would touch a board, which is
-            # one query per row without this.
+            # one query per row without this. The detail page goes further and
+            # names the board, so the table and board it hangs off are pulled
+            # too — otherwise naming it costs two more queries per row than the
+            # boolean ever did.
             "stats_link",
+            "stats_link__table__board",
+            "stats_link__column__table__board",
         ).prefetch_related(
             "entrants",
             "entrants__players",
@@ -409,6 +414,47 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         # The whole bracket comes back, so the flush doubles as the reconcile
         # the client would otherwise have to request separately.
+        tournament = self.get_queryset().get(pk=tournament.pk)
+        return Response(TournamentDetailSerializer(tournament, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="stats-board")
+    def link_stats_board(self, request, pk=None):
+        """
+        Point this tournament at a stats board, or move it to another one.
+
+        The board is chosen when a tournament is created, but that is exactly
+        the moment a host is least likely to have thought about it — the bracket
+        is the thing they came for. Without this the choice was final: a night
+        that should have counted towards the league simply did not, and the only
+        fix was to run it again.
+
+        Posting an empty `stats_board` unlinks. Linking a board that is already
+        linked is a no-op rather than an error, so a double-tap on a phone
+        cannot strip the board and put it back.
+
+        Numbers are brought up to date immediately: `_link_stats` enrols the
+        players and syncs whatever has been played so far, so a board linked
+        halfway through a night shows that night's results rather than only the
+        ones reported after the link.
+        """
+        tournament = self.get_object()
+
+        if not acts_as_host(tournament, request.user):
+            raise PermissionDenied("Only the host can change the stats board.")
+
+        slug = request.data.get("stats_board") or ""
+
+        current = getattr(tournament, "stats_link", None)
+        current_slug = None
+        if current is not None and current.stats_table is not None:
+            current_slug = current.stats_table.board.slug
+
+        if slug:
+            if slug != current_slug:
+                _link_stats(tournament, slug, None, None, request.user)
+        else:
+            _unlink_stats(tournament)
+
         tournament = self.get_queryset().get(pk=tournament.pk)
         return Response(TournamentDetailSerializer(tournament, context={"request": request}).data)
 
@@ -1060,6 +1106,12 @@ def _link_stats(tournament, board_slug, table_id, column_id, user):
     if board_slug:
         ensure_automatic_columns(target["table"])
 
+    # Re-linking is a move, not a second link: `BoardLink.tournament` is
+    # one-to-one. The old board keeps whatever other tournaments gave it, but
+    # this tournament's contribution comes off it first — otherwise switching
+    # boards would leave tonight's wins sitting on a board it no longer feeds.
+    _unlink_stats(tournament)
+
     link = BoardLink.objects.create(tournament=tournament, **target)
 
     enrol_tournament_players(link)
@@ -1140,6 +1192,37 @@ def _award_linked_stats(tournament):
     link = getattr(tournament, "stats_link", None)
     if link is not None:
         apply_tournament_result(link)
+
+
+def _unlink_stats(tournament):
+    """
+    Detach this tournament from whatever board it feeds.
+
+    Takes its numbers off that board on the way out, exactly as deleting the
+    tournament does — the contribution and the link are one thing, and leaving
+    one without the other is what makes a board stop being trustworthy.
+
+    Returns True when there was something to detach, so a caller can tell
+    "unlinked" from "was never linked".
+    """
+    from apps.stats.awarding import strip_tournament_from_board
+
+    link = getattr(tournament, "stats_link", None)
+    if link is None:
+        return False
+
+    strip_tournament_from_board(link)
+    link.delete()
+
+    # The cached relation still points at the deleted row, and `_link_stats`
+    # checks it immediately afterwards when this is a switch rather than a
+    # removal.
+    try:
+        del tournament.stats_link
+    except AttributeError:
+        pass
+
+    return True
 
 
 def _strip_linked_stats(tournament):

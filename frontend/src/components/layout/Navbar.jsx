@@ -1,14 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import {
-  BarChart3,
-  ChevronDown,
-  House,
-  LogOut,
-  Menu,
-  Shuffle,
-  Trophy,
-  Users,
-} from '@/components/icons'
+import { BarChart3, ChevronDown, House, LogOut, Shuffle, Trophy, Users } from '@/components/icons'
 import { Link, NavLink } from 'react-router-dom'
 
 import { friends as friendsApi } from '@/api/endpoints'
@@ -169,9 +160,11 @@ function AccountMenu({ user, onLogout }) {
 
   const waiting = pending?.length ?? 0
 
-  // Initials rather than a generated avatar image: no network request, no
-  // layout shift, and it still gives the menu a recognisable anchor.
-  const initials = (user?.display_name || user?.username || '?').slice(0, 2).toUpperCase()
+  // A single initial rather than a generated avatar image: no network request,
+  // no layout shift, and it still gives the menu a recognisable anchor. One
+  // letter rather than two — at 32px a two-letter pair is set small enough to
+  // read as a smudge, where one glyph fills the square and stays legible.
+  const initials = (user?.display_name || user?.username || '?').slice(0, 1).toUpperCase()
 
   return (
     <div className="dropdown dropdown-end">

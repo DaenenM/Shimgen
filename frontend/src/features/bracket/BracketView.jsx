@@ -19,7 +19,7 @@ export function BracketView({ matches, canReport, onReport = () => {}, onClear =
   const sections = sectionsFor(matches)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {sections.map((section) => (
         <BracketSection
           key={section}
@@ -35,8 +35,24 @@ export function BracketView({ matches, canReport, onReport = () => {}, onClear =
   )
 }
 
-/** Horizontal reach of a connector, and half the gap between two columns. */
-const ARM = 'w-8'
+/**
+ * Horizontal reach of a connector, and half the gap between two columns.
+ *
+ * Shorter on a phone. At `w-8` a column cost 288px of a 375px screen, so the
+ * viewport held one card and a sliver of the next and the horizontal scroll
+ * never came to rest anywhere useful. 20px still reads as a connector while
+ * letting two columns very nearly share the screen.
+ */
+const ARM = 'w-5 sm:w-8'
+
+/**
+ * The whole gap between two columns: the bracket, then the run into the card.
+ *
+ * Kept as its own token so the heading row above reserves exactly what the
+ * connectors below occupy. When those two disagreed, every round label drifted
+ * sideways from the column it names.
+ */
+const GAP = 'w-10 sm:w-16'
 
 function BracketSection({ section, matches, showHeading, canReport, onReport, onClear }) {
   const rounds = toRounds(matches, section)
@@ -71,9 +87,13 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
         {columns.length > 1 && (
           <div className="flex min-w-min">
             {columns.map(({ roundNo }, index) => (
+              // One spacer per gap, mirroring the cards below: the join is
+              // drawn once by the column that receives it, so a heading row
+              // that reserved an arm on both sides drifted right by an arm a
+              // round and put the labels over the wrong columns.
               <div key={roundNo} className="flex">
-                {index > 0 && <span className={`${ARM} shrink-0`} />}
-                <h4 className="w-64 shrink-0 text-center">
+                {index > 0 && <span className={`${GAP} shrink-0`} />}
+                <h4 className="w-52 shrink-0 text-center sm:w-64">
                   <span
                     className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase"
                     style={{
@@ -84,7 +104,6 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
                     {roundLabel(roundNo, totalRounds, section, index + 1)}
                   </span>
                 </h4>
-                {index < columns.length - 1 && <span className={`${ARM} shrink-0`} />}
               </div>
             ))}
           </div>
@@ -95,8 +114,11 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
             <Round
               key={round.roundNo}
               matches={round.matches}
-              isFirst={index === 0}
-              isLast={index === columns.length - 1}
+              // The column that *receives* draws the whole join, so it needs to
+              // know which of the previous column's matches feed each of its
+              // own. Splitting the drawing across two columns is what left the
+              // halves meeting at different heights.
+              feeders={index === 0 ? null : feedersFor(round.matches, columns[index - 1].matches)}
               canReport={canReport}
               onReport={onReport}
               onClear={onClear}
@@ -110,48 +132,47 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
 }
 
 /**
- * One column, with the connector arms either side of it.
+ * Which matches in the previous column feed each match in this one.
  *
- * Cards are paired: each pair shares a bracket that reaches right to the
- * midpoint between them, which is where the next round's card sits. An odd card
- * out — a bye that carried straight through — gets a plain horizontal line
- * instead, so it still visibly leads somewhere.
+ * Returned in this column's own order, so a card and the group that feeds it
+ * are looked up by the same index — which is what lets one element draw both
+ * halves of a join.
  */
-function Round({ matches, isFirst, isLast, canReport, onReport, onClear, tone }) {
-  // Group by where each match actually advances to, rather than assuming every
-  // round halves. A losers bracket alternates: a "minor" round pairs each
-  // survivor with a fresh drop from the winners bracket, so two matches feed
-  // two matches one-to-one. Chopping the column into pairs regardless drew a
-  // bracket joining two cards that never meet — which is what made the losers
-  // bracket read as a mess of stubby, meaningless elbows.
-  const groups = []
-  for (const match of matches) {
-    const target = match.next_match_win ?? null
-    const last = groups[groups.length - 1]
+function feedersFor(matches, previous) {
+  return matches.map((match) => previous.filter((feeder) => feeder.next_match_win === match.id))
+}
 
-    if (last && target !== null && last.target === target) {
-      last.matches.push(match)
-    } else {
-      groups.push({ target, matches: [match] })
-    }
-  }
-
+/**
+ * One column: the arms arriving at it, then its cards.
+ *
+ * The join is drawn entirely by the receiving column. It used to be split —
+ * the previous column drew an elbow out of its own cards, this one drew a stub
+ * into its own — and those are two independent flex layouts whose midpoints
+ * agree only when a column happens to hold exactly half the cards of the one
+ * before it. Where they disagreed the two halves stopped short of each other,
+ * which is the floating, unconnected lines.
+ *
+ * Drawing both halves in one element makes that impossible: the riser and the
+ * horizontal that leaves it are siblings in the same box, so they meet by
+ * construction at any depth and whatever height a card happens to be.
+ */
+function Round({ matches, feeders, canReport, onReport, onClear, tone }) {
   return (
     <div className="flex items-stretch">
-      {/* Incoming arms. Each mirrors its card's own slot — same flex-1, same
-          padding — so the line lands on the card's vertical centre whatever
-          height that card happens to be. */}
-      {!isFirst && (
+      {feeders && (
         <div className="flex shrink-0 flex-col">
-          {matches.map((match) => (
-            <div key={match.id} className="flex flex-1 items-center py-1.5">
-              <span className={`${ARM} border-base-content/25 block border-t`} />
+          {matches.map((match, index) => (
+            // One slot per card, sharing the column height exactly as the cards
+            // do — so whatever vertical this slot centres on is the vertical
+            // the card centres on.
+            <div key={match.id} className="flex flex-1 items-stretch py-1.5">
+              <Connector count={feeders[index]?.length ?? 0} />
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex w-64 shrink-0 flex-col">
+      <div className="flex w-52 shrink-0 flex-col sm:w-64">
         {matches.map((match) => (
           // Each card takes an equal share of the column's height and centres
           // itself in it. That is what puts a later round's card level with the
@@ -169,54 +190,63 @@ function Round({ matches, isFirst, isLast, canReport, onReport, onClear, tone })
           </div>
         ))}
       </div>
-
-      {/* Outgoing arms.
-
-          Built from the same slots the cards use, so the geometry cannot drift:
-          the upper half draws its border along the bottom edge of its slot and
-          the lower half along the top of its own, meeting exactly halfway
-          between the two card centres. */}
-      {!isLast && (
-        <div className="flex shrink-0 flex-col">
-          {groups.map((group, index) => (
-            <div
-              key={index}
-              className="flex flex-col"
-              // A group spans one slot per match it holds, so the elbows line
-              // up with the cards they belong to.
-              style={{ flex: group.matches.length }}
-            >
-              {group.matches.length === 2 ? (
-                <>
-                  {/* Upper: out of the card's centre, then down. */}
-                  <div className="flex flex-1 flex-col justify-center py-1.5">
-                    <span className="flex-1" />
-                    <span
-                      className={`${ARM} border-base-content/25 block flex-1 rounded-tr border-t border-r`}
-                    />
-                  </div>
-                  {/* Lower: up from the card's centre to meet it. */}
-                  <div className="flex flex-1 flex-col justify-center py-1.5">
-                    <span
-                      className={`${ARM} border-base-content/25 block flex-1 rounded-br border-r border-b`}
-                    />
-                    <span className="flex-1" />
-                  </div>
-                </>
-              ) : (
-                // One match advancing on its own: a straight line across. This
-                // is the common case in a losers minor round, and drawing it
-                // flat is what makes the progression legible.
-                group.matches.map((match) => (
-                  <div key={match.id} className="flex flex-1 items-center py-1.5">
-                    <span className={`${ARM} border-base-content/25 block border-t`} />
-                  </div>
-                ))
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
+  )
+}
+
+const LINE = 'border-base-content/25'
+
+/**
+ * The arm arriving at one card.
+ *
+ * Two arms wide, and the two halves do different jobs. The left arm carries the
+ * bracket — corner, riser, corner — spanning from one feeder's centre to the
+ * other's. The right arm carries a flat line from the middle of that riser into
+ * the card. Without the second arm the riser had nowhere to go: it sat hard
+ * against the card with no horizontal reaching it, which is the gap that made
+ * the bracket look unfinished.
+ *
+ * The riser starts and stops at the *feeders'* centres, not at the edges of
+ * this slot. The slot spans both feeders, so each half of it holds one, and
+ * that feeder's centre is the half's own centre — hence the spacer taking the
+ * outer half of each. Spanning the slot edge to edge would overshoot the
+ * outermost cards by half a slot at each end.
+ */
+function Connector({ count }) {
+  // Nothing upstream — a losers round whose byes were all hidden, say. An arm
+  // from nowhere is worse than no arm.
+  if (count === 0) return <span className={`${GAP} shrink-0`} />
+
+  // One feeder: straight across at the card's centre, the full width of the
+  // gap. The common case in a losers minor round, and flat is what makes the
+  // progression legible.
+  if (count === 1) {
+    return (
+      <span className={`${GAP} flex shrink-0 flex-col justify-center`}>
+        <span className={`${LINE} block border-t`} />
+      </span>
+    )
+  }
+
+  return (
+    <span className={`${GAP} flex shrink-0 items-stretch`}>
+      {/* The bracket itself. */}
+      <span className={`${ARM} flex shrink-0 flex-col`}>
+        <span className="flex flex-1 flex-col">
+          <span className="flex-1" />
+          <span className={`${LINE} flex-1 rounded-tr border-t border-r`} />
+        </span>
+        <span className="flex flex-1 flex-col">
+          <span className={`${LINE} flex-1 rounded-br border-r border-b`} />
+          <span className="flex-1" />
+        </span>
+      </span>
+
+      {/* And the run into the card, from the seam between those two halves —
+          which is this card's centre line. */}
+      <span className={`${ARM} flex shrink-0 flex-col justify-center`}>
+        <span className={`${LINE} block border-t`} />
+      </span>
+    </span>
   )
 }

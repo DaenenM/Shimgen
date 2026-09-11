@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Shuffle, Trophy, UserPlus, Users } from '@/components/icons'
+import { Plus, Shuffle, Trophy, UserPlus } from '@/components/icons'
 import { Link } from 'react-router-dom'
 
 import {
@@ -7,9 +7,12 @@ import {
   roster as rosterApi,
   tournaments as tournamentsApi,
 } from '@/api/endpoints'
+import { PageShell } from '@/components/layout/PageShell'
+import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { FORMAT_LABELS } from '@/features/bracket/layout'
+import { SkeletonRows } from '@/components/ui/Skeleton'
+import { TournamentCard } from '@/features/tournaments/TournamentCard'
 import { useAuth } from '@/hooks/useAuth'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
@@ -24,7 +27,7 @@ import { paths } from '@/routes/paths'
 export function DashboardPage() {
   const { user } = useAuth()
 
-  const { data: tournaments } = useQuery({
+  const { data: tournaments, isLoading } = useQuery({
     queryKey: queryKeys.tournaments.all,
     queryFn: () => tournamentsApi.list(),
   })
@@ -42,27 +45,20 @@ export function DashboardPage() {
   const events = list(tournaments)
   const recent = events.slice(0, 5)
   const active = events.filter((t) => t.state === 'active').length
+  const pendingCount = list(pending).length
 
   return (
-    <div className="glass-backdrop mx-auto max-w-5xl px-4 py-8">
+    <PageShell className="glass-backdrop">
       <PageHeader
         title={`Welcome back, ${user?.display_name || user?.username}`}
         description="Pick up where you left off, or start something new."
       >
-        <Link
-          to={paths.quickStart}
-          className="bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-        >
-          <Plus className="h-4 w-4" />
+        <Button icon={Plus} to={paths.quickStart}>
           New tournament
-        </Link>
-        <Link
-          to={paths.teamGenerator}
-          className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-        >
-          <Shuffle className="h-4 w-4" />
+        </Button>
+        <Button icon={Shuffle} variant="secondary" to={paths.teamGenerator}>
           Teams
-        </Link>
+        </Button>
       </PageHeader>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
@@ -73,24 +69,28 @@ export function DashboardPage() {
 
       {/* A pending friend request is the one thing here that needs an answer,
           so it gets a prompt rather than sitting silently in a counter. */}
-      {list(pending).length > 0 && (
+      {pendingCount > 0 && (
         <Link
           to={paths.friends}
-          className="glass-inset hover:border-base-content/25 hover:bg-base-content/5 mb-6 flex items-center gap-2.5 p-3 text-sm transition-colors duration-200"
+          className="glass-inset hover:border-base-content/25 hover:bg-base-content/5 mb-6 flex items-center gap-2.5 px-4 py-3 text-sm transition-colors duration-200"
         >
-          <UserPlus className="text-primary h-4 w-4" />
+          <UserPlus className="text-primary h-4 w-4 shrink-0" />
           <span>
-            You have {list(pending).length} pending friend{' '}
-            {list(pending).length === 1 ? 'request' : 'requests'}.
+            You have {pendingCount} pending friend {pendingCount === 1 ? 'request' : 'requests'}.
           </span>
         </Link>
       )}
 
-      <h2 className="mb-3 text-sm font-semibold tracking-wide uppercase opacity-60">
+      <h2 className="text-base-content/60 mb-3 text-sm font-semibold tracking-wide uppercase">
         Recent tournaments
       </h2>
 
-      {recent.length === 0 ? (
+      {isLoading ? (
+        // Only the list waits. The header, its actions and the counters are
+        // above and already interactive, so the page is usable before the
+        // fetch lands.
+        <SkeletonRows count={3} />
+      ) : recent.length === 0 ? (
         <EmptyState
           icon={Trophy}
           title="Nothing yet"
@@ -99,39 +99,23 @@ export function DashboardPage() {
           actionTo={paths.quickStart}
         />
       ) : (
+        // The same row the tournaments list uses, rather than a second version
+        // of it. The two pages showed the same tournaments in two different
+        // shapes — different pills, a different state badge, a different
+        // surface — which read as two different products.
         <ul className="grid gap-2">
           {recent.map((tournament) => (
-            <li key={tournament.id}>
-              <Link
-                to={paths.tournament(tournament.id, tournament.title)}
-                className="glass-panel hover:border-base-content/25 hover:bg-base-content/5 p-4 transition-colors duration-200"
-              >
-                <div className="flex flex-row items-center justify-between gap-4 p-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {tournament.title || 'Untitled tournament'}
-                    </p>
-                    <p className="text-base-content/50 text-xs">
-                      {FORMAT_LABELS[tournament.format] ?? tournament.format} ·{' '}
-                      {tournament.entrant_count} entrants
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium capitalize ${
-                      tournament.state === 'active'
-                        ? 'bg-success/15 text-success'
-                        : 'bg-base-content/8 text-base-content/60'
-                    }`}
-                  >
-                    {tournament.state}
-                  </span>
-                </div>
-              </Link>
-            </li>
+            <TournamentCard
+              key={tournament.id}
+              tournament={tournament}
+              // The dashboard is a glance, not a workbench: pinning, archiving
+              // and deleting all live on the tournaments page, one tap away.
+              readOnly
+            />
           ))}
         </ul>
       )}
-    </div>
+    </PageShell>
   )
 }
 
@@ -140,16 +124,21 @@ function list(data) {
   return data?.results ?? data ?? []
 }
 
+/**
+ * One headline number, linking to the page behind it.
+ *
+ * `glass-inset` rather than `glass-panel`: these sit three across in a row of
+ * small tiles, and a full panel's 20px blur plus drop shadow made them read as
+ * three floating cards rather than one band of figures.
+ */
 function Stat({ label, value, to }) {
   return (
     <Link
       to={to}
-      className="glass-panel hover:border-base-content/25 hover:bg-base-content/5 p-4 transition-colors duration-200"
+      className="glass-inset hover:border-base-content/25 hover:bg-base-content/5 px-4 py-3.5 transition-colors duration-200"
     >
-      <div className="p-4">
-        <p className="text-base-content/50 text-xs">{label}</p>
-        <p className="tabular text-2xl font-bold">{value}</p>
-      </div>
+      <p className="text-base-content/50 text-xs">{label}</p>
+      <p className="tabular mt-0.5 text-2xl font-bold">{value}</p>
     </Link>
   )
 }

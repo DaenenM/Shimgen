@@ -7,14 +7,15 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useScrollToTop } from '@/hooks/useScrollToTop'
 
 import { Footer } from './Footer'
-import { MobileTabBar } from './MobileTabBar'
+import { MobileNav } from './MobileNav'
 import { Navbar } from './Navbar'
 
 /**
  * The chrome every page sits inside.
  *
  * The boundary and Suspense wrap only the Outlet, so a page that throws or is
- * still loading leaves the tab bar intact and the user able to navigate away.
+ * still loading leaves the navigation intact and the user able to move away
+ * from it.
  */
 export function RootLayout() {
   // Both live here rather than in each page: the layout renders on every route,
@@ -24,20 +25,23 @@ export function RootLayout() {
 
   return (
     <div className="bg-base-200 flex min-h-screen flex-col">
-      {/* Wide screens navigate from the top, phones from the bottom bar below.
-          The Navbar hides itself under `lg`. */}
+      {/* Two navigations, one per breakpoint: the Navbar hides itself under
+          `lg`, and MobileNav hides itself at `lg` and above. */}
       <Navbar />
+      <MobileNav />
 
       {/*
-        The tab bar is `position: fixed`, so it is outside the flow and covers
-        whatever the page ends with. Clearing it here rather than in each page
-        is what makes that reliable: a page that forgot — and eleven of them
-        had — loses its last card behind the bar with no way to scroll to it.
+        The phone header is `position: fixed`, so it is outside the flow and
+        would cover whatever the page starts with. Clearing it here rather than
+        in each page is what makes that reliable: a page that forgot — and
+        eleven of them had, back when this was a bottom bar — loses its title
+        behind the chrome.
 
-        `env(safe-area-inset-bottom)` is added on top for the home indicator on
-        notched iPhones, which eats a further ~34px.
+        `env(safe-area-inset-top)` is added on top for the notch, which eats a
+        further ~47px on an iPhone. At `lg` the Navbar is sticky rather than
+        fixed, so it occupies real space and needs no allowance.
       */}
-      <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+      <main className="flex-1 pt-[calc(3rem+env(safe-area-inset-top))] lg:pt-0">
         <RouteErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Outlet />
@@ -46,9 +50,6 @@ export function RootLayout() {
       </main>
 
       <Footer />
-
-      {/* Phones navigate from the bottom bar; wide screens keep the footer. */}
-      <MobileTabBar />
     </div>
   )
 }

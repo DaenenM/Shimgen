@@ -25,15 +25,15 @@ export function EntrantRoster({ entrants }) {
 
   return (
     <section>
-      <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
-        <Users className="h-5 w-5" />
+      <h2 className="mb-1 flex items-center gap-2 text-base font-semibold sm:text-lg">
+        <Users className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
         {anyTeams ? 'Teams' : 'Entrants'}
       </h2>
-      <p className="text-base-content/60 mb-4 text-sm">
+      <p className="text-base-content/60 mb-3 text-sm sm:mb-4">
         {anyTeams ? 'Who is playing for each team.' : 'Everyone taking part in this tournament.'}
       </p>
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
         {entrants.map((entrant, index) => {
           const members = entrant.players ?? []
           // Same scale as the generator, keyed off the same position, so a team
@@ -49,11 +49,11 @@ export function EntrantRoster({ entrants }) {
               {/* The team's hue as light falling through the top of the panel,
                   exactly as the generator draws it. */}
               <div
-                className="pointer-events-none absolute inset-x-0 top-0 h-24"
+                className="pointer-events-none absolute inset-x-0 top-0 h-16 sm:h-24"
                 style={{ background: `linear-gradient(to bottom, ${tone.wash}, transparent)` }}
                 aria-hidden="true"
               />
-              <div className="relative flex flex-col gap-2 p-4">
+              <div className="relative flex flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
                 <div className="flex items-center justify-between gap-2">
                   <span
                     className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-xs font-bold"
@@ -64,7 +64,7 @@ export function EntrantRoster({ entrants }) {
                   </span>
 
                   <h3
-                    className={`min-w-0 flex-1 truncate font-semibold ${entrant.eliminated ? 'line-through' : ''}`}
+                    className={`min-w-0 flex-1 truncate text-sm font-semibold sm:text-base ${entrant.eliminated ? 'line-through' : ''}`}
                   >
                     {entrant.label}
                   </h3>
@@ -77,7 +77,7 @@ export function EntrantRoster({ entrants }) {
                 {members.length > 0 ? (
                   <ul className="space-y-1">
                     {members.map((player) => (
-                      <li key={player.id} className="flex items-center gap-2 text-sm">
+                      <li key={player.id} className="flex items-center gap-2 text-xs sm:text-sm">
                         {player.display_name}
                         {/* A linked player's results follow their own account
                             across every host's events (plan §3). */}

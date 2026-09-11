@@ -61,6 +61,11 @@ export const tournaments = {
   // doubles as the reconcile — no separate refetch needed after it.
   batchReport: (id, operations) =>
     api.post(`/tournaments/${id}/batch-report/`, { operations }).then((r) => r.data),
+  // Point a tournament at a stats board after the fact, or move it to another.
+  // An empty slug unlinks. Returns the whole tournament, like the other
+  // mutations here, so the caller can write it straight into the cache.
+  linkStatsBoard: (id, slug) =>
+    api.post(`/tournaments/${id}/stats-board/`, { stats_board: slug ?? '' }).then((r) => r.data),
   addCohost: (id, userId) =>
     api.post(`/tournaments/${id}/cohosts/`, { user: userId }).then((r) => r.data),
   removeCohost: (id, userId) =>

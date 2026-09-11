@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Star, Trash2, Trophy } from '@/components/icons'
+import { Archive, ArchiveRestore, Star, Trash2, Trophy, Users } from '@/components/icons'
 import { Link } from 'react-router-dom'
 
 import { paths } from '@/routes/paths'
@@ -6,6 +6,26 @@ import { paths } from '@/routes/paths'
 const FORMAT_LABELS = {
   single: 'Single elimination',
   double: 'Double elimination',
+  rr: 'Round robin',
+  swiss: 'Swiss',
+  ffa: 'Free-for-all',
+}
+
+/**
+ * The same formats, named for a phone.
+ *
+ * Length is what decided the row's height: at full width "Double elimination"
+ * plus an entrant count plus a state pill cannot share one line on a 375px
+ * screen, so those rows wrapped to two while "Round robin" stayed at one — the
+ * list came out ragged, tall rows next to short ones.
+ *
+ * Shortening is better than wrapping or truncating. The row already says this
+ * is a tournament, so "Double" is unambiguous, and it keeps every card the same
+ * height whatever format it holds.
+ */
+const FORMAT_LABELS_SHORT = {
+  single: 'Single',
+  double: 'Double',
   rr: 'Round robin',
   swiss: 'Swiss',
   ffa: 'Free-for-all',
@@ -53,7 +73,8 @@ const formatTone = (format) => {
 // previous pills were small enough and tight enough to read as badges stamped
 // on the row instead of labels belonging to it.
 const PILL =
-  'inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium tracking-tight'
+  'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 ' +
+  'text-xs font-medium tracking-tight'
 
 const STATE_DOT = {
   draft: 'bg-base-content/30',
@@ -84,6 +105,11 @@ export function TournamentCard({
   onRestore,
   onDelete,
   pending = false,
+  // A glance rather than a workbench — the dashboard shows the same row but
+  // keeps pinning, archiving and deleting on the tournaments page, which is one
+  // tap away. Without this the row would render three controls wired to
+  // handlers the caller never passed.
+  readOnly = false,
 }) {
   const name = tournament.title || 'Untitled tournament'
   const tone = formatTone(tournament.format)
@@ -100,7 +126,7 @@ export function TournamentCard({
         />
       )}
 
-      <div className="flex items-center gap-2 py-2.5 pr-2 pl-3.5 sm:gap-3 sm:pr-3 sm:pl-4">
+      <div className="flex items-center gap-1.5 py-2.5 pr-1.5 pl-3 sm:gap-3 sm:pr-3 sm:pl-4">
         <Link to={paths.tournament(tournament.id, name)} className="min-w-0 flex-1 py-0.5">
           <div className="flex min-w-0 items-center gap-2">
             <span
@@ -114,26 +140,51 @@ export function TournamentCard({
             </h3>
           </div>
 
-          {/* Grid instead of flex: each pill sits in its own column, sized to
-              its own content, with a fixed gap between them — so spacing
-              stays even whether there are two pills (draft, no winner yet)
-              or three (format, entrants, winner). */}
-          <div className="mt-1 grid grid-flow-col items-center justify-start gap-1.5 pl-3.5">
+          {/* Wrapping flex rather than a single grid row. The grid gave every
+              pill its own fixed column, which on a phone left three pills and
+              three buttons fighting over ~340px — and since a pill cannot
+              shrink, the label broke instead: "Double / elimination" over two
+              lines, in a row that was meant to be one.
+
+              Wrapping moves the overflow to a second line, where there is
+              room, and `whitespace-nowrap` on the pill keeps each label whole.
+              The indent is dropped below `sm` for the same reason: aligning
+              under the title costs 14px the pills need more.
+
+              `flex-nowrap` rather than wrapping: every row is one line tall
+              whatever it holds, which is what keeps the list even. The short
+              format labels above are what make that fit. */}
+          <div className="mt-1.5 flex flex-nowrap items-center gap-1.5 sm:pl-3.5">
             <span
               className={`${PILL} ${tone ? '' : 'bg-base-content/10 text-base-content/70'}`}
               style={tone}
             >
-              {FORMAT_LABELS[tournament.format] ?? tournament.format}
+              <span className="sm:hidden">
+                {FORMAT_LABELS_SHORT[tournament.format] ?? tournament.format}
+              </span>
+              <span className="hidden sm:inline">
+                {FORMAT_LABELS[tournament.format] ?? tournament.format}
+              </span>
             </span>
 
-            <span className={`${PILL} bg-base-content/8 text-base-content/70`}>
-              {tournament.entrant_count} {tournament.entrant_count === 1 ? 'entrant' : 'entrants'}
+            {/* The icon is the unit at every width. It says "entrants" faster
+                than the word does, and keeping one form across breakpoints
+                means the row does not re-flow as the window is resized. The
+                accessible name carries the word for anyone not seeing it. */}
+            <span
+              className={`${PILL} bg-base-content/8 text-base-content/70`}
+              aria-label={`${tournament.entrant_count} ${
+                tournament.entrant_count === 1 ? 'entrant' : 'entrants'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {tournament.entrant_count}
             </span>
 
             {tournament.winner_label ? (
-              <span className={`${PILL} bg-accent/15 text-accent min-w-0`}>
+              <span className={`${PILL} bg-accent/15 text-accent min-w-0 !shrink`}>
                 <Trophy className="h-3.5 w-3.5 shrink-0" />
-                <span className="max-w-28 truncate sm:max-w-40">{tournament.winner_label}</span>
+                <span className="truncate">{tournament.winner_label}</span>
               </span>
             ) : (
               <span
@@ -150,42 +201,44 @@ export function TournamentCard({
           </div>
         </Link>
 
-        <div className="flex shrink-0 items-center">
-          <button
-            type="button"
-            onClick={() => onFavourite(tournament.id)}
-            aria-label={tournament.favourited_at ? `Unpin ${name}` : `Pin ${name} to the top`}
-            title={tournament.favourited_at ? 'Unpin' : 'Pin to the top'}
-            className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${
-              tournament.favourited_at
-                ? 'text-warning hover:bg-warning/10'
-                : 'text-base-content/35 hover:text-warning hover:bg-warning/10 sm:opacity-60 sm:group-hover:opacity-100'
-            }`}
-          >
-            <Star className="h-4 w-4" fill={tournament.favourited_at ? 'currentColor' : 'none'} />
-          </button>
+        {!readOnly && (
+          <div className="flex shrink-0 items-center">
+            <button
+              type="button"
+              onClick={() => onFavourite(tournament.id)}
+              aria-label={tournament.favourited_at ? `Unpin ${name}` : `Pin ${name} to the top`}
+              title={tournament.favourited_at ? 'Unpin' : 'Pin to the top'}
+              className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${
+                tournament.favourited_at
+                  ? 'text-warning hover:bg-warning/10'
+                  : 'text-base-content/35 hover:text-warning hover:bg-warning/10 sm:opacity-60 sm:group-hover:opacity-100'
+              }`}
+            >
+              <Star className="h-4 w-4" fill={tournament.favourited_at ? 'currentColor' : 'none'} />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => (archived ? onRestore(tournament.id) : onArchive(tournament.id))}
-            disabled={pending}
-            aria-label={`${archived ? 'Restore' : 'Archive'} ${name}`}
-            title={archived ? 'Put it back in the list' : 'Archive'}
-            className="text-base-content/35 hover:text-primary hover:bg-primary/10 grid h-8 w-8 place-items-center rounded-lg transition-colors disabled:opacity-30 sm:opacity-60 sm:group-hover:opacity-100"
-          >
-            {archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-          </button>
+            <button
+              type="button"
+              onClick={() => (archived ? onRestore(tournament.id) : onArchive(tournament.id))}
+              disabled={pending}
+              aria-label={`${archived ? 'Restore' : 'Archive'} ${name}`}
+              title={archived ? 'Put it back in the list' : 'Archive'}
+              className="text-base-content/35 hover:text-primary hover:bg-primary/10 grid h-8 w-8 place-items-center rounded-lg transition-colors disabled:opacity-30 sm:opacity-60 sm:group-hover:opacity-100"
+            >
+              {archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onDelete(tournament)}
-            aria-label={`Delete ${name}`}
-            title="Delete tournament"
-            className="text-base-content/35 hover:text-error hover:bg-error/10 grid h-8 w-8 place-items-center rounded-lg transition-colors sm:opacity-60 sm:group-hover:opacity-100"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => onDelete(tournament)}
+              aria-label={`Delete ${name}`}
+              title="Delete tournament"
+              className="text-base-content/35 hover:text-error hover:bg-error/10 grid h-8 w-8 place-items-center rounded-lg transition-colors sm:opacity-60 sm:group-hover:opacity-100"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
     </li>
   )

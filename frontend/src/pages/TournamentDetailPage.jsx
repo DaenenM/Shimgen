@@ -13,6 +13,7 @@ import { EditableTitle } from '@/features/bracket/EditableTitle'
 import { EntrantRoster } from '@/features/bracket/EntrantRoster'
 import { RoundList } from '@/features/bracket/RoundList'
 import { SaveIndicator } from '@/features/bracket/SaveIndicator'
+import { StatsBoardManager } from '@/features/bracket/StatsBoardManager'
 import { StandingsTable } from '@/features/bracket/StandingsTable'
 import { FORMAT_LABELS } from '@/features/bracket/layout'
 import { applyResult, clearResult, scoreForClick } from '@/features/bracket/optimistic'
@@ -258,6 +259,24 @@ export function TournamentDetailPage() {
     onSuccess: refreshAll,
   })
 
+  /**
+   * Move this tournament to another stats board, or take it off one.
+   *
+   * The response is the whole tournament, so it replaces the cache outright —
+   * linking enrols players and recounts what has been played, and none of that
+   * is worth trying to predict locally.
+   */
+  const linkBoard = useMutation({
+    mutationFn: (slug) => tournamentsApi.linkStatsBoard(id, slug),
+    onSuccess: (fresh) => {
+      queryClient.setQueryData(queryKeys.tournaments.detail(id), fresh)
+      // The board itself now holds different numbers, and the stats list shows
+      // them. `['boards']` is a prefix of every board's key, so this covers the
+      // one just linked and the one just left.
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all })
+    },
+  })
+
   const addCohost = useMutation({
     mutationFn: (userId) => tournamentsApi.addCohost(id, userId),
     onSuccess: refresh,
@@ -317,7 +336,7 @@ export function TournamentDetailPage() {
   return (
     <PageShell width="wide" className="glass-backdrop">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3 sm:mb-6 sm:gap-4">
         <div className="min-w-0">
           <EditableTitle
             title={tournament.title}
@@ -343,11 +362,22 @@ export function TournamentDetailPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex flex-wrap items-center gap-1.5 sm:gap-2">
           {/* Sits with the other header controls rather than above the bracket:
               it answers "is the night recorded?", which is a question about
               this tournament, not about the page. */}
           <SaveIndicator state={syncError ? 'idle' : saveState} />
+
+          {/* Host-only, and only with an account: a board belongs to one, and
+              an anonymous quick-start bracket has none to attach to. */}
+          {tournament.is_host && user && (
+            <StatsBoardManager
+              board={tournament.stats_board}
+              onLink={(slug) => linkBoard.mutate(slug)}
+              pending={linkBoard.isPending}
+              error={linkBoard.isError ? linkBoard.error.message : null}
+            />
+          )}
 
           {isCreator && (
             <CohostManager
@@ -361,11 +391,11 @@ export function TournamentDetailPage() {
 
           {tournament.is_host && tournament.state === 'draft' && (
             <button
-              className="group bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+              className="group bg-primary text-primary-content hover:bg-primary/90 shadow-primary/20 hover:shadow-primary/30 flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-semibold shadow-md transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 sm:px-4"
               onClick={() => start.mutate()}
               disabled={start.isPending}
             >
-              <Play className="h-4 w-4 transition-transform duration-200 ease-out group-hover:scale-110" />
+              <Play className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110" />
               Start
             </button>
           )}
@@ -380,13 +410,21 @@ export function TournamentDetailPage() {
             </button>
           )}
 
+          {/* The label is dropped below `sm`: the icon is distinct, and five
+              labelled pills wrapped onto three rows on a phone — which is most
+              of what made this header feel cluttered. */}
           <button
-            className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98]"
+            className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] sm:px-4"
             onClick={copyLink}
             title="Copy a read-only link anyone can open without an account"
+            aria-label={copied ? 'Link copied' : 'Share'}
           >
-            {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-            {copied ? 'Link copied' : 'Share'}
+            {copied ? (
+              <Check className="h-4 w-4 shrink-0" />
+            ) : (
+              <Share2 className="h-4 w-4 shrink-0" />
+            )}
+            <span className="hidden sm:inline">{copied ? 'Link copied' : 'Share'}</span>
           </button>
         </div>
       </div>
@@ -464,16 +502,20 @@ export function TournamentDetailPage() {
       {/* Standings and the roster share the bottom row: both are things you
           read once the bracket has moved, and side by side they fill the width
           that a single full-bleed list would waste. */}
-      <div className="mt-10 grid gap-6 lg:grid-cols-[20rem_1fr]">
+      <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[20rem_1fr]">
         <section>
-          <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
-            <Trophy className="text-accent h-5 w-5" />
+          <h2 className="mb-1 flex items-center gap-2 text-base font-semibold sm:text-lg">
+            <Trophy className="text-accent h-4.5 w-4.5 sm:h-5 sm:w-5" />
             Standings
           </h2>
-          <p className="text-base-content/60 mb-4 text-sm">How everyone is placed so far.</p>
+          <p className="text-base-content/60 mb-3 text-sm sm:mb-4">
+            How everyone is placed so far.
+          </p>
 
-          <div className="glass-panel">
-            <div className="p-4">
+          <div className="glass-panel overflow-hidden">
+            {/* No inner padding: the table pads its own cells, and doing both
+                left the numbers floating in the middle of the card. */}
+            <div className="py-1">
               <StandingsTable rows={standings} />
             </div>
           </div>

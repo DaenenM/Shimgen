@@ -23,7 +23,7 @@ export function StandingsTable({ rows }) {
           one of the dozen cells — DaisyUI's `table` was supplying it before,
           and repeating `px-3 py-2` twelve times is how the next column added
           ends up misaligned. */}
-      <table className="w-full text-sm [&_td]:px-3 [&_td]:py-2 [&_th]:px-3 [&_th]:py-2">
+      <table className="w-full text-sm [&_td]:px-2.5 [&_td]:py-2 sm:[&_td]:px-3 [&_th]:px-2.5 [&_th]:py-2 sm:[&_th]:px-3">
         <thead>
           <tr className="border-base-content/10 text-base-content/60 border-b text-xs font-semibold tracking-wide uppercase">
             <th className="w-10">#</th>

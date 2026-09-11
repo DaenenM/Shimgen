@@ -1,5 +1,6 @@
 """Serializers for tournaments, entrants and matches."""
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.accounts.serializers import PublicUserSerializer
@@ -244,6 +245,10 @@ class TournamentDetailSerializer(TournamentSerializer):
     accepts_late_entrants = serializers.BooleanField(read_only=True)
     can_report = serializers.SerializerMethodField()
     is_host = serializers.SerializerMethodField()
+    # Which board this feeds, by name. The list view's `feeds_stats_board` says
+    # only whether one exists, which is enough to warn before a delete but not
+    # enough for the bracket page to show the host what it is pointed at.
+    stats_board = serializers.SerializerMethodField()
 
     class Meta(TournamentSerializer.Meta):
         fields = (
@@ -256,6 +261,7 @@ class TournamentDetailSerializer(TournamentSerializer):
             "accepts_late_entrants",
             "can_report",
             "is_host",
+            "stats_board",
             "started_at",
             "completed_at",
         )
@@ -276,6 +282,25 @@ class TournamentDetailSerializer(TournamentSerializer):
         if request is None:
             return False
         return acts_as_host(obj, request.user)
+
+    @extend_schema_field(
+        {
+            "type": "object",
+            "nullable": True,
+            "properties": {"slug": {"type": "string"}, "name": {"type": "string"}},
+        }
+    )
+    def get_stats_board(self, obj):
+        """The linked board's slug and name, or null when nothing is linked."""
+        link = getattr(obj, "stats_link", None)
+        if link is None:
+            return None
+
+        table = link.stats_table
+        if table is None:
+            return None
+
+        return {"slug": table.board.slug, "name": table.board.name}
 
 
 class SpectatorSerializer(TournamentDetailSerializer):

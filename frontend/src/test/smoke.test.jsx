@@ -6,7 +6,7 @@
  * rather than three files into real feature work.
  */
 
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -27,6 +27,7 @@ import { Card } from '@/components/ui/Card'
 import { Field, TextInput } from '@/components/ui/Field'
 import { SaveIndicator } from '@/features/bracket/SaveIndicator'
 import { BoardTable } from '@/features/stats/BoardTable'
+import { TournamentCard } from '@/features/tournaments/TournamentCard'
 import { generateTeams, splitEvenly } from '@/features/teams/generate'
 import { paths } from '@/routes/paths'
 
@@ -905,18 +906,69 @@ describe('layout navigation', () => {
     expect(screen.getAllByText('Team Generator').length).toBeGreaterThan(0)
   })
 
-  it('renders the mobile tab bar too', () => {
+  it('renders the mobile nav too', () => {
     mount()
     // Both navigations exist in the DOM; CSS decides which one is visible.
-    expect(screen.getByLabelText('Account menu')).toBeTruthy()
+    expect(screen.getByLabelText('Open menu')).toBeTruthy()
   })
 
-  it('reserves room for the fixed tab bar so pages are not cut off', () => {
+  it('opens the sheet, and every destination is in it', () => {
+    const { container } = mount()
+    fireEvent.click(screen.getByLabelText('Open menu'))
+
+    // Scoped to the sheet: the desktop navbar is in the DOM at the same time
+    // and carries the same destination names, so an unscoped query matches
+    // both and cannot tell whether the sheet rendered at all.
+    const sheet = within(container.querySelector('.glass-raised'))
+
+    expect(sheet.getByText('Home')).toBeTruthy()
+    expect(sheet.getByText('Team Generator')).toBeTruthy()
+    expect(sheet.getByText('Tournaments')).toBeTruthy()
+    expect(sheet.getByText('Stats')).toBeTruthy()
+    expect(sheet.getByText('Account')).toBeTruthy()
+
+    // Signed out, Account offers the two ways in rather than a profile.
+    expect(sheet.getByText('Log in')).toBeTruthy()
+    expect(sheet.getByText('Create an account')).toBeTruthy()
+
+    // The button becomes its own dismiss.
+    expect(screen.getByLabelText('Close menu')).toBeTruthy()
+  })
+
+  // The reported bug: the toggle sits in the header, outside the sheet, so the
+  // outside-press handler closed on mousedown and the button's own click
+  // toggled it straight back open. Pressing the X looked like it did nothing.
+  it('closes the sheet when the toggle is pressed again', () => {
+    const { container } = mount()
+
+    fireEvent.click(screen.getByLabelText('Open menu'))
+    expect(container.querySelector('.glass-raised')).toBeTruthy()
+
+    // A real press is mousedown then click, and it was the pair that broke it —
+    // clicking alone would pass even with the bug present.
+    const close = screen.getByLabelText('Close menu')
+    fireEvent.mouseDown(close)
+    fireEvent.click(close)
+
+    expect(container.querySelector('.glass-raised')).toBeNull()
+    expect(screen.getByLabelText('Open menu')).toBeTruthy()
+  })
+
+  it('still closes when the press lands outside the sheet', () => {
+    const { container } = mount()
+
+    fireEvent.click(screen.getByLabelText('Open menu'))
+    fireEvent.mouseDown(document.body)
+
+    expect(container.querySelector('.glass-raised')).toBeNull()
+  })
+
+  it('reserves room for the fixed phone header so pages are not cut off', () => {
     const { container } = mount()
     const main = container.querySelector('main')
 
-    expect(main.className).toContain('pb-[calc(4rem+env(safe-area-inset-bottom))]')
-    expect(main.className).toContain('lg:pb-0')
+    expect(main.className).toContain('pt-[calc(3rem+env(safe-area-inset-top))]')
+    expect(main.className).toContain('lg:pt-0')
   })
 })
 
@@ -942,11 +994,21 @@ describe('isPhantom', () => {
     ...over,
   })
 
-  it('keeps a played losers walkover, which is history', () => {
-    // Once something has actually been played it stays, whatever the
-    // arithmetic says — the page should not delete a result.
-    const m = match({ a: 7, b: null, winner: 7 })
+  it('keeps a contested losers match, which is history', () => {
+    // Two entrants actually played, so it stays whatever the arithmetic says —
+    // the page should not delete a result.
+    const m = match({ a: 7, b: 9, winner: 7 })
     expect(isPhantom(m, [m])).toBe(false)
+  })
+
+  it('hides a walkover the engine resolved on its way past', () => {
+    // The regression behind the bug report. When the winners match above a
+    // capacity-1 slot resolves, the backend cascades the lone occupant onward
+    // and stamps a winner on the slot as it goes. That is not a played match,
+    // so it earns no history exemption — otherwise every hidden slot returns
+    // the moment a result lands.
+    const m = match({ a: null, b: 5, winner: 5 })
+    expect(isPhantom(m, [m])).toBe(true)
   })
 
   it('hides an unreachable losers slot at creation, before any result', () => {
@@ -1039,5 +1101,337 @@ describe('isPhantom', () => {
     // so it is a walkover corridor, not a contest. Neither is a match, and the
     // losers bracket properly begins at 12.
     expect(visible.map((m) => m.id)).toEqual([])
+  })
+})
+
+describe('optimistic cascade through walkovers', () => {
+  /**
+   * The shape from the bug report: a 5-entrant double elimination the moment
+   * before a result lands. Three winners byes are already resolved, so the
+   * losers slot below is fed by one real match and one bye that can never drop
+   * anybody — which makes it a walkover its occupant should walk straight
+   * through.
+   */
+  const bracket = () => [
+    // The bye: resolved at creation, drops nobody into losers 10.
+    {
+      id: 1,
+      bracket: 'main',
+      round_no: 1,
+      position: 0,
+      a: 1,
+      b: null,
+      a_label: 'Team 1',
+      b_label: null,
+      best_of: 1,
+      wins_needed: 1,
+      score: {},
+      winner: 1,
+      next_match_win: 3,
+      next_match_lose: 10,
+    },
+    // The contested match. Its loser drops into losers 10.
+    {
+      id: 2,
+      bracket: 'main',
+      round_no: 1,
+      position: 1,
+      a: 4,
+      b: 5,
+      a_label: 'Team 4',
+      b_label: 'Team 5',
+      best_of: 1,
+      wins_needed: 1,
+      score: {},
+      winner: null,
+      next_match_win: 3,
+      next_match_lose: 10,
+    },
+    {
+      id: 3,
+      bracket: 'main',
+      round_no: 2,
+      position: 0,
+      a: 1,
+      b: null,
+      a_label: 'Team 1',
+      b_label: null,
+      best_of: 1,
+      wins_needed: 1,
+      score: {},
+      winner: null,
+      next_match_win: null,
+      next_match_lose: null,
+    },
+    // Losers slot fed by both of the above. Only one can ever arrive.
+    {
+      id: 10,
+      bracket: 'losers',
+      round_no: 1,
+      position: 0,
+      a: null,
+      b: null,
+      a_label: null,
+      b_label: null,
+      best_of: 1,
+      wins_needed: 1,
+      score: {},
+      winner: null,
+      next_match_win: 11,
+      next_match_lose: null,
+    },
+    // Where that lone entrant should land, instantly.
+    {
+      id: 11,
+      bracket: 'losers',
+      round_no: 2,
+      position: 0,
+      a: null,
+      b: null,
+      a_label: null,
+      b_label: null,
+      best_of: 1,
+      wins_needed: 1,
+      score: {},
+      winner: null,
+      next_match_win: null,
+      next_match_lose: null,
+    },
+  ]
+
+  const byId = (list, id) => list.find((m) => m.id === id)
+
+  // The reported bug: the clicked card moved at once, but everything below it
+  // sat on TBD until the batched save came back — so the bracket appeared to
+  // wait for "Saved" before updating.
+  it('walks a dropped entrant through a walkover on the click', () => {
+    const after = applyResult(bracket(), 2, 1, 0)
+
+    // Team 5 lost, so they drop into the walkover...
+    expect(byId(after, 10).b).toBe(5)
+    // ...which resolves to them without being played...
+    expect(byId(after, 10).winner).toBe(5)
+    // ...and carries them into the next losers round immediately.
+    expect(byId(after, 11).a).toBe(5)
+  })
+
+  it('carries the name through the cascade, not just the id', () => {
+    // The card renders `a_label`, so seating the id alone would still read TBD
+    // until the server answered — the exact delay this exists to avoid.
+    const after = applyResult(bracket(), 2, 1, 0)
+    expect(byId(after, 11).a_label).toBe('Team 5')
+  })
+
+  it('leaves a genuinely contested losers match alone', () => {
+    // Both feeders can still deliver, so nobody walks through: match 10 is a
+    // real contest waiting on its second entrant.
+    const contested = bracket().map((m) =>
+      m.id === 1 ? { ...m, b: 2, b_label: 'Team 2', winner: null } : m,
+    )
+    const after = applyResult(contested, 2, 1, 0)
+
+    expect(byId(after, 10).winner).toBeNull()
+    expect(byId(after, 11).a).toBeNull()
+  })
+})
+
+describe('TournamentCard readOnly', () => {
+  const tournament = {
+    id: 7,
+    title: 'Friday night',
+    format: 'double',
+    state: 'active',
+    entrant_count: 5,
+    favourited_at: null,
+    winner_label: null,
+  }
+
+  const renderCard = (props) =>
+    render(
+      <MemoryRouter>
+        <ul>
+          <TournamentCard tournament={tournament} {...props} />
+        </ul>
+      </MemoryRouter>,
+    )
+
+  it('hides the row controls, which have no handlers on the dashboard', () => {
+    renderCard({ readOnly: true })
+
+    expect(screen.queryByLabelText(/Pin Friday night/)).toBeNull()
+    expect(screen.queryByLabelText(/Archive Friday night/)).toBeNull()
+    expect(screen.queryByLabelText(/Delete Friday night/)).toBeNull()
+    // The tournament itself is still there to click through to.
+    expect(screen.getByText('Friday night')).toBeTruthy()
+  })
+
+  it('shows them on the tournaments list, where they are wired up', () => {
+    renderCard({ onFavourite: () => {}, onArchive: () => {}, onDelete: () => {} })
+
+    expect(screen.getByLabelText(/Pin Friday night/)).toBeTruthy()
+    expect(screen.getByLabelText(/Archive Friday night/)).toBeTruthy()
+    expect(screen.getByLabelText(/Delete Friday night/)).toBeTruthy()
+  })
+})
+
+describe('optimistic undo unwinds the whole chain', () => {
+  /**
+   * A played-out double elimination, shaped like the real thing: the winners
+   * champion (Team 1) reached the grand final, and Team 4 came up the losers
+   * side into both the losers final and the other half of the grand final.
+   *
+   * The two matches that matter are reached *twice* — once per seat. The grand
+   * final takes Team 1 along the winners edge and Team 4 along the losers edge;
+   * the losers final takes a drop from the winners semifinal and a survivor
+   * from the losers bracket.
+   */
+  const bracket = () => [
+    {
+      id: 1,
+      bracket: 'main',
+      round_no: 1,
+      position: 0,
+      a: 1,
+      b: 2,
+      a_label: 'Team 1',
+      b_label: 'Team 2',
+      winner: 1,
+      score: { a: 1, b: 0 },
+      best_of: 1,
+      wins_needed: 1,
+      next_match_win: 2,
+      next_match_lose: 10,
+    },
+    {
+      id: 2,
+      bracket: 'main',
+      round_no: 2,
+      position: 0,
+      a: 1,
+      b: 3,
+      a_label: 'Team 1',
+      b_label: 'Team 3',
+      winner: 1,
+      score: { a: 1, b: 0 },
+      best_of: 1,
+      wins_needed: 1,
+      next_match_win: 20,
+      next_match_lose: 12,
+    },
+    // The other half of round one. Its loser is what fills losers round 1's
+    // second seat — without it Team 4 would sit where no edge delivers them,
+    // which is not a shape the generator can produce.
+    {
+      id: 3,
+      bracket: 'main',
+      round_no: 1,
+      position: 1,
+      a: 3,
+      b: 4,
+      a_label: 'Team 3',
+      b_label: 'Team 4',
+      winner: 3,
+      score: { a: 1, b: 0 },
+      best_of: 1,
+      wins_needed: 1,
+      next_match_win: 2,
+      next_match_lose: 10,
+    },
+    // Losers round 1: took both first-round losers.
+    {
+      id: 10,
+      bracket: 'losers',
+      round_no: 1,
+      position: 0,
+      a: 2,
+      b: 4,
+      a_label: 'Team 2',
+      b_label: 'Team 4',
+      winner: 4,
+      score: { a: 0, b: 1 },
+      best_of: 1,
+      wins_needed: 1,
+      next_match_win: 12,
+      next_match_lose: null,
+    },
+    // Losers final: a survivor in a, the semifinal's drop in b.
+    {
+      id: 12,
+      bracket: 'losers',
+      round_no: 2,
+      position: 0,
+      a: 4,
+      b: 3,
+      a_label: 'Team 4',
+      b_label: 'Team 3',
+      winner: 4,
+      score: { a: 1, b: 0 },
+      best_of: 1,
+      wins_needed: 1,
+      next_match_win: 20,
+      next_match_lose: null,
+    },
+    // Grand final: winners champion in a, losers champion in b.
+    {
+      id: 20,
+      bracket: 'final',
+      round_no: 3,
+      position: 0,
+      a: 1,
+      b: 4,
+      a_label: 'Team 1',
+      b_label: 'Team 4',
+      winner: null,
+      score: {},
+      best_of: 1,
+      wins_needed: 1,
+      next_match_win: null,
+      next_match_lose: null,
+    },
+  ]
+
+  const byId = (list, id) => list.find((m) => m.id === id)
+
+  // The reported bug: undoing a first-round win emptied the next round at once,
+  // but anyone who had already reached the losers final or the grand final
+  // stayed standing there until the batched save came back.
+  it('clears both seats of a match reached once per seat', () => {
+    const after = clearResult(bracket(), 1)
+
+    // Team 1's own path back out of the grand final.
+    expect(byId(after, 20).a).toBeNull()
+    expect(byId(after, 20).a_label).toBeNull()
+
+    // And Team 4, who arrived at the grand final along the *other* edge. This
+    // is the seat a target-keyed visited-set silently skipped.
+    expect(byId(after, 20).b).toBeNull()
+    expect(byId(after, 20).b_label).toBeNull()
+  })
+
+  it('unwinds the losers bracket too, not just the winners side', () => {
+    const after = clearResult(bracket(), 1)
+
+    // Team 2 dropped into losers round 1 from the match being undone, so that
+    // seat empties and the result it decided goes with it. Team 4 came from the
+    // other first-round match, which still stands, so they stay seated.
+    expect(byId(after, 10).a).toBeNull()
+    expect(byId(after, 10).a_label).toBeNull()
+    expect(byId(after, 10).winner).toBeNull()
+    expect(byId(after, 10).b).toBe(4)
+
+    // The losers final emptied from both directions.
+    expect(byId(after, 12).a).toBeNull()
+    expect(byId(after, 12).b).toBeNull()
+    expect(byId(after, 12).winner).toBeNull()
+  })
+
+  it('leaves a result the undo never reached alone', () => {
+    // Undoing the semifinal must not touch losers round 1, which was decided
+    // by a drop from the *first* round and still stands.
+    const after = clearResult(bracket(), 2)
+
+    expect(byId(after, 10).winner).toBe(4)
+    expect(byId(after, 10).a_label).toBe('Team 2')
+    expect(byId(after, 10).b_label).toBe('Team 4')
   })
 })

@@ -118,7 +118,95 @@ export function applyResult(matches, matchId, scoreA, scoreB) {
   seat(match.next_match_win, winnerId, false)
   seat(match.next_match_lose, loserId, true)
 
+  cascadeByes(next, [match.next_match_win, match.next_match_lose])
+
   return next
+}
+
+/**
+ * Walk entrants through matches that can never be contested.
+ *
+ * Mirrors `_cascade_byes` in backend/apps/tournaments/brackets/advance.py. With
+ * several byes in one bracket an entrant is handed two walkovers in a row — a
+ * 5-entrant double elimination does exactly this — and the server resolves that
+ * chain the moment a result lands.
+ *
+ * Without it here the click moved only the match clicked and the one slot it
+ * fed: everything further down stayed TBD until the batched save came back,
+ * which is the "it waits for Saved to update" the optimistic write exists to
+ * prevent. The clicked card moved instantly and the rest of the bracket lagged
+ * behind it by a whole round trip.
+ *
+ * Mutates `matches` in place — it is already the fresh array `applyResult`
+ * built, never the cached one.
+ */
+function cascadeByes(matches, startIds) {
+  // A walkover can feed another walkover, so this is a queue rather than a
+  // single pass. `visited` keeps a malformed graph with a cycle from spinning.
+  const queue = [...startIds]
+  const visited = new Set()
+
+  while (queue.length > 0) {
+    const id = queue.shift()
+    if (!id || visited.has(id)) continue
+    visited.add(id)
+
+    const index = matches.findIndex((m) => m.id === id)
+    if (index === -1) continue
+
+    const target = matches[index]
+
+    // Already decided, or genuinely playable: nothing to walk through.
+    if (target.winner || (target.a && target.b)) continue
+
+    // Only when nothing further can arrive. A feeder still to be played means
+    // this slot is waiting for a real opponent, not standing empty forever.
+    if (!feedersSettled(matches, target)) continue
+
+    const present = target.a ?? target.b
+
+    // `present` may legitimately be null: both feeders can be walkovers that
+    // produce no loser at all. That match resolves to nobody, and the cascade
+    // must continue past it or everything downstream stalls.
+    if (present !== null && present !== undefined) {
+      matches[index] = { ...target, winner: present }
+
+      const winIndex = matches.findIndex((m) => m.id === target.next_match_win)
+      if (winIndex !== -1) {
+        const slot = slotFor(matches[winIndex], target, matches, { dropping: false })
+        matches[winIndex] = {
+          ...matches[winIndex],
+          [slot]: present,
+          [`${slot}_label`]: labelFor(target, present),
+        }
+      }
+    }
+
+    queue.push(target.next_match_win, target.next_match_lose)
+  }
+}
+
+/**
+ * Whether anything can still arrive in `match`.
+ *
+ * A feeder counts as settled once it has a winner — that covers the bye case,
+ * where a winners-bracket walkover has a winner but no loser, so its drop edge
+ * will never deliver anybody and the losers match it feeds must advance whoever
+ * is already sitting there rather than waiting forever.
+ */
+function feedersSettled(matches, match) {
+  const feeders = matches.filter(
+    (m) => m.next_match_win === match.id || m.next_match_lose === match.id,
+  )
+
+  if (feeders.length === 0) return false
+
+  return feeders.every((feeder) => {
+    if (feeder.winner) return true
+    // A phantom — a match whose own feeders were all byes — never gets a winner
+    // but is nonetheless finished.
+    return !feeder.a && !feeder.b && feedersSettled(matches, feeder)
+  })
 }
 
 /**
@@ -184,28 +272,76 @@ export function clearResult(matches, matchId) {
     return next
   }
 
-  // Pull both entrants back out of wherever this match sent them. Not
-  // recursive: a downstream result the server will also clear is rare enough
-  // that letting the refetch handle it beats duplicating that logic here.
-  const unseat = (targetId, dropping) => {
-    if (!targetId) return
+  // Pull both entrants back out of wherever this match sent them, and keep
+  // going: an entrant who won the next match too is standing in the one after
+  // that. Mirrors the recursion in `_retract` on the backend.
+  //
+  // This used to stop at the two direct edges, which is what made an undo feel
+  // like it waited on the server. Taking a quarterfinal win away emptied the
+  // semifinal at once, but if that entrant had reached the final they stayed
+  // there — and the losers-bracket side never unwound at all — until the
+  // batched save came back and replaced the cache.
+  unseat(next, match, match.next_match_win, false)
+  unseat(next, match, match.next_match_lose, true)
 
-    const index = next.findIndex((m) => m.id === targetId)
-    if (index === -1) return
-
-    const slot = slotFor(next[index], match, next, { dropping })
-    // The label goes with the id, or the emptied slot keeps showing a name.
-    next[index] = {
-      ...next[index],
-      [slot]: null,
-      [`${slot}_label`]: null,
-      winner: null,
-      score: {},
-    }
-  }
-
-  unseat(match.next_match_win, false)
-  unseat(match.next_match_lose, true)
+  // Retracting can leave a match that is once again fed only by a bye, which
+  // the backend re-resolves on its way out. Without this the bracket would
+  // undo one round further than the server does.
+  cascadeByes(next, [match.next_match_win, match.next_match_lose])
 
   return next
+}
+
+/**
+ * Remove whoever `source` sent into `target`, and unwind anything they won.
+ *
+ * Recursive rather than a single step: clearing a result the entrant went on to
+ * win would otherwise leave them standing in the round after it. The backend
+ * does the same thing by calling `clear_result` on the target first, which
+ * re-enters `_retract`.
+ *
+ * `seen` guards a malformed graph with a cycle. It keys on the *edge* rather
+ * than the target, because a match is legitimately reached twice — once per
+ * seat. The grand final takes the winners finalist along one edge and the
+ * losers finalist along another, and the losers final likewise takes a drop and
+ * a survivor. Keying on the target id let the first arrival clear one seat and
+ * silently skip the second, which left an entrant standing in the losers final
+ * and the grand final until the server's reply landed.
+ */
+function unseat(matches, source, targetId, dropping, seen = new Set()) {
+  if (!targetId) return
+
+  const index = matches.findIndex((m) => m.id === targetId)
+  if (index === -1) return
+
+  const target = matches[index]
+  const slot = slotFor(target, source, matches, { dropping })
+
+  const edge = `${target.id}:${slot}`
+  if (seen.has(edge)) return
+  seen.add(edge)
+
+  // Only the seat this retraction owns, mirroring the `if getattr(target,
+  // f"{slot}_id") is None: continue` guard in `_retract`. Blanking a seat
+  // another feeder filled would delete a result the server keeps.
+  if (target[slot] === null || target[slot] === undefined) return
+
+  // Whatever this match decided is no longer decided, so walk its own edges
+  // back first — while it still knows who won and where they went. This is the
+  // `clear_result(target)` call inside `_retract`, and leaving it out is what
+  // made an undo appear to wait on the server: the entrant stayed standing in
+  // every round they had already won.
+  if (target.winner) {
+    unseat(matches, target, target.next_match_win, false, seen)
+    unseat(matches, target, target.next_match_lose, true, seen)
+  }
+
+  // Re-read: the recursion above may have rewritten this entry.
+  matches[index] = {
+    ...matches[index],
+    [slot]: null,
+    [`${slot}_label`]: null,
+    winner: null,
+    score: {},
+  }
 }

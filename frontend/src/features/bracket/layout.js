@@ -162,11 +162,21 @@ export const SECTION_LABELS = {
  *    bye, and that is real information: it says who sat out and why they appear
  *    in round two without having played. Hide it and the bracket looks like it
  *    skipped somebody.
- *  - **A decided match.** Once something has actually been played, it is
+ *  - **A contested match.** Once two entrants have actually played, it is
  *    history and stays on the page whatever the arithmetic says.
+ *
+ * A *walkover* is deliberately not exempt, and that distinction is the whole
+ * reason this is not simply `if (match.winner) return false`. When the winners
+ * match above a capacity-1 slot resolves, the backend cascades the lone
+ * occupant onward and stamps a winner on the slot on its way past. Treating
+ * that as history brought every hidden slot back the moment a result landed —
+ * the bracket was clean when created and sprouted dead rounds as it was played.
+ * Nobody played them; the engine walked somebody through.
  */
 export function isPhantom(match, allMatches) {
-  if (match.winner) return false
+  // Two entrants means a real game happened, whatever the arithmetic says.
+  // One or none is a walkover the engine resolved, which earns no exemption.
+  if (match.winner && match.a && match.b) return false
 
   // Only the losers bracket. The winners bracket's one-sided matches are byes,
   // which explain themselves; the grand final and the bracket reset are the

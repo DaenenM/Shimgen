@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { Eye } from 'lucide-react'
+import { Eye } from '@/components/icons'
 import { Link, useParams } from 'react-router-dom'
 
 import { spectate } from '@/api/endpoints'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { PageLoader } from '@/components/ui/PageLoader'
+import { SkeletonPage } from '@/components/ui/Skeleton'
 import { BracketView } from '@/features/bracket/BracketView'
 import { EntrantRoster } from '@/features/bracket/EntrantRoster'
 import { RoundList } from '@/features/bracket/RoundList'
@@ -42,7 +42,7 @@ export function SpectatorPage() {
     refetchInterval: 30_000,
   })
 
-  if (isLoading) return <PageLoader label="Loading bracket…" />
+  if (isLoading) return <SkeletonPage width="max-w-[92rem]" />
 
   if (!tournament) {
     return (

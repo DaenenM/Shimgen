@@ -34,8 +34,6 @@ const RegisterPage = named(() => import('@/pages/RegisterPage'), 'RegisterPage')
 const SpectatorPage = named(() => import('@/pages/SpectatorPage'), 'SpectatorPage')
 
 const DashboardPage = named(() => import('@/pages/DashboardPage'), 'DashboardPage')
-const GroupsPage = named(() => import('@/pages/GroupsPage'), 'GroupsPage')
-const GroupDetailPage = named(() => import('@/pages/GroupDetailPage'), 'GroupDetailPage')
 const TournamentsPage = named(() => import('@/pages/TournamentsPage'), 'TournamentsPage')
 const TournamentDetailPage = named(
   () => import('@/pages/TournamentDetailPage'),
@@ -73,7 +71,6 @@ export const router = createBrowserRouter([
         element: <HomePage />,
         handle: {
           title: 'Home',
-          seoTitle: 'Shimgen: Free Tournament Bracket Generator, Team Randomizer & Stats',
           description:
             'Free tournament bracket generator and random team generator. Single and double elimination, round robin and Swiss, plus stats boards that track wins across game nights. No sign-up needed.',
         },
@@ -82,8 +79,7 @@ export const router = createBrowserRouter([
         path: paths.quickStart,
         element: <QuickStartPage />,
         handle: {
-          title: 'New tournament',
-          seoTitle: 'Free Tournament Bracket Generator: Single & Double Elimination',
+          title: 'New Tournament',
           description:
             'Make a tournament bracket in seconds. Single elimination, double elimination, round robin, Swiss and free-for-all, with best-of series and automatic seeding. Free, no account required.',
         },
@@ -124,7 +120,6 @@ export const router = createBrowserRouter([
         element: <TeamGeneratorPage />,
         handle: {
           title: 'Team Generator',
-          seoTitle: 'Random Team Generator: Split Players Into Balanced Teams',
           description:
             'Paste a list of names and split them into balanced random teams. Keep two players apart, keep a pair together, and re-roll until the split looks right. Free team randomizer, no sign-up.',
         },
@@ -134,7 +129,6 @@ export const router = createBrowserRouter([
         element: <StatsPage />,
         handle: {
           title: 'Stats',
-          seoTitle: 'Stats Boards: Track Wins, Losses and Leaderboards',
           description:
             'Build a stats board for your group. Track wins, losses and games played by player, tally by hand or let linked tournaments fill it in automatically.',
         },
@@ -151,8 +145,6 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: paths.dashboard, element: <DashboardPage />, handle: { title: 'Dashboard' } },
-          { path: paths.groups, element: <GroupsPage />, handle: { title: 'Groups' } },
-          { path: paths.group(':slug'), element: <GroupDetailPage />, handle: { title: 'Group' } },
           { path: paths.roster, element: <RosterPage />, handle: { title: 'My Roster' } },
           { path: paths.friends, element: <FriendsPage />, handle: { title: 'Friends' } },
           { path: paths.profile, element: <ProfilePage />, handle: { title: 'Profile' } },

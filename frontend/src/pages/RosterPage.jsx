@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, Plus, Trash2, Users } from 'lucide-react'
+import { Archive, ArchiveRestore, Plus, Trash2, Users } from '@/components/icons'
 import { useState } from 'react'
 
 import { roster as rosterApi } from '@/api/endpoints'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { PageLoader } from '@/components/ui/PageLoader'
+import { SkeletonCards } from '@/components/ui/Skeleton'
 import { queryKeys } from '@/lib/queryClient'
 
 /**
@@ -49,8 +49,6 @@ export function RosterPage() {
     mutationFn: (id) => rosterApi.remove(id),
     onSuccess: invalidate,
   })
-
-  if (isLoading) return <PageLoader label="Loading roster…" />
 
   const players = data?.results ?? data ?? []
   const active = players.filter((p) => !p.archived)
@@ -123,7 +121,9 @@ export function RosterPage() {
         </div>
       )}
 
-      {active.length === 0 ? (
+      {isLoading ? (
+        <SkeletonCards count={4} />
+      ) : active.length === 0 ? (
         <EmptyState
           icon={Users}
           title="No saved players"

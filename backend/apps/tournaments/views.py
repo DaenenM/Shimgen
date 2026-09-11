@@ -28,6 +28,7 @@ from .brackets.swiss import generate_swiss, pair_next_round
 from .models import Entrant, Match, Participation, Role, Tournament
 from .ratings import apply_match_result
 from .serializers import (
+    BatchReportSerializer,
     CreateTournamentSerializer,
     EntrantSerializer,
     MatchSerializer,
@@ -49,8 +50,27 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        base = Tournament.objects.select_related("group", "mode", "created_by").prefetch_related(
-            "entrants", "matches"
+        # Every relation the detail serializer touches is pulled here. Without
+        # the nested ones a bracket costs ~4 queries per match — each card asks
+        # separately who A, B and the winner are, and who reported it — so a
+        # 28-match double elimination ran 60+ round trips per render. They are
+        # already in `entrants`; this just stops Django fetching them again.
+        base = Tournament.objects.select_related(
+            "mode",
+            "created_by",
+            # The list says whether deleting a row would touch a board, which is
+            # one query per row without this.
+            "stats_link",
+        ).prefetch_related(
+            "entrants",
+            "entrants__players",
+            "roles",
+            "roles__user",
+            "matches__a",
+            "matches__b",
+            "matches__winner",
+            "matches__reported_by",
+            "matches__ffa_results__entrant",
         )
 
         # An unclaimed quick-start bracket has no owner, so an ownership filter
@@ -65,7 +85,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
         #
         # Scoped to single-object actions only. Folding it into `list` would put
         # every stranger's unclaimed bracket in everyone's tournament list.
-        unclaimed = models.Q(created_by__isnull=True, group__isnull=True)
+        unclaimed = models.Q(created_by__isnull=True)
         by_id = self.action not in ("list",)
 
         if not user.is_authenticated:
@@ -74,12 +94,19 @@ class TournamentViewSet(viewsets.ModelViewSet):
         mine = (
             models.Q(created_by=user)
             | models.Q(roles__user=user)
-            | models.Q(group__owner=user)
-            | models.Q(group__memberships__user=user)
             | models.Q(entrants__participations__user=user)
         )
 
-        return base.filter(mine | unclaimed if by_id else mine).distinct()
+        queryset = base.filter(mine | unclaimed if by_id else mine).distinct()
+
+        # Archived tournaments are hidden from the list but still reachable by
+        # id, so a link to one keeps working and the page can offer to restore
+        # it. `?archived=true` is what the list's own toggle asks for.
+        if self.action == "list":
+            wants_archived = self.request.query_params.get("archived") == "true"
+            queryset = queryset.filter(archived=wants_archived)
+
+        return queryset
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -96,6 +123,11 @@ class TournamentViewSet(viewsets.ModelViewSet):
             return [IsTournamentHost()]
         if self.action in ("list", "retrieve", "create", "claim", "standings"):
             return [AllowAny()]
+        # Same rule as reporting one result: host, co-host or linked player —
+        # and an unclaimed quick-start bracket stays reportable signed out, or
+        # the no-account path could build a bracket and never run it.
+        if self.action == "batch_report":
+            return [CanReportResults()]
         return [IsAuthenticated()]
 
     @transaction.atomic
@@ -285,6 +317,101 @@ class TournamentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        request=BatchReportSerializer,
+        responses={200: TournamentDetailSerializer},
+        description="Apply a run of results in one request. Order is preserved.",
+    )
+    @action(detail=True, methods=["post"], url_path="batch-report")
+    def batch_report(self, request, pk=None):
+        """
+        Apply several results at once.
+
+        The client reports optimistically and flushes a queue of clicks rather
+        than sending one request per click — a host clicking through a round
+        used to mean a request and a bracket refetch each time.
+
+        Two properties this relies on:
+
+        - **Order is preserved.** A later entry may correct an earlier one
+          (a mis-click handed to the other side), and advancement depends on
+          what came before, so the run is replayed exactly as it was clicked.
+        - **It is all-or-nothing.** One atomic block, so a rejected entry
+          leaves the bracket exactly as it was rather than half-applied. The
+          client resolves the disagreement by refetching, which it does after
+          every flush anyway.
+        """
+        tournament = self.get_object()
+        self.check_object_permissions(request, tournament)
+
+        serializer = BatchReportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operations = serializer.validated_data["operations"]
+
+        # Checked up front so a match from another tournament is rejected before
+        # anything is written. The rows themselves are re-read per operation
+        # below — this set is only used to validate ownership.
+        wanted = {op["match"] for op in operations}
+        owned = set(
+            Match.objects.filter(tournament=tournament, id__in=wanted).values_list("id", flat=True)
+        )
+
+        missing = wanted - owned
+        if missing:
+            # A match from another tournament is indistinguishable from one that
+            # does not exist, which is deliberate: it leaks nothing either way.
+            raise ValidationError(
+                f"No such match in this tournament: {', '.join(str(i) for i in sorted(missing))}."
+            )
+
+        reporter = request.user if request.user.is_authenticated else None
+        decided = []
+
+        try:
+            with transaction.atomic():
+                for op in operations:
+                    # Re-read per operation rather than reusing a snapshot taken
+                    # before the run started. An earlier entry may have seated
+                    # this very match — clicking through a round sends the
+                    # quarterfinals and the semifinal they fill in one batch —
+                    # and a stale copy still shows both slots empty, so the
+                    # match reads as unplayable and the whole run is rejected.
+                    match = Match.objects.select_related("a", "b", "winner", "tournament").get(
+                        pk=op["match"]
+                    )
+
+                    if op.get("op", "report") == "clear":
+                        clear_result(match)
+                        continue
+
+                    report_result(
+                        match,
+                        score_a=op["score_a"],
+                        score_b=op["score_b"],
+                        reported_by=reporter,
+                    )
+                    # Re-read before the next entry: advancement may have seated
+                    # an entrant in a match still to come in this same run.
+                    match.refresh_from_db()
+                    if match.winner_id:
+                        decided.append(match)
+        except ResultError as exc:
+            raise ValidationError(str(exc)) from exc
+
+        # Ratings after the transaction commits, and once per match rather than
+        # once per entry — a match corrected twice in one batch should not move
+        # anyone's rating twice.
+        for match in {m.id: m for m in decided}.values():
+            apply_match_result(match)
+
+        _settle_state(tournament)
+        _sync_linked_stats(tournament)
+
+        # The whole bracket comes back, so the flush doubles as the reconcile
+        # the client would otherwise have to request separately.
+        tournament = self.get_queryset().get(pk=tournament.pk)
+        return Response(TournamentDetailSerializer(tournament, context={"request": request}).data)
+
     @action(detail=True, methods=["post"], url_path="cohosts")
     def add_cohost(self, request, pk=None):
         """
@@ -318,6 +445,33 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         return Response({"id": role.id, "role": role.role}, status=status.HTTP_201_CREATED)
 
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path="cohosts/(?P<user_id>[^/.]+)",
+    )
+    def remove_cohost(self, request, pk=None, user_id=None):
+        """
+        Take a co-host's permission back.
+
+        Only co-hosts: the host's own role is what makes them the host, and
+        deleting it would leave the tournament with nobody able to run it.
+        """
+        tournament = self.get_object()
+
+        if not acts_as_host(tournament, request.user):
+            raise PermissionDenied("Only the host can remove co-hosts.")
+
+        role = Role.objects.filter(
+            tournament=tournament, user_id=user_id, role=Role.Kind.COHOST
+        ).first()
+
+        if role is None:
+            raise ValidationError({"user": "They are not a co-host of this tournament."})
+
+        role.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["post"])
     def favourite(self, request, pk=None):
         """
@@ -331,6 +485,53 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         tournament.favourited_at = None if tournament.favourited_at else timezone.now()
         tournament.save(update_fields=["favourited_at", "updated_at"])
+
+        return Response(TournamentSerializer(tournament, context={"request": request}).data)
+
+    def perform_destroy(self, instance):
+        """
+        Delete the tournament and everything it put on a linked board.
+
+        The link itself cascades away, but the numbers it wrote do not — so
+        without this a deleted tournament leaves permanent wins on a board with
+        nothing behind them. The client warns about this before confirming.
+        """
+        _strip_linked_stats(instance)
+        instance.delete()
+
+    @action(detail=True, methods=["post"])
+    def archive(self, request, pk=None):
+        """
+        Put a finished night away without losing it.
+
+        Archiving rather than deleting: the results are part of everyone's
+        stats, and a season that is simply over should stop filling the list
+        without taking its record with it. Only the host — a co-host can report
+        results, not decide what the host sees in their own list.
+        """
+        tournament = self.get_object()
+
+        if not acts_as_host(tournament, request.user):
+            raise PermissionDenied("Only the host can archive a tournament.")
+
+        # An archived tournament cannot also be pinned to the top of a list it
+        # is no longer in.
+        tournament.archived = True
+        tournament.favourited_at = None
+        tournament.save(update_fields=["archived", "favourited_at", "updated_at"])
+
+        return Response(TournamentSerializer(tournament, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        """Bring an archived tournament back into the list."""
+        tournament = self.get_object()
+
+        if not acts_as_host(tournament, request.user):
+            raise PermissionDenied("Only the host can restore a tournament.")
+
+        tournament.archived = False
+        tournament.save(update_fields=["archived", "updated_at"])
 
         return Response(TournamentSerializer(tournament, context={"request": request}).data)
 
@@ -406,7 +607,7 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
         if match.winner_id:
             apply_match_result(match)
 
-        _complete_if_finished(match.tournament)
+        _settle_state(match.tournament)
         _sync_linked_stats(match.tournament)
 
         return Response(MatchSerializer(match, context={"request": request}).data)
@@ -442,6 +643,10 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
 
         clear_result(match)
         match.refresh_from_db()
+
+        # Before the stats sync: reopening the tournament is what lets the board
+        # give back a trophy awarded for a result that no longer stands.
+        _settle_state(match.tournament)
         _sync_linked_stats(match.tournament)
 
         return Response(MatchSerializer(match, context={"request": request}).data)
@@ -458,7 +663,19 @@ class SpectatorView(RetrieveAPIView):
     serializer_class = SpectatorSerializer
     permission_classes = [AllowAny]
     lookup_field = "public_slug"
-    queryset = Tournament.objects.prefetch_related("entrants", "matches")
+    # Same nested prefetches as the host view: a spectator renders the same
+    # bracket, and this is the page strangers land on from a shared link.
+    queryset = Tournament.objects.select_related("mode", "created_by").prefetch_related(
+        "entrants",
+        "entrants__players",
+        "roles",
+        "roles__user",
+        "matches__a",
+        "matches__b",
+        "matches__winner",
+        "matches__reported_by",
+        "matches__ffa_results__entrant",
+    )
 
 
 @extend_schema(
@@ -872,20 +1089,41 @@ def _tournament_table_for(board):
     return StatsTable.objects.create(board=board, name="Tournaments", position=0)
 
 
-def _complete_if_finished(tournament):
-    """Mark a tournament complete once nothing further can be played."""
-    unplayed = tournament.matches.filter(winner__isnull=True).exclude(
-        models.Q(a__isnull=True) | models.Q(b__isnull=True)
+def _settle_state(tournament):
+    """
+    Bring the tournament's state in line with what its matches actually say.
+
+    Both directions, which is the point. Completion is a fact about the bracket
+    — nothing left to play — not a milestone it passes once and keeps. Undoing
+    the final makes that fact untrue again, and a bracket still badged complete
+    with an unplayed final misreports itself everywhere it appears: the pill,
+    the tournaments list, the winner on its card.
+
+    Reopening also lets the linked board give a trophy back. `_sync_linked_stats`
+    retracts an award whose result no longer stands, and it can only do that
+    while the tournament is live.
+    """
+    finished = (
+        not tournament.matches.filter(winner__isnull=True)
+        .exclude(models.Q(a__isnull=True) | models.Q(b__isnull=True))
+        .exists()
     )
 
-    if unplayed.exists() or tournament.state == Tournament.State.COMPLETE:
+    if finished and tournament.state != Tournament.State.COMPLETE:
+        tournament.state = Tournament.State.COMPLETE
+        tournament.completed_at = timezone.now()
+        tournament.save(update_fields=["state", "completed_at", "updated_at"])
+
+        _award_linked_stats(tournament)
         return
 
-    tournament.state = Tournament.State.COMPLETE
-    tournament.completed_at = timezone.now()
-    tournament.save(update_fields=["state", "completed_at", "updated_at"])
-
-    _award_linked_stats(tournament)
+    if not finished and tournament.state == Tournament.State.COMPLETE:
+        # Back to active rather than draft: the bracket exists and has results
+        # in it, so there is nothing to re-generate — one match is simply open
+        # again.
+        tournament.state = Tournament.State.ACTIVE
+        tournament.completed_at = None
+        tournament.save(update_fields=["state", "completed_at", "updated_at"])
 
 
 def _award_linked_stats(tournament):
@@ -902,6 +1140,21 @@ def _award_linked_stats(tournament):
     link = getattr(tournament, "stats_link", None)
     if link is not None:
         apply_tournament_result(link)
+
+
+def _strip_linked_stats(tournament):
+    """
+    Undo this tournament's contribution to a linked board.
+
+    Imported here rather than at module scope, like the other two: tournaments
+    know nothing about boards, and keeping it that way means the stats app can
+    be removed without touching the bracket engine.
+    """
+    from apps.stats.awarding import strip_tournament_from_board
+
+    link = getattr(tournament, "stats_link", None)
+    if link is not None:
+        strip_tournament_from_board(link)
 
 
 def _sync_linked_stats(tournament):

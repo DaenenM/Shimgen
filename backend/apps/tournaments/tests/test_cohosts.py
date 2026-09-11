@@ -146,3 +146,60 @@ def test_a_cohost_can_report_results(api_client, auth_client, user, other_user):
     )
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_cohost_can_be_removed(auth_client, user, other_user, tournament):
+    _befriend(user, other_user)
+    auth_client.post(
+        f"/api/v1/tournaments/{tournament.id}/cohosts/", {"user": other_user.id}, format="json"
+    )
+
+    response = auth_client.delete(f"/api/v1/tournaments/{tournament.id}/cohosts/{other_user.id}/")
+
+    assert response.status_code == 204
+    assert not Role.objects.filter(tournament=tournament, user=other_user).exists()
+
+
+@pytest.mark.django_db
+def test_removing_someone_who_is_not_a_cohost_is_rejected(auth_client, other_user, tournament):
+    response = auth_client.delete(f"/api/v1/tournaments/{tournament.id}/cohosts/{other_user.id}/")
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_the_host_role_cannot_be_removed_through_the_cohost_route(auth_client, user, tournament):
+    """The host's own role is what makes them the host — removing it would
+    leave the tournament with nobody able to run it."""
+    Role.objects.create(tournament=tournament, user=user, role=Role.Kind.HOST)
+
+    response = auth_client.delete(f"/api/v1/tournaments/{tournament.id}/cohosts/{user.id}/")
+
+    assert response.status_code == 400
+    assert Role.objects.filter(tournament=tournament, user=user, role=Role.Kind.HOST).exists()
+
+
+@pytest.mark.django_db
+def test_an_active_tournament_can_be_renamed(auth_client, tournament):
+    """A typo noticed mid-night should be fixable without restarting."""
+    response = auth_client.patch(
+        f"/api/v1/tournaments/{tournament.id}/", {"title": "Saturday Showdown"}, format="json"
+    )
+
+    assert response.status_code == 200
+    tournament.refresh_from_db()
+    assert tournament.title == "Saturday Showdown"
+
+
+@pytest.mark.django_db
+def test_a_stranger_cannot_rename_a_tournament(api_client, tournament):
+    """404 rather than 403: an owned tournament is filtered out of the queryset
+    entirely, so a stranger is not even told it exists."""
+    response = api_client.patch(
+        f"/api/v1/tournaments/{tournament.id}/", {"title": "Hijacked"}, format="json"
+    )
+
+    assert response.status_code in (401, 403, 404)
+    tournament.refresh_from_db()
+    assert tournament.title != "Hijacked"

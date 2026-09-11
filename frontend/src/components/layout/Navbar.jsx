@@ -1,5 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, ChevronDown, House, LogOut, Menu, Shuffle, Trophy, Users } from 'lucide-react'
+import {
+  BarChart3,
+  ChevronDown,
+  House,
+  LogOut,
+  Menu,
+  Shuffle,
+  Trophy,
+  Users,
+} from '@/components/icons'
 import { Link, NavLink } from 'react-router-dom'
 
 import { friends as friendsApi } from '@/api/endpoints'
@@ -28,15 +37,17 @@ export function Navbar() {
 
   return (
     <header
-      className="border-base-300/80 bg-base-100/80 sticky top-0 z-30 border-b backdrop-blur-xl"
+      // Phones navigate from the bottom tab bar instead: two navigations on one
+      // small screen is redundant, and the top one costs a sixth of the
+      // viewport before any content is shown.
+      className="border-base-300/80 bg-base-100/80 sticky top-0 z-30 hidden border-b backdrop-blur-xl lg:block"
       // The blur is what makes a sticky bar feel like it belongs to the page
       // rather than sitting on top of it — content passes under, tinted.
     >
       <div className="mx-auto flex h-16 max-w-[92rem] items-center gap-3 px-4">
-        <MobileMenu />
         <Brand />
 
-        <nav className="hidden flex-1 justify-center lg:flex">
+        <nav className="flex flex-1 justify-center">
           <ul className="flex items-center gap-1">
             {NAV_LINKS.map((link) => (
               <li key={link.to}>
@@ -46,7 +57,7 @@ export function Navbar() {
           </ul>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+        <div className="flex items-center gap-2">
           {isAuthenticated ? <AccountMenu user={user} onLogout={logout} /> : <SignedOutActions />}
         </div>
       </div>
@@ -194,7 +205,6 @@ function AccountMenu({ user, onLogout }) {
 
         <MenuLink to={paths.dashboard} label="Dashboard" />
         <MenuLink to={paths.roster} label="My Roster" />
-        <MenuLink to={paths.groups} label="Groups" />
         <MenuLink to={paths.friends} label="Friends" icon={Users} badge={waiting} />
         <MenuLink to={paths.profile} label="Profile" />
 
@@ -230,45 +240,5 @@ function MenuLink({ to, label, icon: Icon, badge = 0 }) {
         </span>
       </Link>
     </li>
-  )
-}
-
-function MobileMenu() {
-  return (
-    <div className="dropdown lg:hidden">
-      <button
-        tabIndex={0}
-        className="text-base-content/70 hover:text-primary grid h-10 w-10 place-items-center rounded-lg transition-colors duration-200"
-        aria-label="Open menu"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-
-      <ul
-        tabIndex={0}
-        className="dropdown-content border-base-300 bg-base-100 z-40 mt-2 w-60 rounded-xl border p-1.5 shadow-2xl"
-      >
-        {NAV_LINKS.map(({ to, label, icon: Icon, end }) => (
-          <li key={to}>
-            <NavLink
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                [
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
-                  'transition-colors duration-150',
-                  isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-primary/10 hover:text-primary text-base-content/80',
-                ].join(' ')
-              }
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </NavLink>
-          </li>
-        ))}
-      </ul>
-    </div>
   )
 }

@@ -1,18 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Play, Share2, Trophy, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Check, Play, Share2, Trophy, Users } from '@/components/icons'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
-import { matches as matchesApi, tournaments as tournamentsApi } from '@/api/endpoints'
+import { tournaments as tournamentsApi } from '@/api/endpoints'
+import { PageShell } from '@/components/layout/PageShell'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { PageLoader } from '@/components/ui/PageLoader'
+import { SkeletonPage } from '@/components/ui/Skeleton'
 import { BracketView } from '@/features/bracket/BracketView'
+import { CohostManager } from '@/features/bracket/CohostManager'
+import { EditableTitle } from '@/features/bracket/EditableTitle'
 import { EntrantRoster } from '@/features/bracket/EntrantRoster'
 import { RoundList } from '@/features/bracket/RoundList'
+import { SaveIndicator } from '@/features/bracket/SaveIndicator'
 import { StandingsTable } from '@/features/bracket/StandingsTable'
 import { FORMAT_LABELS } from '@/features/bracket/layout'
-import { applyResult, clearResult } from '@/features/bracket/optimistic'
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
+import { applyResult, clearResult, scoreForClick } from '@/features/bracket/optimistic'
+import { useReportQueue } from '@/features/bracket/useReportQueue'
+import { useAuth } from '@/hooks/useAuth'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
 
@@ -25,7 +30,21 @@ export function TournamentDetailPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [copied, setCopied] = useState(false)
+  // Set when a flush is rejected, so the host is told rather than silently
+  // watching the bracket snap back to the server's version.
+  const [syncError, setSyncError] = useState(null)
+  /**
+   * Where this visit's results stand: 'idle' | 'saving' | 'saved'.
+   *
+   * Three states rather than a boolean because "nothing reported yet" and
+   * "everything reported is stored" both mean nothing is pending, and only one
+   * of them has earned a checkmark. Once it reaches 'saved' it stays there for
+   * the rest of the visit, so a host can glance up at any point and see that
+   * the night is recorded.
+   */
+  const [saveState, setSaveState] = useState('idle')
 
   const { data: tournament, isLoading } = useQuery({
     queryKey: queryKeys.tournaments.detail(id),
@@ -68,18 +87,10 @@ export function TournamentDetailPage() {
    */
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
+    // A linked board moves with the tournament's state — finishing one awards
+    // the trophy — so its cache cannot be left claiming to be fresh.
+    queryClient.invalidateQueries({ queryKey: queryKeys.boards.all })
   }
-
-  /**
-   * Reconcile after a reported result, without making the page feel busy.
-   *
-   * The optimistic write has already put the right thing on screen, so this is
-   * only checking the client's copy of the advancement rules against the
-   * server's. Debounced because a host reports several matches in a row — four
-   * clicks used to mean four full refetches, and the page spent most of a
-   * second visibly settling after each one.
-   */
-  const reconcile = useDebouncedCallback(refresh, 400)
 
   /**
    * Apply a change to the cached bracket immediately.
@@ -114,29 +125,94 @@ export function TournamentDetailPage() {
     return { previous }
   }
 
-  const rollback = (_error, _variables, context) => {
-    if (context?.previous) {
-      queryClient.setQueryData(queryKeys.tournaments.detail(id), context.previous)
-    }
+  /**
+   * The score a click should post, resolved against the freshest cached match.
+   *
+   * Reading the cache rather than the rendered props is what makes rapid clicks
+   * on one series count: the optimistic write lands synchronously, so the
+   * second click sees what the first one wrote.
+   */
+  const resolveClick = (matchId, side) => {
+    const cached = queryClient.getQueryData(queryKeys.tournaments.detail(id))
+    return scoreForClick(
+      cached?.matches?.find((m) => m.id === matchId),
+      side,
+    )
   }
 
-  const report = useMutation({
-    mutationFn: ({ matchId, a, b }) => matchesApi.report(matchId, a, b),
-    onMutate: ({ matchId, a, b }) => {
-      return optimistically((matches) => applyResult(matches, matchId, a, b))
+  /**
+   * Send a run of queued results as one request.
+   *
+   * The response is the whole bracket, so it replaces the cache outright — this
+   * is both the write and the reconcile. Nothing is invalidated afterwards: a
+   * refetch here would only re-fetch what just came back.
+   */
+  const sendBatch = useCallback(
+    async (operations) => {
+      const fresh = await tournamentsApi.batchReport(id, operations)
+      queryClient.setQueryData(queryKeys.tournaments.detail(id), fresh)
+      // Standings are computed from the same rows, and the list shows the state
+      // badge that a finished tournament has just changed.
+      queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.standings(id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
+      // A linked board is updated server-side by the same request — games
+      // played, won, lost, and the trophy when the night ends. Without this its
+      // cache stays "fresh" for two minutes, so walking to Stats after a match
+      // showed last week's numbers until a hard refresh. `['boards']` is a
+      // prefix of every board's own key, so this covers the list and each one.
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all })
     },
-    onError: rollback,
-    onSettled: reconcile,
+    [id, queryClient],
+  )
+
+  /**
+   * A rejected batch means the local bracket and the server's disagree.
+   *
+   * The server applies a run all-or-nothing, so nothing was written. Refetching
+   * is the honest resolution: whatever the host saw locally was wrong, and
+   * guessing which entry caused it would be worse than showing the truth.
+   */
+  const onBatchError = useCallback(
+    (error) => {
+      setSyncError(error?.message ?? 'Some results could not be saved.')
+      queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.detail(id) })
+    },
+    [id, queryClient],
+  )
+
+  const { enqueue, flush } = useReportQueue({
+    tournamentId: id,
+    delay: 3_000,
+    onFlush: sendBatch,
+    onError: onBatchError,
+    // 'saved' only once something was actually pending: arriving at a finished
+    // bracket and touching nothing should not claim credit for a save that
+    // never happened.
+    onPendingChange: (pending) =>
+      setSaveState((current) => (pending ? 'saving' : current === 'saving' ? 'saved' : current)),
   })
 
-  const clear = useMutation({
-    mutationFn: (matchId) => matchesApi.clear(matchId),
-    onMutate: (matchId) => {
-      return optimistically((matches) => clearResult(matches, matchId))
-    },
-    onError: rollback,
-    onSettled: reconcile,
-  })
+  /** Move the bracket now, and queue the result to be sent with its neighbours. */
+  const report = (matchId, a, b) => {
+    setSyncError(null)
+    optimistically((matches) => applyResult(matches, matchId, a, b))
+    enqueue({ match: matchId, op: 'report', score_a: a, score_b: b })
+  }
+
+  const clear = (matchId) => {
+    setSyncError(null)
+    optimistically((matches) => clearResult(matches, matchId))
+    enqueue({ match: matchId, op: 'clear' })
+  }
+
+  // The last result of the night should not sit in a queue for three seconds while
+  // the host looks at a finished bracket wondering whether it saved.
+  const everyMatchDecided =
+    tournament?.matches?.length > 0 && tournament.matches.every((m) => m.winner || !m.a || !m.b)
+
+  useEffect(() => {
+    if (everyMatchDecided) flush()
+  }, [everyMatchDecided, flush])
 
   const start = useMutation({
     mutationFn: () => tournamentsApi.start(id),
@@ -148,23 +224,70 @@ export function TournamentDetailPage() {
     onSuccess: refresh,
   })
 
-  if (isLoading) return <PageLoader label="Loading bracket…" />
+  /**
+   * Rename the tournament.
+   *
+   * Written to the cache first so the header changes on Enter. The list behind
+   * it shows the same title, and the URL carries it as a readable tail, so both
+   * are refreshed once the server confirms.
+   */
+  const rename = useMutation({
+    mutationFn: (title) => tournamentsApi.update(id, { title }),
+    onMutate: (title) => {
+      const key = queryKeys.tournaments.detail(id)
+      const previous = queryClient.getQueryData(key)
+      if (previous) queryClient.setQueryData(key, { ...previous, title })
+      return { previous }
+    },
+    onError: (error, _title, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.tournaments.detail(id), context.previous)
+      }
+      setSyncError(error.message)
+    },
+    onSuccess: refreshAll,
+  })
+
+  const addCohost = useMutation({
+    mutationFn: (userId) => tournamentsApi.addCohost(id, userId),
+    onSuccess: refresh,
+    onError: (error) => setSyncError(error.message),
+  })
+
+  const removeCohost = useMutation({
+    mutationFn: (userId) => tournamentsApi.removeCohost(id, userId),
+    onSuccess: refresh,
+    onError: (error) => setSyncError(error.message),
+  })
+
+  if (isLoading) return <SkeletonPage width="max-w-[92rem]" />
 
   if (!tournament) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <PageShell width="wide">
         <EmptyState
           title="Tournament not found"
           description="It may have been deleted, or the link may be wrong."
           actionLabel="Back to tournaments"
           actionTo={paths.tournaments}
         />
-      </div>
+      </PageShell>
     )
   }
 
   const isList = LIST_FORMATS.has(tournament.format)
   const canReport = tournament.can_report
+
+  /**
+   * The account that actually built this bracket.
+   *
+   * Deliberately not `is_host`, which is also true for a co-host with a host
+   * role and for the owner of the group it belongs to. Granting permission is
+   * the creator's alone: someone handed the right to report results should not
+   * be able to hand it onward, or the creator could end up with helpers they
+   * never chose.
+   */
+  const isCreator = Boolean(user?.id && tournament.created_by?.id === user.id)
   const spectatorUrl = `${window.location.origin}${paths.spectate(
     tournament.public_slug,
     tournament.title,
@@ -182,13 +305,16 @@ export function TournamentDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[92rem] px-4 py-8">
+    <PageShell width="wide">
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {tournament.title || 'Untitled tournament'}
-          </h1>
+          <EditableTitle
+            title={tournament.title}
+            canEdit={Boolean(tournament.is_host)}
+            onSave={(title) => rename.mutate(title)}
+            pending={rename.isPending}
+          />
           <p className="text-base-content/60 mt-1 text-sm">
             {FORMAT_LABELS[tournament.format] ?? tournament.format} · {tournament.entrants.length}{' '}
             entrants
@@ -206,7 +332,22 @@ export function TournamentDetailPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Sits with the other header controls rather than above the bracket:
+              it answers "is the night recorded?", which is a question about
+              this tournament, not about the page. */}
+          <SaveIndicator state={syncError ? 'idle' : saveState} />
+
+          {isCreator && (
+            <CohostManager
+              cohosts={tournament.roles ?? []}
+              creatorId={tournament.created_by?.id}
+              onAdd={(userId) => addCohost.mutate(userId)}
+              onRemove={(userId) => removeCohost.mutate(userId)}
+              pending={addCohost.isPending || removeCohost.isPending}
+            />
+          )}
+
           {tournament.is_host && tournament.state === 'draft' && (
             <button
               className="btn btn-primary btn-sm gap-2"
@@ -243,9 +384,9 @@ export function TournamentDetailPage() {
         <p className="text-base-content/70 mb-6 text-sm">{tournament.description}</p>
       )}
 
-      {(report.isError || clear.isError || start.isError || nextRound.isError) && (
+      {(syncError || start.isError || nextRound.isError) && (
         <div role="alert" className="alert alert-error mb-4 py-2 text-sm">
-          {(report.error || clear.error || start.error || nextRound.error).message}
+          {syncError ?? (start.error || nextRound.error).message}
         </div>
       )}
 
@@ -271,15 +412,21 @@ export function TournamentDetailPage() {
             <RoundList
               matches={tournament.matches}
               canReport={canReport}
-              onReport={(matchId, a, b) => report.mutate({ matchId, a, b })}
-              onClear={(matchId) => clear.mutate(matchId)}
+              onReport={(matchId, side) => {
+                const score = resolveClick(matchId, side)
+                if (score) report(matchId, score.a, score.b)
+              }}
+              onClear={(matchId) => clear(matchId)}
             />
           ) : (
             <BracketView
               matches={tournament.matches}
               canReport={canReport}
-              onReport={(matchId, a, b) => report.mutate({ matchId, a, b })}
-              onClear={(matchId) => clear.mutate(matchId)}
+              onReport={(matchId, side) => {
+                const score = resolveClick(matchId, side)
+                if (score) report(matchId, score.a, score.b)
+              }}
+              onClear={(matchId) => clear(matchId)}
             />
           )}
         </div>
@@ -320,6 +467,6 @@ export function TournamentDetailPage() {
 
         <EntrantRoster entrants={tournament.entrants} />
       </div>
-    </div>
+    </PageShell>
   )
 }

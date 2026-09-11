@@ -7,7 +7,6 @@ from .models import (
     Participation,
     Rating,
     Role,
-    TeamGenerationConstraint,
     Tournament,
 )
 
@@ -27,10 +26,10 @@ class RoleInline(admin.TabularInline):
 
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "format", "state", "group", "public_slug", "created_at")
+    list_display = ("__str__", "format", "state", "public_slug", "created_at")
     list_filter = ("format", "state")
-    search_fields = ("title", "public_slug", "group__name")
-    raw_id_fields = ("group", "mode", "season", "created_by")
+    search_fields = ("title", "public_slug")
+    raw_id_fields = ("mode", "created_by")
     # Generated in save(); editing either by hand would break existing links.
     readonly_fields = ("public_slug", "claim_token")
     inlines = [EntrantInline, RoleInline]
@@ -68,7 +67,7 @@ class RatingAdmin(admin.ModelAdmin):
     raw_id_fields = ("player", "mode")
 
 
-admin.site.register([Participation, FFAResult, Role, TeamGenerationConstraint])
+admin.site.register([Participation, FFAResult, Role])
 
 # Branding for the /admin/ dashboard.
 admin.site.site_header = "Shimgen administration"

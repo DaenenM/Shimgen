@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, UserPlus, Users, X } from 'lucide-react'
+import { Check, UserPlus, Users, X } from '@/components/icons'
 import { useState } from 'react'
 
 import { friends as friendsApi } from '@/api/endpoints'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { PageLoader } from '@/components/ui/PageLoader'
+import { SkeletonCards } from '@/components/ui/Skeleton'
 import { queryKeys } from '@/lib/queryClient'
 
 /**
@@ -47,8 +47,6 @@ export function FriendsPage() {
 
   const accept = useMutation({ mutationFn: friendsApi.accept, onSuccess: invalidate })
   const remove = useMutation({ mutationFn: friendsApi.remove, onSuccess: invalidate })
-
-  if (isLoading) return <PageLoader label="Loading friends…" />
 
   const friends = accepted ?? []
   const requests = pending ?? []
@@ -154,7 +152,9 @@ export function FriendsPage() {
         Friends
       </h2>
 
-      {friends.length === 0 ? (
+      {isLoading ? (
+        <SkeletonCards count={4} />
+      ) : friends.length === 0 ? (
         <EmptyState
           icon={Users}
           title="No friends yet"

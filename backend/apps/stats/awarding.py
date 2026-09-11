@@ -31,6 +31,7 @@ __all__ = [
     "apply_tournament_result",
     "enrol_tournament_players",
     "ensure_automatic_columns",
+    "strip_tournament_from_board",
     "sync_tournament_stats",
     "winning_players",
 ]
@@ -269,6 +270,81 @@ def sync_tournament_stats(link) -> None:
             StatsEntry.objects.update_or_create(
                 row=row, column=column, defaults={"count": tally[role]}
             )
+
+
+@transaction.atomic
+def strip_tournament_from_board(link) -> None:
+    """
+    Take a tournament's contribution off the board before it is deleted.
+
+    Cascading the link away is not enough: the numbers it wrote stay behind, so
+    a deleted tournament would leave permanent wins on a board with nothing
+    behind them — the clutter that makes a board stop being trustworthy.
+
+    Two different sums, undone two different ways:
+
+    - The trophy is *incremental*, so it is decremented, and only for the people
+      this link actually credited. Everyone else's came from other tournaments.
+    - The per-game counts are *set* from the tournament's match rows, so they
+      cannot be subtracted. They are zeroed for the players this tournament
+      brought, then left for the next sync to refill from whatever still exists.
+
+    Rows are kept. A player on a board is a person the crew tracks, not a
+    by-product of one night, and removing them would take tallies other
+    tournaments wrote.
+    """
+    table = link.stats_table
+    if table is None:
+        return
+
+    _retract_award(link, table)
+    _zero_game_counts(link, table)
+
+
+def _retract_award(link, table) -> None:
+    """Hand back the trophy this link gave out, if it gave one."""
+    if not link.awarded:
+        return
+
+    column = _award_column(link, table)
+    if column is None:
+        return
+
+    credited = link_awarded_players(link)
+    if not credited:
+        return
+
+    for entry in StatsEntry.objects.filter(
+        column=column, count__gt=0, row__table=table, row__player_id__in=credited
+    ):
+        StatsEntry.objects.filter(pk=entry.pk).update(count=F("count") - 1)
+
+
+def _zero_game_counts(link, table) -> None:
+    """
+    Clear the played/won/lost this tournament wrote.
+
+    Zeroed rather than subtracted because `sync_tournament_stats` *sets* these
+    from one tournament's matches — there is no per-tournament contribution to
+    take away. Any other tournament still linked to this table rewrites them on
+    its next sync.
+    """
+    columns = _columns_by_role(table)
+    tracked = [
+        columns[role]
+        for role in (StatsColumn.Role.PLAYED, StatsColumn.Role.WON, StatsColumn.Role.LOST)
+        if role in columns
+    ]
+    if not tracked:
+        return
+
+    player_ids = [player.id for player in tournament_players(link.tournament)]
+    if not player_ids:
+        return
+
+    StatsEntry.objects.filter(
+        column__in=tracked, row__table=table, row__player_id__in=player_ids
+    ).update(count=0)
 
 
 def _award_column(link, table):

@@ -1,4 +1,4 @@
-import { BarChart3, Shuffle, Trophy } from 'lucide-react'
+import { BarChart3, Shuffle, Trophy } from '@/components/icons'
 import { Link } from 'react-router-dom'
 
 import { paths } from '@/routes/paths'
@@ -29,7 +29,7 @@ const BROWSE = [
 
 export function Footer() {
   return (
-    <footer className="border-base-300 bg-base-100 text-base-content/70 mt-auto border-t">
+    <footer className="border-base-300 bg-base-100 text-base-content/70 mt-auto hidden border-t lg:block">
       <div className="mx-auto max-w-[92rem] px-4 py-10">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
           {/* Identity */}

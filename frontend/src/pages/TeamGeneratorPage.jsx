@@ -1,22 +1,15 @@
-import { useMutation } from '@tanstack/react-query'
-import { Link2, Minus, Pencil, Plus, Shuffle, Swords, Trash2 } from 'lucide-react'
+import { Link2, Minus, Pencil, Plus, Shuffle, Swords, Trash2 } from '@/components/icons'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { teams as teamsApi } from '@/api/endpoints'
+import { Button } from '@/components/ui/Button'
+import { PageShell } from '@/components/layout/PageShell'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { RosterPicker } from '@/components/ui/RosterPicker'
 import { SavedRoster } from '@/components/ui/SavedRoster'
+import { generateTeams, splitEvenly } from '@/features/teams/generate'
 import { useRoster } from '@/hooks/useRoster'
 import { paths } from '@/routes/paths'
-
-/** Team sizes for `total` players across `teams`, as even as possible. */
-function splitOf(total, teams) {
-  const base = Math.floor(total / teams)
-  const extra = total % teams
-
-  return Array.from({ length: teams }, (_, i) => (i < extra ? base + 1 : base))
-}
 
 const CONSTRAINT_LABELS = {
   apart: 'Keep apart',
@@ -52,29 +45,48 @@ export function TeamGeneratorPage() {
   // together while the rule saying otherwise sat right there in the form.
   const liveConstraints = constraints.filter((c) => names.includes(c.a) && names.includes(c.b))
 
-  const generate = useMutation({
-    mutationFn: () =>
-      teamsApi.generate({
-        names,
-        team_count: teamCount,
-        // Rules travel as names, not positions. Sending the index each name
-        // happened to sit at meant editing the roster re-pointed every rule:
-        // removing someone above a pair shifted their rule onto the wrong two
-        // people, and removing a named player left an index matching nobody,
-        // which the server accepted as a rule that was trivially satisfied. A
-        // "keep apart" pair would then quietly land on the same team.
-        constraints: liveConstraints.map((c) => ({
-          kind: c.kind,
-          player_names: [c.a, c.b],
-        })),
+  // Generating is pure arithmetic on names already on screen, so it runs here
+  // rather than as a round trip. Re-rolling is the whole interaction — you
+  // press it until the split looks right — and a request per press made that
+  // feel like work. Nothing is saved until a tournament is created from it.
+  const [error, setError] = useState(null)
+
+  function runGenerate() {
+    setError(null)
+
+    // Ids are positions in the name list, which is all the rules need: they
+    // travel as names and are resolved against this same list, so a rule can
+    // never point at somebody who is no longer in it.
+    const players = names.map((name, index) => ({ id: index, name }))
+    const idsFor = (name) =>
+      names.map((n, index) => (n === name ? index : -1)).filter((index) => index !== -1)
+
+    // A name can appear twice, so a rule about "Alex" covers every Alex.
+    const constraintsForRun = liveConstraints.flatMap((c) => {
+      const left = idsFor(c.a)
+      const right = idsFor(c.b)
+      if (!left.length || !right.length) return []
+      return [{ kind: c.kind, player_ids: [...new Set([...left, ...right])] }]
+    })
+
+    try {
+      const teams = generateTeams(players, teamCount, {
+        constraints: constraintsForRun,
         // Re-rolling should not hand back the split we just rejected.
         avoid: result?.teams?.map((team) => team.map((p) => p.id)) ?? null,
-      }),
-    onSuccess: (data) => {
-      setResult(data)
+      })
+
+      setResult({
+        teams: teams.map((team) => team.map((p) => ({ id: p.id, name: p.name }))),
+        // Two teams is a series, not a bracket — a bracket for two is just
+        // ceremony (plan §3).
+        suggest_series: teams.length === 2,
+      })
       touchLocal(names)
-    },
-  })
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   function addConstraint() {
     if (!draft.a || !draft.b || draft.a === draft.b) return
@@ -93,7 +105,7 @@ export function TeamGeneratorPage() {
   const canGenerate = names.length >= 2 && names.length >= teamCount
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <PageShell>
       <PageHeader
         title="Team Generator"
         description="Split a group into balanced teams, with the rules your crew actually needs."
@@ -120,7 +132,7 @@ export function TeamGeneratorPage() {
                 <span className="text-sm font-medium">Number of teams</span>
                 <p className="text-base-content/50 mt-0.5 text-xs">
                   {names.length >= 2
-                    ? `Splits ${names.length} players into ${splitOf(names.length, teamCount).join(' / ')}`
+                    ? `Splits ${names.length} players into ${splitEvenly(names.length, teamCount).join(' / ')}`
                     : 'Add players to see the split.'}
                 </p>
               </div>
@@ -263,22 +275,16 @@ export function TeamGeneratorPage() {
               )}
             </div>
 
-            {generate.isError && (
+            {error && (
               <div role="alert" className="alert alert-error py-2 text-sm">
-                {generate.error.message}
+                {error}
               </div>
             )}
 
-            <button
-              className="btn btn-primary gap-2"
-              disabled={!canGenerate || generate.isPending}
-              onClick={() => generate.mutate()}
-            >
-              {generate.isPending ? (
-                <span className="loading loading-spinner loading-sm" />
-              ) : (
-                <Shuffle className="h-4 w-4" />
-              )}
+            {/* No pending state: this runs in the browser and returns within a
+                frame, so a spinner would only ever flash. */}
+            <button className="btn btn-primary gap-2" disabled={!canGenerate} onClick={runGenerate}>
+              <Shuffle className="h-4 w-4" />
               {result ? 'Re-roll teams' : 'Generate teams'}
             </button>
 
@@ -335,7 +341,7 @@ export function TeamGeneratorPage() {
                       A bracket for two is just ceremony. Try a best-of-3 or 5.
                     </p>
                   </div>
-                  <Link
+                  <Button
                     to={paths.quickStart}
                     state={{
                       names: result.teams.map((_, i) => nameFor(i)),
@@ -344,15 +350,15 @@ export function TeamGeneratorPage() {
                         members: team.map((p) => p.name),
                       })),
                     }}
-                    className="btn btn-sm btn-primary"
+                    size="sm"
                   >
                     Set up
-                  </Link>
+                  </Button>
                 </div>
               )}
 
               {!result.suggest_series && (
-                <Link
+                <Button
                   to={paths.quickStart}
                   state={{
                     names: result.teams.map((_, i) => nameFor(i)),
@@ -361,11 +367,11 @@ export function TeamGeneratorPage() {
                       members: team.map((p) => p.name),
                     })),
                   }}
-                  className="btn btn-outline w-full gap-2"
+                  icon={Link2}
+                  block
                 >
-                  <Link2 className="h-4 w-4" />
                   Put these teams in a bracket
-                </Link>
+                </Button>
               )}
             </div>
           ) : (
@@ -375,6 +381,6 @@ export function TeamGeneratorPage() {
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

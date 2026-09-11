@@ -150,7 +150,7 @@ function Round({ matches, isFirst, isLast, canReport, onReport, onClear }) {
               <MatchCard
                 match={match}
                 canReport={canReport}
-                onReport={(a, b) => onReport(match.id, a, b)}
+                onReport={(side) => onReport(match.id, side)}
                 onClear={() => onClear(match.id)}
               />
             </div>

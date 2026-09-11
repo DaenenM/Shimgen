@@ -1,4 +1,4 @@
-import { Users } from 'lucide-react'
+import { Users } from '@/components/icons'
 
 /**
  * Who is on which team, as a card grid at the foot of the bracket.

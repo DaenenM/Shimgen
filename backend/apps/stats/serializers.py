@@ -90,7 +90,6 @@ class StatsBoardSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "description",
-            "group",
             "role",
             "table_count",
             "player_count",

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Check, UserPlus, Users } from 'lucide-react'
+import { Check, UserPlus, Users } from '@/components/icons'
 import { Link } from 'react-router-dom'
 
 import { friends as friendsApi } from '@/api/endpoints'

@@ -1,4 +1,4 @@
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus } from '@/components/icons'
 
 /**
  * A row of emoji, one per win.

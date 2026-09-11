@@ -104,6 +104,40 @@ class ReportResultSerializer(serializers.Serializer):
     score_b = serializers.IntegerField(min_value=0)
 
 
+class BatchOperationSerializer(serializers.Serializer):
+    """One entry in a batch: report a score, or clear a match."""
+
+    match = serializers.IntegerField()
+    op = serializers.ChoiceField(choices=["report", "clear"], default="report")
+    score_a = serializers.IntegerField(min_value=0, required=False)
+    score_b = serializers.IntegerField(min_value=0, required=False)
+
+    def validate(self, attrs):
+        if attrs.get("op", "report") == "report":
+            missing = [f for f in ("score_a", "score_b") if attrs.get(f) is None]
+            if missing:
+                raise serializers.ValidationError(
+                    dict.fromkeys(missing, "Required when op is 'report'.")
+                )
+        return attrs
+
+
+class BatchReportSerializer(serializers.Serializer):
+    """
+    A run of results reported together.
+
+    The client collects clicks and sends them in one request rather than one
+    per click. Order matters and is preserved: a later entry may correct an
+    earlier one, and advancement depends on what came before it.
+    """
+
+    # Capped so a malformed or hostile client cannot hand us unbounded work in
+    # a single transaction. A host clicking through a night never approaches it.
+    operations = serializers.ListField(
+        child=BatchOperationSerializer(), allow_empty=False, max_length=200
+    )
+
+
 class ReportFFASerializer(serializers.Serializer):
     """A lobby's finishing order: entrant id -> placement."""
 
@@ -136,6 +170,10 @@ class TournamentSerializer(serializers.ModelSerializer):
     # Who won, for a finished tournament. Named on the card so a list of past
     # nights reads as a record rather than a set of identical rows.
     winner_label = serializers.SerializerMethodField()
+    # Whether deleting this would also take numbers off a board. The client
+    # warns about that, and a warning shown when nothing is linked would train
+    # hosts to dismiss it.
+    feeds_stats_board = serializers.SerializerMethodField()
 
     class Meta:
         model = Tournament
@@ -144,9 +182,7 @@ class TournamentSerializer(serializers.ModelSerializer):
             "title",
             "format",
             "state",
-            "group",
             "mode",
-            "season",
             "third_place_match",
             "settings",
             "public_slug",
@@ -154,6 +190,8 @@ class TournamentSerializer(serializers.ModelSerializer):
             "created_by",
             "winner_label",
             "favourited_at",
+            "archived",
+            "feeds_stats_board",
             "created_at",
         )
         read_only_fields = (
@@ -163,11 +201,15 @@ class TournamentSerializer(serializers.ModelSerializer):
             "created_by",
             "winner_label",
             "favourited_at",
+            "archived",
             "created_at",
         )
 
     def get_entrant_count(self, obj) -> int:
         return obj.entrants.count()
+
+    def get_feeds_stats_board(self, obj) -> bool:
+        return getattr(obj, "stats_link", None) is not None
 
     def get_winner_label(self, obj) -> str | None:
         """
@@ -293,9 +335,7 @@ class CreateTournamentSerializer(serializers.ModelSerializer):
             "description",
             "rules",
             "format",
-            "group",
             "mode",
-            "season",
             "third_place_match",
             "settings",
             "entrant_labels",

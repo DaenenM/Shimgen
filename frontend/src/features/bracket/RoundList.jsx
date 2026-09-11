@@ -26,7 +26,7 @@ export function RoundList({ matches, canReport, onReport = () => {}, onClear = (
                 key={match.id}
                 match={match}
                 canReport={canReport}
-                onReport={(a, b) => onReport(match.id, a, b)}
+                onReport={(side) => onReport(match.id, side)}
                 onClear={() => onClear(match.id)}
               />
             ))}

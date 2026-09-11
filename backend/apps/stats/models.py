@@ -1,7 +1,7 @@
 """
 Tally boards — the stats people actually keep.
 
-The Group/Game/Mode/Rating tables model competition that runs through a bracket.
+The Game/Mode/Rating tables model competition that runs through a bracket.
 This models the other half, which is most of a game night: someone wins a round
 of Pummel Party, a name gets another emoji, and nobody generated a tournament
 for it (plan §3).
@@ -42,17 +42,9 @@ class StatsBoard(TimeStampedModel):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="stats_boards",
-        # PROTECT for the same reason a Group is protected: deleting an account
+        # PROTECT: deleting an account
         # must not quietly take a crew's accumulated history with it.
         on_delete=models.PROTECT,
-    )
-    group = models.ForeignKey(
-        "groups.Group",
-        null=True,
-        blank=True,
-        related_name="stats_boards",
-        on_delete=models.SET_NULL,
-        help_text="Optional — a board can exist without a crew behind it.",
     )
 
     favourited_at = models.DateTimeField(

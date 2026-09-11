@@ -12,66 +12,6 @@ from apps.common.models import TimeStampedModel
 from apps.common.slugs import unique_slug
 
 
-class Group(TimeStampedModel):
-    """A recurring crew — "Saturday Crew". The container everything else hangs off."""
-
-    name = models.CharField(max_length=100)
-    slug = models.SlugField(max_length=60, unique=True, blank=True)
-    description = models.TextField(blank=True)
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name="owned_groups",
-        # PROTECT, not CASCADE: deleting an account must not silently take a
-        # group — and everyone else's accumulated stats — with it. Ownership is
-        # transferred or the group is deleted explicitly.
-        on_delete=models.PROTECT,
-    )
-    members = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        through="Membership",
-        related_name="groups_joined",
-        blank=True,
-    )
-
-    class Meta:
-        ordering = ["name"]
-
-    def __str__(self) -> str:
-        return self.name
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = unique_slug(Group, self.name, max_length=60)
-        super().save(*args, **kwargs)
-
-
-class Membership(TimeStampedModel):
-    """
-    A user's role within a group.
-
-    Group-level roles are separate from the per-tournament Role in
-    apps.tournaments: being trusted to run the crew is not the same as being
-    handed result-reporting duty for one night.
-    """
-
-    class Role(models.TextChoices):
-        OWNER = "owner", "Owner"
-        ADMIN = "admin", "Admin"
-        MEMBER = "member", "Member"
-
-    group = models.ForeignKey(Group, related_name="memberships", on_delete=models.CASCADE)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="memberships", on_delete=models.CASCADE
-    )
-    role = models.CharField(max_length=10, choices=Role.choices, default=Role.MEMBER)
-
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=["group", "user"], name="uniq_group_member")]
-
-    def __str__(self) -> str:
-        return f"{self.user} in {self.group} ({self.role})"
-
-
 class PlayerQuerySet(models.QuerySet):
     def active(self):
         return self.filter(archived=False)
@@ -97,9 +37,6 @@ class Player(TimeStampedModel):
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, related_name="roster", on_delete=models.CASCADE
-    )
-    group = models.ForeignKey(
-        Group, null=True, blank=True, related_name="players", on_delete=models.CASCADE
     )
     display_name = models.CharField(max_length=60)
     user = models.ForeignKey(
@@ -141,19 +78,9 @@ class Game(TimeStampedModel):
 
     name = models.CharField(max_length=80)
     slug = models.SlugField(max_length=80, blank=True)
-    group = models.ForeignKey(
-        Group,
-        null=True,
-        blank=True,
-        related_name="games",
-        on_delete=models.CASCADE,
-    )
 
     class Meta:
         ordering = ["name"]
-        constraints = [
-            models.UniqueConstraint(fields=["group", "name"], name="uniq_game_per_group")
-        ]
 
     def __str__(self) -> str:
         return self.name
@@ -168,7 +95,7 @@ class GameMode(TimeStampedModel):
     """
     A mode of a game — Solo/Teams, ARAM/Rift.
 
-    Stats are scoped to Group → Game → Mode (plan §3), so Pummel Party Solo and
+    Stats are scoped to Game → Mode (plan §3), so Pummel Party Solo and
     Pummel Party Teams keep separate leaderboards, as they should.
     """
 
@@ -182,28 +109,3 @@ class GameMode(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.game.name} — {self.name}"
-
-
-class Season(TimeStampedModel):
-    """
-    A competitive window for a group (plan §4, NEW 5).
-
-    Stats archive and reset on the group's chosen cadence, which gives month six
-    a reason to matter and creates the "season 3 starts Monday" moment that
-    brings people back.
-    """
-
-    group = models.ForeignKey(Group, related_name="seasons", on_delete=models.CASCADE)
-    name = models.CharField(max_length=80)
-    starts_on = models.DateField(null=True, blank=True)
-    ends_on = models.DateField(null=True, blank=True)
-    is_active = models.BooleanField(default=True, db_index=True)
-
-    class Meta:
-        ordering = ["-starts_on", "-created_at"]
-        constraints = [
-            models.UniqueConstraint(fields=["group", "name"], name="uniq_season_per_group")
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.group.name} — {self.name}"

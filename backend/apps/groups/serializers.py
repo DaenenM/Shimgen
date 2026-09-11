@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from apps.accounts.serializers import PublicUserSerializer
 
-from .models import Game, GameMode, Group, Membership, Player, Season
+from .models import Game, GameMode, Player
 
 
 class PlayerSerializer(serializers.ModelSerializer):
@@ -25,7 +25,6 @@ class PlayerSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "display_name",
-            "group",
             "user",
             "linked",
             "last_used_at",
@@ -55,21 +54,15 @@ class PlayerBulkSerializer(serializers.Serializer):
     names = serializers.ListField(
         child=serializers.CharField(max_length=60), allow_empty=False, max_length=200
     )
-    group = serializers.PrimaryKeyRelatedField(
-        queryset=Group.objects.all(), required=False, allow_null=True
-    )
 
     def create(self, validated_data):
         user = self.context["request"].user
-        group = validated_data.get("group")
 
         # De-duplicate against what is already there, case-insensitively, so
         # pasting the same list twice does not double the roster.
         existing = {
             name.lower()
-            for name in Player.objects.filter(owner=user, group=group).values_list(
-                "display_name", flat=True
-            )
+            for name in Player.objects.filter(owner=user).values_list("display_name", flat=True)
         }
 
         created = []
@@ -81,7 +74,7 @@ class PlayerBulkSerializer(serializers.Serializer):
             if not name or key in existing or key in seen:
                 continue
             seen.add(key)
-            created.append(Player(owner=user, group=group, display_name=name))
+            created.append(Player(owner=user, display_name=name))
 
         return Player.objects.bulk_create(created)
 
@@ -97,61 +90,5 @@ class GameSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Game
-        fields = ("id", "name", "slug", "group", "modes")
+        fields = ("id", "name", "slug", "modes")
         read_only_fields = ("id", "slug")
-
-
-class MembershipSerializer(serializers.ModelSerializer):
-    user = PublicUserSerializer(read_only=True)
-
-    class Meta:
-        model = Membership
-        fields = ("id", "user", "role", "created_at")
-
-
-class SeasonSerializer(serializers.ModelSerializer):
-    """A competitive window (plan §4, NEW 5)."""
-
-    class Meta:
-        model = Season
-        fields = ("id", "group", "name", "starts_on", "ends_on", "is_active")
-        read_only_fields = ("id",)
-
-
-class GroupSerializer(serializers.ModelSerializer):
-    """A crew. `slug` is generated on save, so it is never accepted from input."""
-
-    owner = PublicUserSerializer(read_only=True)
-    member_count = serializers.SerializerMethodField()
-    player_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Group
-        fields = (
-            "id",
-            "name",
-            "slug",
-            "description",
-            "owner",
-            "member_count",
-            "player_count",
-            "created_at",
-        )
-        read_only_fields = ("id", "slug", "owner", "created_at")
-
-    def get_member_count(self, obj) -> int:
-        return obj.memberships.count()
-
-    def get_player_count(self, obj) -> int:
-        return obj.players.filter(archived=False).count()
-
-
-class GroupDetailSerializer(GroupSerializer):
-    """The group page: everything needed to render it in one request."""
-
-    memberships = MembershipSerializer(many=True, read_only=True)
-    games = GameSerializer(many=True, read_only=True)
-    seasons = SeasonSerializer(many=True, read_only=True)
-
-    class Meta(GroupSerializer.Meta):
-        fields = (*GroupSerializer.Meta.fields, "memberships", "games", "seasons")

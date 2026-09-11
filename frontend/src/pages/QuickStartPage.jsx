@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Info, Trophy, Users } from 'lucide-react'
+import { BarChart3, Info, Trophy } from '@/components/icons'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { boards as boardsApi, tournaments as tournamentsApi } from '@/api/endpoints'
+import { PageShell } from '@/components/layout/PageShell'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { FriendPicker } from '@/components/ui/FriendPicker'
 import { RosterPicker } from '@/components/ui/RosterPicker'
 import { SavedRoster } from '@/components/ui/SavedRoster'
 import { TeamBuilder } from '@/components/ui/TeamBuilder'
@@ -73,8 +73,6 @@ export function QuickStartPage() {
   })
 
   const [statsBoard, setStatsBoard] = useState('')
-  // Friends who may report results alongside the host.
-  const [cohosts, setCohosts] = useState([])
   const [makingBoard, setMakingBoard] = useState(false)
   const [newBoardName, setNewBoardName] = useState('')
 
@@ -118,9 +116,6 @@ export function QuickStartPage() {
         // individually — a 3v3 win is three people's win — which the server
         // handles.
         ...(statsBoard ? { stats_board: statsBoard } : {}),
-        // Reporting rights from the start: by the time the first match ends,
-        // nobody wants to be in a settings screen (plan §4, NEW 12).
-        ...(cohosts.length > 0 ? { cohosts } : {}),
         settings: {
           best_of: { default: bestOf },
           ...(format === 'double' ? { bracket_reset: bracketReset } : {}),
@@ -174,7 +169,7 @@ export function QuickStartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <PageShell>
       <PageHeader
         title="New tournament"
         description="Add names, pick a format, and you have a bracket. No account needed."
@@ -360,26 +355,10 @@ export function QuickStartPage() {
               </div>
             </div>
 
-            {isAuthenticated && (
-              <div className="border-base-300 bg-base-200/30 rounded-xl border p-3">
-                <span className="mb-2 flex items-center gap-1.5 text-sm font-medium">
-                  <Users className="h-4 w-4" />
-                  Permission to edit
-                </span>
-
-                <FriendPicker
-                  selected={cohosts}
-                  onToggle={(person) =>
-                    setCohosts((current) =>
-                      current.includes(person.id)
-                        ? current.filter((id) => id !== person.id)
-                        : [...current, person.id],
-                    )
-                  }
-                  emptyHint="Add someone as a friend first, then they can help run your brackets."
-                />
-              </div>
-            )}
+            {/* Co-hosts are granted from the bracket page instead. Choosing who
+                may help is a decision made once the night is running — someone
+                else ends up at the console — not while filling in a form, and a
+                friend picker here made an already long setup longer. */}
 
             {/* Linking to a board is what makes a league night count for
                 something past Saturday. Signed-in only, since an anonymous
@@ -512,6 +491,6 @@ export function QuickStartPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

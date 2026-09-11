@@ -23,15 +23,6 @@ export const friends = {
   remove: (id) => api.delete(`/auth/friends/${id}/`).then((r) => r.data),
 }
 
-export const groups = {
-  list: () => api.get('/groups/').then((r) => r.data),
-  get: (slug) => api.get(`/groups/${slug}/`).then((r) => r.data),
-  create: (payload) => api.post('/groups/', payload).then((r) => r.data),
-  players: (slug) => api.get(`/groups/${slug}/players/`).then((r) => r.data),
-  standings: (slug, params) =>
-    api.get(`/groups/${slug}/standings/`, { params }).then((r) => r.data),
-}
-
 export const roster = {
   list: (params) => api.get('/players/', { params }).then((r) => r.data),
   create: (payload) => api.post('/players/', payload).then((r) => r.data),
@@ -52,7 +43,7 @@ export const games = {
 }
 
 export const tournaments = {
-  list: () => api.get('/tournaments/').then((r) => r.data),
+  list: (params) => api.get('/tournaments/', { params }).then((r) => r.data),
   get: (id) => api.get(`/tournaments/${id}/`).then((r) => r.data),
   create: (payload) => api.post('/tournaments/', payload).then((r) => r.data),
   update: (id, payload) => api.patch(`/tournaments/${id}/`, payload).then((r) => r.data),
@@ -66,9 +57,17 @@ export const tournaments = {
   substitute: (id, entrantId, payload) =>
     api.post(`/tournaments/${id}/entrants/${entrantId}/substitute/`, payload).then((r) => r.data),
   nextRound: (id) => api.post(`/tournaments/${id}/next-round/`).then((r) => r.data),
+  // A run of results in one request. Returns the whole bracket, so the flush
+  // doubles as the reconcile — no separate refetch needed after it.
+  batchReport: (id, operations) =>
+    api.post(`/tournaments/${id}/batch-report/`, { operations }).then((r) => r.data),
   addCohost: (id, userId) =>
     api.post(`/tournaments/${id}/cohosts/`, { user: userId }).then((r) => r.data),
+  removeCohost: (id, userId) =>
+    api.delete(`/tournaments/${id}/cohosts/${userId}/`).then((r) => r.data),
   favourite: (id) => api.post(`/tournaments/${id}/favourite/`).then((r) => r.data),
+  archive: (id) => api.post(`/tournaments/${id}/archive/`).then((r) => r.data),
+  restore: (id) => api.post(`/tournaments/${id}/restore/`).then((r) => r.data),
   claim: (id, token) => api.post(`/tournaments/${id}/claim/`, { token }).then((r) => r.data),
 }
 

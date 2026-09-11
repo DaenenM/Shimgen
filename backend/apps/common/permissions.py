@@ -30,7 +30,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 
 class IsGroupMember(permissions.BasePermission):
     """
-    Membership of the group gates reads; ownership or admin gates writes.
+    Ownership or admin gates writes.
 
     A member can see the crew's rosters and history. Changing the group itself
     stays with the owner and admins, so one member cannot rename or delete a
@@ -38,7 +38,7 @@ class IsGroupMember(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        group = obj if hasattr(obj, "memberships") else getattr(obj, "group", None)
+        group = None
         if group is None:
             return False
 
@@ -124,7 +124,7 @@ def is_unclaimed(tournament) -> bool:
     the link to. Claiming it (or creating it while signed in) sets `created_by`
     and the normal ownership rules take over from there.
     """
-    return tournament.created_by_id is None and tournament.group_id is None
+    return tournament.created_by_id is None
 
 
 def _is_host(tournament, user) -> bool:
@@ -138,4 +138,4 @@ def _is_host(tournament, user) -> bool:
     if tournament.roles.filter(user=user, role="host").exists():
         return True
 
-    return tournament.group_id is not None and tournament.group.owner_id == user.id
+    return False

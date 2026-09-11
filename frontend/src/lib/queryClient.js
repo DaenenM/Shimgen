@@ -66,11 +66,6 @@ export const queryKeys = {
   auth: {
     me: ['auth', 'me'],
   },
-  groups: {
-    all: ['groups'],
-    detail: (slug) => ['groups', slug],
-    players: (slug) => ['groups', slug, 'players'],
-  },
   tournaments: {
     all: ['tournaments'],
     detail: (slug) => ['tournaments', slug],

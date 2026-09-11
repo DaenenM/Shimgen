@@ -17,7 +17,7 @@ from django.db import models
 
 from apps.common.models import TimeStampedModel
 from apps.common.slugs import random_slug
-from apps.groups.models import GameMode, Group, Player, Season
+from apps.groups.models import GameMode, Player
 
 
 class Tournament(TimeStampedModel):
@@ -35,14 +35,6 @@ class Tournament(TimeStampedModel):
         ACTIVE = "active", "Active"
         COMPLETE = "complete", "Complete"
 
-    group = models.ForeignKey(
-        Group,
-        null=True,
-        blank=True,
-        related_name="tournaments",
-        on_delete=models.CASCADE,
-        help_text="Null for a no-account quick-start bracket that has not been claimed.",
-    )
     mode = models.ForeignKey(
         GameMode,
         null=True,
@@ -51,9 +43,6 @@ class Tournament(TimeStampedModel):
         # PROTECT: a mode with recorded history cannot be deleted out from
         # under the stats that reference it.
         on_delete=models.PROTECT,
-    )
-    season = models.ForeignKey(
-        Season, null=True, blank=True, related_name="tournaments", on_delete=models.SET_NULL
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -96,14 +85,20 @@ class Tournament(TimeStampedModel):
         # themselves, so the one pinned first stays first.
         help_text="When this was pinned to the top of the list. Null if it is not.",
     )
+    archived = models.BooleanField(
+        default=False,
+        db_index=True,
+        # The same bargain the roster strikes: a finished night stops cluttering
+        # the list without its results leaving the record. Deleting is the other
+        # option and it takes the stats with it, so this is what a host wants
+        # for a season that is simply over.
+        help_text="Hidden from the tournament list without losing its results.",
+    )
 
     class Meta:
         # Favourites first, oldest pin at the top so the order is the order they
         # were chosen in; everything else newest-first underneath.
         ordering = [models.F("favourited_at").asc(nulls_last=True), "-created_at"]
-        indexes = [
-            models.Index(fields=["group", "state", "-created_at"]),
-        ]
 
     def __str__(self) -> str:
         return self.title or f"{self.get_format_display()} #{self.pk}"
@@ -356,28 +351,3 @@ class Rating(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.player} — {self.mode}: {self.elo:.0f}"
-
-
-class TeamGenerationConstraint(TimeStampedModel):
-    """
-    A rule the team generator must respect (plan §3).
-
-    Kept as rows rather than a JSON blob so constraints are queryable and
-    reusable across a group's events — "these two are always together" is a
-    property of the crew, not of one Saturday.
-    """
-
-    class Kind(models.TextChoices):
-        TOGETHER = "together", "Must be on the same team"
-        APART = "apart", "Must be on different teams"
-        LOCKED = "locked", "Locked to a specific team"
-
-    group = models.ForeignKey(Group, related_name="team_constraints", on_delete=models.CASCADE)
-    kind = models.CharField(max_length=10, choices=Kind.choices)
-    players = models.ManyToManyField(Player, related_name="team_constraints")
-    team_index = models.IntegerField(
-        null=True, blank=True, help_text="Target team for a LOCKED constraint."
-    )
-
-    def __str__(self) -> str:
-        return f"{self.get_kind_display()} ({self.group})"

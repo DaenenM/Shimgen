@@ -717,3 +717,170 @@ def test_solo_entrants_are_tracked_too(auth_client, table):
 
     assert _tally(table, "Trev", StatsColumn.Role.WON) == 1
     assert _tally(table, "Trev", StatsColumn.Role.TOURNAMENTS_WON) == 0
+
+
+@pytest.mark.django_db
+def test_undoing_the_final_takes_the_trophy_back(table, user):
+    """
+    A trophy is credit for a result. Undo the result and the credit has to go
+    with it, or the board keeps a win for a bracket that no longer says so.
+    """
+    tournament = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
+    BoardLink.objects.create(tournament=tournament, table=table)
+
+    _win(tournament, "Team 1")
+    _win(tournament, "Team 3")
+    final = _win(tournament, "Team 1")
+
+    tournament.state = Tournament.State.COMPLETE
+    tournament.save(update_fields=["state"])
+    link = tournament.stats_link
+    apply_tournament_result(link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 1
+
+    # The host clicked the wrong name. Undo it.
+    clear_result(final)
+    link.refresh_from_db()
+    sync_tournament_stats(link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 0
+
+
+@pytest.mark.django_db
+def test_a_corrected_final_moves_the_trophy_to_the_real_winner(table, user):
+    """The mistake is undone and the right result recorded in its place."""
+    tournament = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
+    BoardLink.objects.create(tournament=tournament, table=table)
+
+    _win(tournament, "Team 1")
+    _win(tournament, "Team 3")
+    final = _win(tournament, "Team 1")
+
+    tournament.state = Tournament.State.COMPLETE
+    tournament.save(update_fields=["state"])
+    link = tournament.stats_link
+    apply_tournament_result(link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 1
+
+    # Reported the wrong way round: hand it to the other side.
+    final.refresh_from_db()
+    loser_is_a = final.a.label != "Team 1"
+    report_result(final, score_a=1 if loser_is_a else 0, score_b=0 if loser_is_a else 1)
+
+    link.refresh_from_db()
+    sync_tournament_stats(link)
+    apply_tournament_result(link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 0
+    assert _tally(table, "Cal", StatsColumn.Role.TOURNAMENTS_WON) == 1
+
+
+@pytest.mark.django_db
+def test_deleting_a_tournament_takes_its_numbers_off_the_board(table, user):
+    """
+    A deleted tournament must not leave wins behind it. The link cascades away
+    on its own, but the tallies it wrote would otherwise stand for ever with
+    nothing to explain them.
+    """
+    from apps.stats.awarding import strip_tournament_from_board
+
+    tournament = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
+    BoardLink.objects.create(tournament=tournament, table=table)
+
+    _win(tournament, "Team 1")
+    _win(tournament, "Team 3")
+    _win(tournament, "Team 1")
+
+    tournament.state = Tournament.State.COMPLETE
+    tournament.save(update_fields=["state"])
+    link = tournament.stats_link
+    sync_tournament_stats(link)
+    apply_tournament_result(link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 1
+    assert _tally(table, "Ann", StatsColumn.Role.PLAYED) > 0
+
+    link.refresh_from_db()
+    strip_tournament_from_board(link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 0
+    assert _tally(table, "Ann", StatsColumn.Role.PLAYED) == 0
+    assert _tally(table, "Ann", StatsColumn.Role.WON) == 0
+
+
+@pytest.mark.django_db
+def test_stripping_leaves_another_tournaments_trophy_alone(table, user):
+    """Only the deleted tournament's own credit is taken back."""
+    from apps.stats.awarding import strip_tournament_from_board
+
+    first = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
+    BoardLink.objects.create(tournament=first, table=table)
+    _win(first, "Team 1")
+    _win(first, "Team 3")
+    _win(first, "Team 1")
+    first.state = Tournament.State.COMPLETE
+    first.save(update_fields=["state"])
+    apply_tournament_result(first.stats_link)
+
+    # A second night, won by someone else, on the same board.
+    second = _tournament(user, squads=[["Cal"], ["Dee"], ["Ann"], ["Bo"]])
+    BoardLink.objects.create(tournament=second, table=table)
+    _win(second, "Team 1")
+    _win(second, "Team 3")
+    _win(second, "Team 1")
+    second.state = Tournament.State.COMPLETE
+    second.save(update_fields=["state"])
+    apply_tournament_result(second.stats_link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 1
+    assert _tally(table, "Cal", StatsColumn.Role.TOURNAMENTS_WON) == 1
+
+    # Delete the first: Cal's trophy from the second must survive.
+    link = first.stats_link
+    link.refresh_from_db()
+    strip_tournament_from_board(link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 0
+    assert _tally(table, "Cal", StatsColumn.Role.TOURNAMENTS_WON) == 1
+
+
+@pytest.mark.django_db
+def test_stripping_keeps_the_rows(table, user):
+    """A player on a board is someone the crew tracks, not one night's residue."""
+    from apps.stats.awarding import strip_tournament_from_board
+
+    tournament = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
+    BoardLink.objects.create(tournament=tournament, table=table)
+    _win(tournament, "Team 1")
+    sync_tournament_stats(tournament.stats_link)
+
+    before = table.rows.count()
+    strip_tournament_from_board(tournament.stats_link)
+
+    assert table.rows.count() == before
+
+
+@pytest.mark.django_db
+def test_deleting_through_the_api_cleans_the_board(auth_client, table, user):
+    """The whole path: delete the tournament, board comes back down."""
+    tournament = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
+    BoardLink.objects.create(tournament=tournament, table=table)
+
+    _win(tournament, "Team 1")
+    _win(tournament, "Team 3")
+    _win(tournament, "Team 1")
+    tournament.state = Tournament.State.COMPLETE
+    tournament.save(update_fields=["state"])
+    sync_tournament_stats(tournament.stats_link)
+    apply_tournament_result(tournament.stats_link)
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 1
+
+    response = auth_client.delete(f"/api/v1/tournaments/{tournament.id}/")
+    assert response.status_code == 204
+
+    assert _tally(table, "Ann", StatsColumn.Role.TOURNAMENTS_WON) == 0
+    assert _tally(table, "Ann", StatsColumn.Role.PLAYED) == 0
+    assert not Tournament.objects.filter(pk=tournament.pk).exists()

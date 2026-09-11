@@ -15,10 +15,10 @@ const SITE_NAME = 'Shimgen'
  * returning nothing falls back to the bare site name rather than rendering
  * "Shimgen | undefined".
  *
- * `handle.seoTitle` overrides the tab title for pages worth ranking: a search
- * result showing "Free Team Generator: Randomise Balanced Teams" earns a click
- * that "Shimgen | Team Generator" does not. `handle.description` updates the
- * meta description alongside it.
+ * Every page reads "Shimgen | {page}". Marketing-length titles were tried here
+ * and reverted: a tab strip with six tournaments open needs the page name
+ * legible in ~20 characters, which a keyword-first headline cannot do.
+ * Ranking copy lives in `handle.description` and in index.html instead.
  *
  * A caveat worth knowing: this runs in the browser, so it helps search engines
  * that execute JavaScript (Google does) but not link unfurlers that do not
@@ -33,12 +33,11 @@ export function useDocumentTitle() {
   const handle = active?.handle
 
   const name = typeof handle?.title === 'function' ? handle.title(active) : handle?.title
-  const seoTitle = handle?.seoTitle
   const description = handle?.description
 
   useEffect(() => {
-    document.title = seoTitle ?? (name ? `${SITE_NAME} | ${name}` : SITE_NAME)
-  }, [name, seoTitle])
+    document.title = name ? `${SITE_NAME} | ${name}` : SITE_NAME
+  }, [name])
 
   useEffect(() => {
     if (!description) return

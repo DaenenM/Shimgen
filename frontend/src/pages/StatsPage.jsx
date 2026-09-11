@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Plus, Star, Table2, Trash2, Users, Zap } from 'lucide-react'
+import { BarChart3, Plus, Star, Table2, Trash2, Users, Zap } from '@/components/icons'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { boards as boardsApi } from '@/api/endpoints'
+import { PageShell } from '@/components/layout/PageShell'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { ChoiceGroup, Field, TextInput } from '@/components/ui/Field'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { PageLoader } from '@/components/ui/PageLoader'
+import { SectionLoader } from '@/components/ui/SectionLoader'
 import { useAuth } from '@/hooks/useAuth'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
@@ -39,6 +43,13 @@ export function StatsPage() {
     queryKey: queryKeys.boards.all,
     queryFn: boardsApi.list,
     enabled: isAuthenticated,
+    // Boards move without this tab doing anything: a co-host reports a result
+    // from their own phone and the tally changes. The bracket page invalidates
+    // this cache after its own reports, but it cannot know about anyone else's,
+    // so arriving here always asks. `placeholderData` keeps the cached board on
+    // screen while it does, so this costs a background request rather than a
+    // spinner.
+    staleTime: 0,
   })
 
   const remove = useMutation({
@@ -64,7 +75,7 @@ export function StatsPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <PageShell>
         <PageHeader title="Stats" />
         <EmptyState
           icon={BarChart3}
@@ -73,25 +84,22 @@ export function StatsPage() {
           actionLabel="Create an account"
           actionTo={paths.register}
         />
-      </div>
+      </PageShell>
     )
   }
-
-  if (isLoading) return <PageLoader label="Loading stats…" />
 
   const available = data?.results ?? data ?? []
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <PageShell>
       <PageHeader
         title="Stats"
         description="Tally boards for the nights that never became a bracket."
       >
         {!creating && (
-          <button className="btn btn-primary gap-2" onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" />
+          <Button icon={Plus} onClick={() => setCreating(true)}>
             New board
-          </button>
+          </Button>
         )}
       </PageHeader>
 
@@ -102,96 +110,74 @@ export function StatsPage() {
       )}
 
       {creating && (
-        <div className="card bg-base-100 border-base-300 mb-6 border">
-          <div className="card-body gap-3">
-            <label className="flex w-full flex-col">
-              <span className="label-text mb-1">Board name</span>
-              <input
-                className="input input-bordered w-full"
-                placeholder="Game Night Wins"
-                value={name}
-                autoFocus
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && name.trim()) create.mutate()
-                  if (e.key === 'Escape') setCreating(false)
-                }}
-              />
-            </label>
+        <Card padding="lg" className="mb-6 space-y-4">
+          <Field label="Board name">
+            <TextInput
+              placeholder="Game Night Wins"
+              value={name}
+              autoFocus
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && name.trim()) create.mutate()
+                if (e.key === 'Escape') setCreating(false)
+              }}
+            />
+          </Field>
 
-            <div>
-              <span className="label-text mb-1.5 block">What is it counting?</span>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {[
-                  [
-                    false,
-                    'Counted by hand',
-                    'You add each win yourself. The game night that never became a bracket.',
-                  ],
-                  [
-                    true,
-                    'From tournaments',
-                    'Games played, wins, losses and tournament wins, kept up to date by linked brackets.',
-                  ],
-                ].map(([value, label, hint]) => (
-                  <label
-                    key={String(value)}
-                    className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${
-                      tracks === value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-base-300 hover:border-base-content/20'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="board-kind"
-                      className="radio radio-primary radio-sm mt-0.5"
-                      checked={tracks === value}
-                      onChange={() => setTracks(value)}
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium">{label}</span>
-                      <span className="text-base-content/50 block text-xs">{hint}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {create.isError && (
-              <div role="alert" className="alert alert-error py-2 text-sm">
-                {create.error.message}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button
-                className="btn btn-primary gap-2"
-                disabled={!name.trim() || create.isPending}
-                onClick={() => create.mutate()}
-              >
-                {create.isPending ? (
-                  <span className="loading loading-spinner loading-sm" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Create board
-              </button>
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  setCreating(false)
-                  setName('')
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+          <div className="space-y-2">
+            <span className="text-sm font-medium">What is it counting?</span>
+            <ChoiceGroup
+              name="board-kind"
+              value={tracks}
+              onChange={setTracks}
+              options={[
+                {
+                  value: false,
+                  label: 'Counted by hand',
+                  hint: 'You add each win yourself. The game night that never became a bracket.',
+                },
+                {
+                  value: true,
+                  label: 'From tournaments',
+                  hint: 'Games played, wins, losses and tournament wins, kept up to date by linked brackets.',
+                },
+              ]}
+            />
           </div>
-        </div>
+
+          {create.isError && (
+            <div role="alert" className="alert alert-error py-2 text-sm">
+              {create.error.message}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              icon={Plus}
+              disabled={!name.trim()}
+              loading={create.isPending}
+              onClick={() => create.mutate()}
+            >
+              Create board
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setCreating(false)
+                setName('')
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </Card>
       )}
 
-      {available.length === 0 && !creating ? (
+      {isLoading ? (
+        // Only the list waits. The header and its "New board" button are above
+        // and already interactive, so the page is usable before the fetch lands.
+        <SectionLoader label="Loading your boards…" />
+      ) : available.length === 0 && !creating ? (
         <EmptyState
           icon={Table2}
           title="No boards yet"
@@ -304,6 +290,6 @@ export function StatsPage() {
         onConfirm={() => remove.mutate(confirming.slug)}
         onCancel={() => setConfirming(null)}
       />
-    </div>
+    </PageShell>
   )
 }

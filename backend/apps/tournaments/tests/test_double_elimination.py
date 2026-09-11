@@ -9,7 +9,7 @@ sails straight past.
 
 import pytest
 
-from apps.tournaments.brackets.advance import report_result
+from apps.tournaments.brackets.advance import clear_result, report_result
 from apps.tournaments.brackets.double_elimination import generate_double_elimination
 from apps.tournaments.models import Match
 from apps.tournaments.standings import elimination_placements
@@ -303,6 +303,84 @@ def test_the_decider_is_seated_when_the_losers_finalist_wins():
 
     assert decider.a_id == grand.a_id
     assert decider.b_id == grand.b_id
+
+
+def test_undoing_the_grand_final_empties_the_decider():
+    """
+    Correcting the grand final must clear BOTH seats of the decider.
+
+    The grand final seats the decider itself — winner and loser together, since
+    a bracket reset replays the same pairing — so undoing it along the generic
+    win/lose edges cleared only one side and left the other entrant standing in
+    a match that should read TBD.
+    """
+    tournament, _ = build(4, settings={"bracket_reset": True})
+
+    guard = 0
+    while True:
+        guard += 1
+        assert guard < 100
+        playable = [
+            m
+            for m in tournament.matches.filter(winner__isnull=True)
+            if m.a_id and m.b_id and m.bracket != Match.Bracket.FINAL
+        ]
+        if not playable:
+            break
+        for match in playable:
+            report_result(match, score_a=match.wins_needed, score_b=0)
+
+    finals = tournament.matches.filter(bracket=Match.Bracket.FINAL).order_by("round_no")
+    grand, decider = finals.first(), finals.last()
+    grand.refresh_from_db()
+
+    # The losers finalist wins, which seats the decider.
+    report_result(grand, score_a=0, score_b=grand.wins_needed)
+    decider.refresh_from_db()
+    assert decider.a_id and decider.b_id
+
+    # Now correct it: the undefeated side actually took it, so the decider is
+    # never played and must be empty again.
+    grand.refresh_from_db()
+    report_result(grand, score_a=grand.wins_needed, score_b=0)
+    decider.refresh_from_db()
+
+    assert decider.a_id is None
+    assert decider.b_id is None
+
+
+def test_clearing_the_grand_final_empties_the_decider():
+    """The same, via an explicit clear rather than a corrected score."""
+    tournament, _ = build(4, settings={"bracket_reset": True})
+
+    guard = 0
+    while True:
+        guard += 1
+        assert guard < 100
+        playable = [
+            m
+            for m in tournament.matches.filter(winner__isnull=True)
+            if m.a_id and m.b_id and m.bracket != Match.Bracket.FINAL
+        ]
+        if not playable:
+            break
+        for match in playable:
+            report_result(match, score_a=match.wins_needed, score_b=0)
+
+    finals = tournament.matches.filter(bracket=Match.Bracket.FINAL).order_by("round_no")
+    grand, decider = finals.first(), finals.last()
+    grand.refresh_from_db()
+
+    report_result(grand, score_a=0, score_b=grand.wins_needed)
+    decider.refresh_from_db()
+    assert decider.a_id and decider.b_id
+
+    grand.refresh_from_db()
+    clear_result(grand)
+    decider.refresh_from_db()
+
+    assert decider.a_id is None
+    assert decider.b_id is None
 
 
 # ── Small brackets ────────────────────────────────────────────────────────────

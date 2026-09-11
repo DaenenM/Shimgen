@@ -1,12 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Check, Link2, Plus, Settings2, Trash2, UserPlus, Users, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  Check,
+  Link2,
+  Plus,
+  Settings2,
+  Trash2,
+  UserPlus,
+  Users,
+  X,
+} from '@/components/icons'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { boards as boardsApi } from '@/api/endpoints'
+import { PageShell } from '@/components/layout/PageShell'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { FriendPicker } from '@/components/ui/FriendPicker'
-import { PageLoader } from '@/components/ui/PageLoader'
+import { SkeletonPage } from '@/components/ui/Skeleton'
 import { BoardTable } from '@/features/stats/BoardTable'
 import { EmojiPicker } from '@/features/stats/EmojiPicker'
 import { useRoster } from '@/hooks/useRoster'
@@ -36,6 +47,12 @@ export function BoardPage() {
   const { data: board, isLoading } = useQuery({
     queryKey: queryKeys.boards.detail(slug),
     queryFn: () => boardsApi.get(slug),
+    // This is the page the numbers are actually read off, and they move
+    // whenever any linked bracket is reported — by this tab or by a co-host on
+    // their own phone. Always ask on arrival; `placeholderData` keeps the board
+    // on screen while it refetches, so the tallies update underneath rather
+    // than flashing a loader.
+    staleTime: 0,
   })
 
   // Arriving by the bare slug — an old link, or one typed by hand — rewrites
@@ -157,7 +174,7 @@ export function BoardPage() {
     },
   })
 
-  if (isLoading) return <PageLoader label="Loading board…" />
+  if (isLoading) return <SkeletonPage width="max-w-5xl" />
 
   if (!board) {
     return (
@@ -184,7 +201,7 @@ export function BoardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <PageShell>
       <Link
         to={paths.stats}
         className="text-base-content/60 hover:text-base-content mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"
@@ -262,7 +279,7 @@ export function BoardPage() {
           boardName={board.name}
         />
       )}
-    </div>
+    </PageShell>
   )
 }
 

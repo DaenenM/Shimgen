@@ -42,9 +42,6 @@ export const paths = {
 
   dashboard: '/dashboard',
 
-  groups: '/groups',
-  group: (slug) => `/groups/${slug}`,
-
   tournaments: '/tournaments',
   tournament: (id, name) => `/tournaments/${id}${nameSegment(name)}`,
 

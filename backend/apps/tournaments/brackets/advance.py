@@ -324,6 +324,26 @@ def _retract(match):
     is cleared as well. Correcting a quarterfinal cannot leave a stale entrant
     standing in the final.
     """
+    # The grand final is the mirror of _resolve_grand_final, which seats the
+    # decider with BOTH entrants at once — a bracket reset replays the same
+    # pairing, so there is no win/lose edge to walk back. Undoing it along the
+    # generic edges cleared one seat and left the other entrant standing in a
+    # match that should read TBD.
+    if match.bracket == Match.Bracket.FINAL and match.next_match_win_id:
+        decider = Match.objects.get(pk=match.next_match_win_id)
+
+        if decider.winner_id:
+            clear_result(decider)
+            decider.refresh_from_db()
+
+        decider.a = None
+        decider.b = None
+        decider.score = {}
+        decider.save(update_fields=["a", "b", "score"])
+
+        _unelimate(match)
+        return
+
     for target_id, dropping in (
         (match.next_match_win_id, False),
         (match.next_match_lose_id, True),
@@ -347,6 +367,11 @@ def _retract(match):
         setattr(target, slot, None)
         target.save(update_fields=[slot])
 
+    _unelimate(match)
+
+
+def _unelimate(match):
+    """Both sides of an undone match are back in the tournament."""
     if match.a_id:
         match.a.eliminated = False
         match.a.save(update_fields=["eliminated"])

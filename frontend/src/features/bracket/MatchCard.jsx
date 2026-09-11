@@ -15,11 +15,6 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
   const isSeries = match.best_of > 1
 
   function pick(side) {
-    const needed = match.wins_needed
-    const score = match.score ?? {}
-    const mine = score[side] ?? 0
-    const theirs = score[side === 'a' ? 'b' : 'a'] ?? 0
-
     // Bo1 has no count to walk through, so clicking the winner is an undo —
     // the same gesture that corrects a mis-click everywhere else.
     if (!isSeries && decided && match.winner === (side === 'a' ? match.a : match.b)) {
@@ -27,26 +22,11 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
       return
     }
 
-    // Clicking the side that lost a decided match is a correction: the host
-    // picked the wrong name. Hand the win straight over rather than adding to
-    // their count — incrementing here posted a score both sides had won (1-1
-    // on a Bo1), which the server rightly refuses.
-    if (decided && match.winner !== (side === 'a' ? match.a : match.b)) {
-      onReport(side === 'a' ? needed : 0, side === 'a' ? 0 : needed)
-      return
-    }
-
-    // In a series the count keeps cycling: each click adds a win, and one past
-    // the threshold wraps back to zero. Clicking is the only input here, so it
-    // has to walk down as well as up — otherwise an over-click on a Bo5 would
-    // strand the match with no way back.
-    const next = mine >= needed ? 0 : mine + 1
-
-    // Wrapping to zero also clears the opponent, since a series that has been
-    // reset should read 0-0 rather than leaving the loser's games standing.
-    const other = next === 0 ? 0 : theirs
-
-    onReport(side === 'a' ? next : other, side === 'a' ? other : next)
+    // Everything else is "this side won a game". The page turns that into a
+    // score against the freshest cached match rather than the one this card
+    // rendered with: two quick clicks on a series would otherwise both read the
+    // score from before the first, and the second game would not count.
+    onReport(side)
   }
 
   /** What a click will do, for a series where it is not simply "wins". */
@@ -94,7 +74,10 @@ export function MatchCard({ match, canReport, onReport, onClear }) {
 
       {/* The footer names the series and how it stands. With clicking as the
           only input, saying "first to 2" is what makes an incrementing score
-          legible — otherwise 1-1 on a Bo3 gives no clue how close it is. */}
+          legible — otherwise 1-1 on a Bo3 gives no clue how close it is.
+
+          No reset control here: clicking a name already cycles it back, and a
+          separate button for the same gesture was clutter on every card. */}
       {isSeries && (
         <div className="border-base-300/60 flex items-center justify-between border-t px-3 py-1">
           <span className="text-base-content/50 text-xs tracking-wide uppercase">

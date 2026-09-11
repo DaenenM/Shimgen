@@ -1,4 +1,4 @@
-import { Check, Plus, Users, X } from 'lucide-react'
+import { Check, Plus, Users, X } from '@/components/icons'
 
 import { useRoster } from '@/hooks/useRoster'
 

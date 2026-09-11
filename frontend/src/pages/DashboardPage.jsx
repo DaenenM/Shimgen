@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Shuffle, Trophy, UserPlus, Users } from 'lucide-react'
+import { Plus, Shuffle, Trophy, UserPlus, Users } from '@/components/icons'
 import { Link } from 'react-router-dom'
 
 import {
   friends as friendsApi,
-  groups as groupsApi,
   roster as rosterApi,
   tournaments as tournamentsApi,
 } from '@/api/endpoints'
@@ -27,12 +26,7 @@ export function DashboardPage() {
 
   const { data: tournaments } = useQuery({
     queryKey: queryKeys.tournaments.all,
-    queryFn: tournamentsApi.list,
-  })
-
-  const { data: groups } = useQuery({
-    queryKey: queryKeys.groups.all,
-    queryFn: groupsApi.list,
+    queryFn: () => tournamentsApi.list(),
   })
 
   const { data: players } = useQuery({
@@ -65,11 +59,10 @@ export function DashboardPage() {
         </Link>
       </PageHeader>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Stat label="Tournaments" value={events.length} to={paths.tournaments} />
         <Stat label="In progress" value={active} to={paths.tournaments} />
         <Stat label="Saved players" value={list(players).length} to={paths.roster} />
-        <Stat label="Groups" value={list(groups).length} to={paths.groups} />
       </div>
 
       {/* A pending friend request is the one thing here that needs an answer,
@@ -133,18 +126,6 @@ export function DashboardPage() {
             </li>
           ))}
         </ul>
-      )}
-
-      {list(groups).length === 0 && (
-        <div className="mt-8">
-          <EmptyState
-            icon={Users}
-            title="Create a group to track stats"
-            description="Stats and ratings are scoped to a crew: your Saturday regulars, your LoL customs. Tournaments work fine without one, but nothing accumulates."
-            actionLabel="Create a group"
-            actionTo={paths.groups}
-          />
-        </div>
       )}
     </div>
   )

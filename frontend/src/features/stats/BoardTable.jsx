@@ -1,5 +1,7 @@
-import { ArrowDown, ArrowUp, Trash2, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUp, Trash2, Zap } from '@/components/icons'
 import { useState } from 'react'
+
+import { useIsSmallScreen } from '@/hooks/useMediaQuery'
 
 import { TallyCell } from './TallyCell'
 
@@ -18,6 +20,11 @@ const NAME_KEY = 'name'
 export function BoardTable({ table, canEdit, onAward, onRemoveRow, busyKey }) {
   const { columns, rows } = table
 
+  // Phones always count in numbers: seven tridents in a 90px column wrap into
+  // an unreadable smear, which is exactly what a real Pummel Party tally looks
+  // like on a phone.
+  const isSmall = useIsSmallScreen()
+
   /**
    * How a cell draws itself.
    *
@@ -25,19 +32,34 @@ export function BoardTable({ table, canEdit, onAward, onRemoveRow, busyKey }) {
    * whole point, and it reads at a glance. Two or more columns is a table, and
    * two rows of glyphs side by side stop being readable: at that width the eye
    * cannot compare six tridents against four. So a table with more than one
-   * column counts in numbers, whatever each column was set to.
+   * column counts in numbers, whatever each column was set to — and so does any
+   * column on a screen too narrow to lay marks out.
    */
   const displayFor = (column) =>
-    column.display === 'number' || columns.length > 1 ? 'number' : 'emoji'
+    column.display === 'number' || columns.length > 1 || isSmall ? 'number' : 'emoji'
 
   // `null` means "the leading column, descending" — the default standing. Held
   // per table, so sorting one section does not reorder the others.
   const [sort, setSort] = useState(null)
 
+  /**
+   * What the board leads with before anyone clicks a header.
+   *
+   * Trophies first when the table has them. A tournament board's columns come
+   * out in role order — played, won, lost, tournaments won — so the leftmost
+   * column is "games played", and leading with it ranks whoever turned up most
+   * rather than whoever won. Tournaments won is the standing everyone actually
+   * came to see.
+   *
+   * Falls back to the first column for a hand-counted board, which has no
+   * trophy column and whose first column is the thing it was made to count.
+   */
+  const trophyColumn = columns.find((column) => column.role === 'tournaments_won')
+
   // The key is an id, not a column object: the name column is sortable too and
   // has no column row behind it, so looking one up would come back undefined
   // and silently sort everything by the same value.
-  const sortKey = sort ? sort.key : (columns[0]?.id ?? NAME_KEY)
+  const sortKey = sort ? sort.key : (trophyColumn?.id ?? columns[0]?.id ?? NAME_KEY)
   const descending = sort ? sort.descending : true
 
   function toggle(key) {

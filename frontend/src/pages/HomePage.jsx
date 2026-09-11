@@ -1,4 +1,4 @@
-import { BarChart3, Link2, Shuffle, Trophy, Users, Zap } from 'lucide-react'
+import { BarChart3, Link2, Shuffle, Trophy, Users, Zap } from '@/components/icons'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '@/hooks/useAuth'

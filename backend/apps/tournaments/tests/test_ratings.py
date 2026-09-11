@@ -2,7 +2,7 @@
 
 import pytest
 
-from apps.groups.models import Game, GameMode, Group, Player
+from apps.groups.models import Game, GameMode, Player
 from apps.tournaments.brackets.advance import report_result
 from apps.tournaments.models import Entrant, Rating
 from apps.tournaments.ratings import (
@@ -20,8 +20,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def mode(db, user):
-    group = Group.objects.create(name="Saturday Crew", owner=user)
-    game = Game.objects.create(name="Pummel Party", group=group)
+    game = Game.objects.create(name="Pummel Party")
     return GameMode.objects.create(game=game, name="Solo", is_team_based=False)
 
 

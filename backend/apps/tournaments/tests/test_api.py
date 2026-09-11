@@ -670,3 +670,350 @@ def test_an_unfinished_tournament_names_nobody(auth_client):
         if r["title"] == "Ongoing"
     )
     assert row["winner_label"] is None
+
+
+# ── Batched reporting ─────────────────────────────────────────────────────────
+
+
+def batch_url(tournament_id):
+    return reverse("v1:tournaments:tournament-batch-report", args=[tournament_id])
+
+
+def _anonymous_bracket(api_client, labels=("A", "B", "C", "D")):
+    """A quick-start bracket, started and ready to report."""
+    created = api_client.post(
+        create_url(),
+        {"format": "single", "entrant_labels": list(labels)},
+        format="json",
+    ).json()
+    api_client.post(reverse("v1:tournaments:tournament-start", args=[created["id"]]), format="json")
+    return api_client.get(reverse("v1:tournaments:tournament-detail", args=[created["id"]])).json()
+
+
+def test_batch_applies_several_results_in_one_request(api_client):
+    bracket = _anonymous_bracket(api_client)
+    ready = [m for m in bracket["matches"] if m["a"] and m["b"]]
+    assert len(ready) == 2
+
+    response = api_client.post(
+        batch_url(bracket["id"]),
+        {
+            "operations": [
+                {"match": ready[0]["id"], "score_a": 1, "score_b": 0},
+                {"match": ready[1]["id"], "score_a": 1, "score_b": 0},
+            ]
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+
+    # Both reported, and both winners seated in the final.
+    decided = [m for m in body["matches"] if m["winner"]]
+    assert len(decided) == 2
+
+    final = max(body["matches"], key=lambda m: m["round_no"])
+    assert final["a"] and final["b"]
+
+
+def test_batch_preserves_click_order(api_client):
+    """A later entry correcting an earlier one must win, not the other way."""
+    bracket = _anonymous_bracket(api_client)
+    match = next(m for m in bracket["matches"] if m["a"] and m["b"])
+
+    response = api_client.post(
+        batch_url(bracket["id"]),
+        {
+            "operations": [
+                {"match": match["id"], "score_a": 1, "score_b": 0},
+                # Mis-click, corrected a moment later.
+                {"match": match["id"], "score_a": 0, "score_b": 1},
+            ]
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    reported = next(m for m in response.json()["matches"] if m["id"] == match["id"])
+    assert reported["winner"] == match["b"]
+
+
+def test_batch_is_all_or_nothing(api_client):
+    """A bad entry leaves the bracket untouched rather than half-applied."""
+    bracket = _anonymous_bracket(api_client)
+    ready = [m for m in bracket["matches"] if m["a"] and m["b"]]
+
+    response = api_client.post(
+        batch_url(bracket["id"]),
+        {
+            "operations": [
+                {"match": ready[0]["id"], "score_a": 1, "score_b": 0},
+                # Both sides winning a Bo1 is refused by report_result.
+                {"match": ready[1]["id"], "score_a": 1, "score_b": 1},
+            ]
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+
+    after = api_client.get(reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])).json()
+    assert [m for m in after["matches"] if m["winner"]] == []
+
+
+def test_batch_rejects_a_match_from_another_tournament(api_client):
+    mine = _anonymous_bracket(api_client)
+    theirs = _anonymous_bracket(api_client, labels=("W", "X", "Y", "Z"))
+    stranger = next(m for m in theirs["matches"] if m["a"] and m["b"])
+
+    response = api_client.post(
+        batch_url(mine["id"]),
+        {"operations": [{"match": stranger["id"], "score_a": 1, "score_b": 0}]},
+        format="json",
+    )
+
+    assert response.status_code == 400
+
+
+def test_batch_clear_undoes_a_result(api_client):
+    bracket = _anonymous_bracket(api_client)
+    match = next(m for m in bracket["matches"] if m["a"] and m["b"])
+
+    api_client.post(
+        batch_url(bracket["id"]),
+        {"operations": [{"match": match["id"], "score_a": 1, "score_b": 0}]},
+        format="json",
+    )
+    response = api_client.post(
+        batch_url(bracket["id"]),
+        {"operations": [{"match": match["id"], "op": "clear"}]},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    cleared = next(m for m in response.json()["matches"] if m["id"] == match["id"])
+    assert cleared["winner"] is None
+
+
+def test_batch_rejects_an_empty_run(api_client):
+    bracket = _anonymous_bracket(api_client)
+    response = api_client.post(batch_url(bracket["id"]), {"operations": []}, format="json")
+    assert response.status_code == 400
+
+
+def test_batch_reports_a_match_seated_earlier_in_the_same_run(api_client):
+    """
+    Clicking through a round fast sends the semifinal in the same batch as the
+    quarterfinals that fill it. The semifinal is empty when the batch arrives
+    and only becomes playable as the run is replayed, so a stale in-memory copy
+    made it look unplayable and rejected the whole night's clicks.
+    """
+    bracket = _anonymous_bracket(api_client)
+    first_round = [m for m in bracket["matches"] if m["a"] and m["b"]]
+    final = next(m for m in bracket["matches"] if not m["a"] and not m["b"])
+
+    response = api_client.post(
+        batch_url(bracket["id"]),
+        {
+            "operations": [
+                {"match": first_round[0]["id"], "score_a": 1, "score_b": 0},
+                {"match": first_round[1]["id"], "score_a": 1, "score_b": 0},
+                # Only playable because of the two entries above it.
+                {"match": final["id"], "score_a": 1, "score_b": 0},
+            ]
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200, response.json()
+    body = response.json()
+    assert next(m for m in body["matches"] if m["id"] == final["id"])["winner"]
+
+
+def test_undoing_the_final_reopens_a_completed_tournament(api_client):
+    """
+    A tournament is complete because nothing is left to play, not because it
+    once was. Undoing the final makes that untrue again, and a bracket still
+    badged "complete" with an unplayed final is lying about its own state.
+    """
+    bracket = _anonymous_bracket(api_client)
+
+    # Play it out.
+    while True:
+        detail = api_client.get(
+            reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])
+        ).json()
+        playable = [m for m in detail["matches"] if m["a"] and m["b"] and not m["winner"]]
+        if not playable:
+            break
+        api_client.post(
+            batch_url(bracket["id"]),
+            {"operations": [{"match": m["id"], "score_a": 1, "score_b": 0} for m in playable]},
+            format="json",
+        )
+
+    detail = api_client.get(
+        reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])
+    ).json()
+    assert detail["state"] == "complete"
+
+    final = max(detail["matches"], key=lambda m: m["round_no"])
+    response = api_client.post(
+        batch_url(bracket["id"]),
+        {"operations": [{"match": final["id"], "op": "clear"}]},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["state"] == "active"
+    assert response.json()["completed_at"] is None
+
+
+def test_clearing_through_the_match_route_also_reopens_it(api_client):
+    """The single-match clear endpoint must agree with the batch one."""
+    bracket = _anonymous_bracket(api_client)
+
+    while True:
+        detail = api_client.get(
+            reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])
+        ).json()
+        playable = [m for m in detail["matches"] if m["a"] and m["b"] and not m["winner"]]
+        if not playable:
+            break
+        api_client.post(
+            batch_url(bracket["id"]),
+            {"operations": [{"match": m["id"], "score_a": 1, "score_b": 0} for m in playable]},
+            format="json",
+        )
+
+    detail = api_client.get(
+        reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])
+    ).json()
+    final = max(detail["matches"], key=lambda m: m["round_no"])
+
+    api_client.post(reverse("v1:tournaments:match-clear", args=[final["id"]]), format="json")
+
+    after = api_client.get(reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])).json()
+    assert after["state"] == "active"
+
+
+def test_correcting_the_final_keeps_it_complete(api_client):
+    """Handing the win to the other side is still a finished tournament."""
+    bracket = _anonymous_bracket(api_client)
+
+    while True:
+        detail = api_client.get(
+            reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])
+        ).json()
+        playable = [m for m in detail["matches"] if m["a"] and m["b"] and not m["winner"]]
+        if not playable:
+            break
+        api_client.post(
+            batch_url(bracket["id"]),
+            {"operations": [{"match": m["id"], "score_a": 1, "score_b": 0} for m in playable]},
+            format="json",
+        )
+
+    detail = api_client.get(
+        reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])
+    ).json()
+    final = max(detail["matches"], key=lambda m: m["round_no"])
+
+    response = api_client.post(
+        batch_url(bracket["id"]),
+        {"operations": [{"match": final["id"], "score_a": 0, "score_b": 1}]},
+        format="json",
+    )
+
+    body = response.json()
+    assert body["state"] == "complete"
+    reported = next(m for m in body["matches"] if m["id"] == final["id"])
+    assert reported["winner"] == final["b"]
+
+
+# ── Archiving ─────────────────────────────────────────────────────────────────
+
+
+def list_url(archived=False):
+    base = reverse("v1:tournaments:tournament-list")
+    return f"{base}?archived=true" if archived else base
+
+
+def listed_ids(client, *, archived=False):
+    """Tournament ids in the list, paginated or not."""
+    body = client.get(list_url(archived=archived)).json()
+    rows = body["results"] if isinstance(body, dict) else body
+    return [t["id"] for t in rows]
+
+
+@pytest.mark.django_db
+def test_an_archived_tournament_leaves_the_list(auth_client, user):
+    from apps.tournaments.tests.factories import TournamentFactory
+
+    tournament = TournamentFactory(created_by=user)
+
+    auth_client.post(reverse("v1:tournaments:tournament-archive", args=[tournament.id]))
+
+    assert tournament.id not in listed_ids(auth_client)
+
+
+@pytest.mark.django_db
+def test_archived_tournaments_are_listed_on_request(auth_client, user):
+    from apps.tournaments.tests.factories import TournamentFactory
+
+    tournament = TournamentFactory(created_by=user)
+    auth_client.post(reverse("v1:tournaments:tournament-archive", args=[tournament.id]))
+
+    assert tournament.id in listed_ids(auth_client, archived=True)
+
+
+@pytest.mark.django_db
+def test_an_archived_tournament_is_still_reachable_by_id(auth_client, user):
+    """A shared link to an archived bracket must keep working."""
+    from apps.tournaments.tests.factories import TournamentFactory
+
+    tournament = TournamentFactory(created_by=user)
+    auth_client.post(reverse("v1:tournaments:tournament-archive", args=[tournament.id]))
+
+    response = auth_client.get(reverse("v1:tournaments:tournament-detail", args=[tournament.id]))
+    assert response.status_code == 200
+    assert response.json()["archived"] is True
+
+
+@pytest.mark.django_db
+def test_restoring_brings_it_back(auth_client, user):
+    from apps.tournaments.tests.factories import TournamentFactory
+
+    tournament = TournamentFactory(created_by=user)
+    auth_client.post(reverse("v1:tournaments:tournament-archive", args=[tournament.id]))
+    auth_client.post(reverse("v1:tournaments:tournament-restore", args=[tournament.id]))
+
+    assert tournament.id in listed_ids(auth_client)
+
+
+@pytest.mark.django_db
+def test_archiving_unpins_a_favourite(auth_client, user):
+    """It cannot be pinned to the top of a list it is no longer in."""
+    from apps.tournaments.tests.factories import TournamentFactory
+
+    tournament = TournamentFactory(created_by=user)
+    auth_client.post(reverse("v1:tournaments:tournament-favourite", args=[tournament.id]))
+    auth_client.post(reverse("v1:tournaments:tournament-archive", args=[tournament.id]))
+
+    tournament.refresh_from_db()
+    assert tournament.archived is True
+    assert tournament.favourited_at is None
+
+
+@pytest.mark.django_db
+def test_a_stranger_cannot_archive_someone_elses_tournament(api_client, user):
+    from apps.tournaments.tests.factories import TournamentFactory
+
+    tournament = TournamentFactory(created_by=user)
+
+    response = api_client.post(reverse("v1:tournaments:tournament-archive", args=[tournament.id]))
+
+    assert response.status_code in (401, 403, 404)
+    tournament.refresh_from_db()
+    assert tournament.archived is False

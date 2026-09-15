@@ -6,9 +6,13 @@
  * left them hanging under the description with no clear relationship to it, and
  * at different positions on every page depending on how long the title was.
  *
- * Actions stretch to fill the row on a phone so two buttons split it evenly,
- * which is both a bigger touch target and a tidier edge than two shrink-wrapped
- * buttons against the left margin.
+ * Actions share the row on a phone, but by their content rather than in equal
+ * halves. Splitting evenly gave every action the same width whatever it said,
+ * so "New tournament" sat cramped against its icon while "Teams" was a wide
+ * button with one short word adrift in the middle. `flex-auto` sizes each to
+ * its label and divides only the slack, which keeps the pair filling the row —
+ * the touch target and the tidy edge that stretching was there for — without
+ * pretending a two-word action needs as much room as a one-word one.
  */
 export function PageHeader({ title, description, children, className = '' }) {
   return (
@@ -21,7 +25,7 @@ export function PageHeader({ title, description, children, className = '' }) {
       </div>
 
       {children && (
-        <div className="flex shrink-0 flex-wrap gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+        <div className="flex shrink-0 flex-wrap gap-2 [&>*]:flex-auto sm:[&>*]:flex-none">
           {children}
         </div>
       )}

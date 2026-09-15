@@ -82,12 +82,19 @@ export function LoginPage() {
 
           <label className="form-control">
             <span className="label-text mb-1">Email</span>
+            {/* name/id are load-bearing for autofill, not decoration: mobile
+                Safari and Chrome fall back to field-name heuristics, and a
+                password manager needs a stable identity to match a saved
+                credential against. autoComplete alone is not enough. */}
             <input
               type="email"
+              id="email"
+              name="email"
               className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none"
               value={form.email}
               onChange={update('email')}
               autoComplete="email"
+              inputMode="email"
               required
               autoFocus
             />
@@ -97,6 +104,8 @@ export function LoginPage() {
             <span className="label-text mb-1">Password</span>
             <input
               type="password"
+              id="current-password"
+              name="password"
               className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none"
               value={form.password}
               onChange={update('password')}

@@ -139,16 +139,23 @@ export function roundLabel(roundNo, totalRounds, section = 'main', displayNo = r
  * truncate — so a narrower card loses some of a long team name and nothing
  * else. Losing the tail of "Team 28" beats losing the bracket.
  *
+ * The unprefixed token is the phone width and the `sm:` one the laptop width,
+ * and they are tuned against different constraints. Phone is ~35% narrower than
+ * laptop on purpose: a phone has to show two full columns at once, because a
+ * bracket you can only read one column at a time is not a bracket. Do not
+ * "tidy" the two into a single scale — the `sm:` values were sized for a laptop
+ * and are not a phone's business.
+ *
  * Lives here rather than in `BracketView` because it is a pure function, and a
  * component file that also exports one breaks Fast Refresh.
  */
 const SIZES = {
   // Four columns or fewer: a quarterfinal onward, which fits comfortably.
-  roomy: { card: 'w-52 sm:w-64', gap: 'w-10 sm:w-16', arm: 'w-5 sm:w-8' },
+  roomy: { card: 'w-34 sm:w-64', gap: 'w-6 sm:w-16', arm: 'w-3 sm:w-8' },
   // Five columns — the winners bracket of a 17-32 entrant draw.
-  compact: { card: 'w-40 sm:w-48', gap: 'w-8 sm:w-10', arm: 'w-4 sm:w-5' },
+  compact: { card: 'w-26 sm:w-48', gap: 'w-4 sm:w-10', arm: 'w-2 sm:w-5' },
   // Six or more, which is where a losers bracket of that size lands.
-  tight: { card: 'w-32 sm:w-40', gap: 'w-6 sm:w-8', arm: 'w-3 sm:w-4' },
+  tight: { card: 'w-20 sm:w-40', gap: 'w-4 sm:w-8', arm: 'w-2 sm:w-4' },
 }
 
 /**
@@ -223,6 +230,20 @@ export function isPhantom(match, allMatches) {
   // One or none is a walkover the engine resolved, which earns no exemption.
   if (match.winner && match.a && match.b) return false
 
+  // A decided grand final whose undefeated side held kills the decider behind
+  // it. The backend creates that decider up front but seats it only when the
+  // losers finalist wins the grand final (`_resolve_grand_final`), so a bracket
+  // reset that is still empty after the grand final has been won by the side in
+  // slot `a` is a match nobody will ever play — and it sat there reading TBD
+  // under a finished tournament, which is the one card on the page that should
+  // never be ambiguous.
+  //
+  // Slot `a` is load-bearing here, not incidental: the grand final always seats
+  // the undefeated entrant in `a` and whoever came up from the losers bracket in
+  // `b` (`_slot_for`). That is the whole test — the same entrant winning from
+  // slot `b` is the case that *does* force the decider.
+  if (isDeadBracketReset(match, allMatches)) return true
+
   // Only the losers bracket. The winners bracket's one-sided matches are byes,
   // which explain themselves; the grand final and the bracket reset are the
   // climax of the page and are seated from two different brackets, so counting
@@ -230,6 +251,45 @@ export function isPhantom(match, allMatches) {
   if (match.bracket !== 'losers') return false
 
   return capacity(match, allMatches) < 2
+}
+
+/**
+ * Whether this is a bracket reset that can no longer happen.
+ *
+ * True only for the decider behind a grand final that the undefeated side has
+ * already won. Three conditions, and all of them matter:
+ *
+ *  - **It is still empty.** A seated decider is a live match, and one that has
+ *    been played is history. Either way it stays.
+ *  - **Its grand final is decided.** Before that the decider is simply pending,
+ *    which is the ordinary state of every unplayed match on the page.
+ *  - **That grand final was won from slot `a`.** The undefeated side sits in
+ *    `a` and the losers finalist in `b` (`_slot_for` on the backend). A win
+ *    from `b` levels the score at one loss each and is exactly what *does*
+ *    bring the decider to life, so testing the slot rather than merely "is
+ *    decided" is the difference between hiding a dead card and hiding the
+ *    deciding match of the tournament.
+ *
+ * Found by walking the edge backwards — the grand final points at its decider
+ * through `next_match_win` — rather than by assuming round numbers, so it holds
+ * however the finals are numbered.
+ */
+function isDeadBracketReset(match, allMatches) {
+  if (match.bracket !== 'final') return false
+
+  // Seated or played: a real match either way.
+  if (match.a || match.b || match.winner) return false
+
+  const grandFinal = allMatches.find(
+    (candidate) =>
+      candidate.bracket === 'final' &&
+      candidate.next_match_win === match.id &&
+      candidate.id !== match.id,
+  )
+
+  if (!grandFinal?.winner) return false
+
+  return grandFinal.winner === grandFinal.a
 }
 
 /**

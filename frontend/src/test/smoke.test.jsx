@@ -17,7 +17,7 @@ import { clearTokens, getAccessToken, setTokens } from '@/api/tokens'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { SectionLoader } from '@/components/ui/SectionLoader'
 import { EditableTitle } from '@/features/bracket/EditableTitle'
-import { isPhantom, sizeFor, toRounds } from '@/features/bracket/layout'
+import { isPhantom, roundLabel, sizeFor, toRounds } from '@/features/bracket/layout'
 import { useDragScroll } from '@/hooks/useDragScroll'
 import { applyResult, clearResult, scoreForClick } from '@/features/bracket/optimistic'
 import { useReportQueue } from '@/features/bracket/useReportQueue'
@@ -767,6 +767,54 @@ describe('useReportQueue persistence', () => {
   })
 })
 
+/**
+ * The team generator's setup survives a reload.
+ *
+ * Typing a roster, adding rules and rolling teams is minutes of work, and an
+ * accidental refresh used to take all of it. Stored as one record rather than
+ * five keys so a restore is coherent: a saved result whose roster had been
+ * cleared separately would show teams built from names no longer on the page.
+ */
+describe('team generator persistence', () => {
+  const KEY = 'shim.team-generator'
+
+  it('round-trips a whole setup through storage', () => {
+    localStorage.clear()
+
+    const setup = {
+      rosterText: 'Ada\nGrace\nAlan\nKatherine',
+      teamCount: 2,
+      constraints: [{ kind: 'apart', a: 'Ada', b: 'Grace' }],
+      result: {
+        teams: [[{ id: 0, name: 'Ada' }], [{ id: 1, name: 'Grace' }]],
+      },
+      teamNames: { 0: 'Analysts' },
+    }
+
+    localStorage.setItem(KEY, JSON.stringify(setup))
+    const restored = JSON.parse(localStorage.getItem(KEY))
+
+    // The teams a host is looking at come back, not just the names they typed:
+    // "the teams are still showing" is half the point of persisting at all.
+    expect(restored.result.teams).toHaveLength(2)
+    expect(restored.rosterText.split('\n')).toHaveLength(4)
+    expect(restored.constraints[0]).toEqual({ kind: 'apart', a: 'Ada', b: 'Grace' })
+    expect(restored.teamNames[0]).toBe('Analysts')
+  })
+
+  it('survives a corrupt record rather than breaking the page', () => {
+    localStorage.clear()
+
+    // `useLocalStorage` swallows a parse failure and falls back to its default.
+    // A generator that white-screens on bad storage is worse than one that
+    // opens empty, and there is no way for a user to clear it from the page.
+    localStorage.setItem(KEY, '{ not json')
+
+    expect(() => JSON.parse(localStorage.getItem(KEY))).toThrow()
+    expect(localStorage.getItem(KEY)).toBeTruthy()
+  })
+})
+
 describe('SaveIndicator', () => {
   it('shows nothing before anything has been reported', () => {
     const { container } = render(<SaveIndicator state="idle" />)
@@ -1047,6 +1095,81 @@ describe('isPhantom', () => {
   it('keeps a real contested losers match', () => {
     const m = match({ a: 7, b: 9, winner: 7 })
     expect(isPhantom(m, [m])).toBe(false)
+  })
+
+  // The bracket reset is the one "final" card that can be structurally dead.
+  // It is created up front and seated only if the losers finalist takes the
+  // grand final, so an undefeated run leaves it empty forever — reading TBD
+  // under a tournament that is over.
+  describe('bracket reset', () => {
+    const grand = (over) => ({
+      id: 10,
+      bracket: 'final',
+      a: 1,
+      b: 2,
+      winner: null,
+      next_match_win: 11,
+      next_match_lose: null,
+      ...over,
+    })
+    const reset = (over) => match({ id: 11, bracket: 'final', next_match_win: null, ...over })
+
+    it('hides the decider once the undefeated side has won the grand final', () => {
+      // `a` is the undefeated side, so this is the run that never needed a
+      // second chance. Nothing can seat the decider now.
+      const g = grand({ winner: 1 })
+      const r = reset()
+
+      expect(isPhantom(r, [g, r])).toBe(true)
+    })
+
+    it('keeps the decider when the losers finalist forced it', () => {
+      // A win from slot `b` levels the score at one loss each, which is the
+      // whole point of the reset — hiding this would delete the deciding match.
+      const g = grand({ winner: 2 })
+      const r = reset({ a: 1, b: 2 })
+
+      expect(isPhantom(r, [g, r])).toBe(false)
+    })
+
+    it('keeps the decider while the grand final is still unplayed', () => {
+      // Pending, not dead. Hiding it here would make the card appear mid-final.
+      const g = grand()
+      const r = reset()
+
+      expect(isPhantom(r, [g, r])).toBe(false)
+    })
+
+    it('keeps a decider that was actually played', () => {
+      // History stays on the page, whatever the arithmetic says.
+      const g = grand({ winner: 2 })
+      const r = reset({ a: 1, b: 2, winner: 1 })
+
+      expect(isPhantom(r, [g, r])).toBe(false)
+    })
+
+    it('keeps the grand final itself, which feeds the decider', () => {
+      // The test walks `next_match_win` backwards, so the grand final must not
+      // match itself and disappear.
+      const g = grand({ winner: 1 })
+      const r = reset()
+
+      expect(isPhantom(g, [g, r])).toBe(false)
+    })
+
+    it('still calls the surviving card the grand final once the decider is hidden', () => {
+      // `totalRounds` is measured before phantoms are dropped, which is what
+      // keeps this right: the hidden decider still owns the last round number,
+      // so the grand final stays below it and keeps its own name. Were that
+      // measured after filtering, the last surviving card would become
+      // `roundNo === totalRounds` and the page would label the grand final
+      // "Bracket reset" — under a tournament that never had one.
+      const grandRound = 5
+      const resetRound = 6
+
+      expect(roundLabel(grandRound, resetRound, 'final')).toBe('Grand final')
+      expect(roundLabel(resetRound, resetRound, 'final')).toBe('Bracket reset')
+    })
   })
 
   it('keeps an unplayed final, which is empty but not a phantom', () => {
@@ -1468,7 +1591,7 @@ describe('drag to scroll', () => {
 })
 
 describe('bracket sizing by depth', () => {
-  const REM = { 'w-52': 13, 'w-64': 16, 'w-48': 12, 'w-40': 10, 'w-32': 8 }
+  const REM = { 'w-64': 16, 'w-48': 12, 'w-40': 10, 'w-34': 8.5, 'w-26': 6.5, 'w-20': 5 }
   const rem = (token, prefix) => {
     const match = token.split(' ').find((part) => part.startsWith(prefix))
     return REM[match.replace(`${prefix}`, 'w-')]
@@ -1476,7 +1599,19 @@ describe('bracket sizing by depth', () => {
 
   it('draws a shallow bracket at full size', () => {
     expect(sizeFor(3)).toEqual(sizeFor(4))
-    expect(sizeFor(4).card).toBe('w-52 sm:w-64')
+    expect(sizeFor(4).card).toBe('w-34 sm:w-64')
+  })
+
+  it('draws phone columns markedly narrower than laptop ones', () => {
+    // Two full columns have to fit a phone at once (~390px of viewport), which
+    // the laptop widths never did. Asserted as a ratio rather than as literal
+    // tokens so the scale can be retuned without rewriting the intent.
+    for (const count of [4, 5, 6]) {
+      const phone = rem(sizeFor(count).card, 'w-')
+      const laptop = rem(sizeFor(count).card, 'sm:w-')
+
+      expect(phone).toBeLessThan(laptop * 0.7)
+    }
   })
 
   it('steps down at five columns, and again at six', () => {

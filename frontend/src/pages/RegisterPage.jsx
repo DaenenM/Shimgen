@@ -105,8 +105,14 @@ export function RegisterPage() {
             <span className="label-text mb-1">
               Display name <span className="text-base-content/40">(optional)</span>
             </span>
+            {/* name/id are load-bearing for autofill, not decoration: mobile
+                Safari and Chrome fall back to field-name heuristics, and a
+                password manager needs a stable identity to save a new
+                credential against. autoComplete alone is not enough. */}
             <input
               type="text"
+              id="display_name"
+              name="display_name"
               className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none"
               value={form.display_name}
               onChange={update('display_name')}
@@ -120,10 +126,13 @@ export function RegisterPage() {
             <span className="label-text mb-1">Email</span>
             <input
               type="email"
+              id="email"
+              name="email"
               className={`glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none ${fieldError('email') ? 'border-error/60' : ''}`}
               value={form.email}
               onChange={update('email')}
               autoComplete="email"
+              inputMode="email"
               required
             />
             {fieldError('email') && (
@@ -135,6 +144,8 @@ export function RegisterPage() {
             <span className="label-text mb-1">Password</span>
             <input
               type="password"
+              id="new-password"
+              name="password"
               className={`glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none ${
                 fieldError('password') ? 'border-error/60' : ''
               }`}

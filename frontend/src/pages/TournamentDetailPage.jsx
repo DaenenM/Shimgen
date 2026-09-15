@@ -367,11 +367,25 @@ export function TournamentDetailPage() {
           </p>
         </div>
 
-        <div className="relative flex flex-wrap items-center gap-1.5 sm:gap-2">
+        {/* One row on a phone, never wrapping. Every control here is either
+            icon-only or truncates, so they fit across a 390px screen — and a
+            cluster that cannot wrap cannot reflow, which is half of why this
+            header used to shuffle. `min-w-0` lets the board pill absorb the
+            squeeze rather than pushing Share off the end. */}
+        <div className="relative flex min-w-0 flex-nowrap items-center gap-1.5 sm:flex-wrap sm:gap-2">
           {/* Sits with the other header controls rather than above the bracket:
               it answers "is the night recorded?", which is a question about
-              this tournament, not about the page. */}
-          <SaveIndicator state={syncError ? 'idle' : saveState} />
+              this tournament, not about the page.
+
+              Desktop only. It mounts from nothing on the first reported result,
+              and in a wrapping flex row that reflowed every control after it —
+              so the cluster jumped under the host's finger at the exact moment
+              they were tapping winners. There is no room on a phone to reserve
+              the space instead, and a header that moves while being used is
+              worse than one that says less. */}
+          <div className="hidden sm:block">
+            <SaveIndicator state={syncError ? 'idle' : saveState} />
+          </div>
 
           {/* Host-only, and only with an account: a board belongs to one, and
               an anonymous quick-start bracket has none to attach to. */}

@@ -104,7 +104,10 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
             ? `Counting towards ${board.name}${board.table_name ? ` — ${board.table_name}` : ''}`
             : 'This tournament is not being counted'
         }
-        className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 max-w-[8.5rem] items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 sm:max-w-[13rem]"
+        // `min-w-0` and a shrink are what let this be the control that gives way
+        // when the header row runs out of phone: it is the only one carrying
+        // text, so squeezing its name is cheaper than pushing Share off the end.
+        className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 max-w-[7rem] min-w-0 shrink items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 sm:max-w-[13rem] sm:shrink-0 sm:gap-2 sm:px-4"
         disabled={pending}
       >
         <BarChart3 className={`h-4 w-4 shrink-0 ${board ? 'text-primary' : ''}`} />

@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Link2, Minus, Pencil, Plus, Shuffle, Trash2 } from '@/components/icons'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { PageShell } from '@/components/layout/PageShell'
@@ -9,6 +9,7 @@ import { SavedRoster } from '@/components/ui/SavedRoster'
 import { generateTeams, splitEvenly } from '@/features/teams/generate'
 import { teamTone } from '@/features/teams/tone'
 import { useElementHeight } from '@/hooks/useElementHeight'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useRoster } from '@/hooks/useRoster'
 import { paths } from '@/routes/paths'
@@ -52,6 +53,25 @@ const CONSTRAINT_LABELS = {
   together: 'Keep together',
 }
 
+/** Namespaced like the app's other stored values (`shim.roster`, `shim.access`). */
+const STORAGE_KEY = 'shim.team-generator'
+
+/**
+ * Module-level, not a fresh object per render.
+ *
+ * `useLocalStorage` is built on `useSyncExternalStore`, which compares
+ * snapshots by identity — a new default each render would report a changed
+ * store on every pass and loop. The same reason `useLocalRoster` keeps its
+ * `EMPTY` at module scope.
+ */
+const EMPTY_SETUP = {
+  rosterText: '',
+  teamCount: 2,
+  constraints: [],
+  result: null,
+  teamNames: {},
+}
+
 // Shared everywhere a name list needs to come from raw text: the textarea
 // itself, and the two staging helpers below that edit it from outside.
 function parseNames(text) {
@@ -61,9 +81,23 @@ function parseNames(text) {
     .filter(Boolean)
 }
 
-function PlayerSelect({ value, onChange, names, label, disabled }) {
+function PlayerSelect({ value, onChange, names, label, disabled, onOpenChange }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+
+  // Reported upward because the fix for the overlap lives on an ancestor, not
+  // here — see the Rules panel. Kept in an effect so it fires however `open`
+  // changed: picking a name, clicking away, or the Escape path all go through
+  // one place rather than each remembering to tell the parent.
+  //
+  // Reports which select this is, not merely that *a* select moved. Both
+  // instances share one flag on the parent, and clicking straight from one open
+  // list to the other runs a close and an open in the same commit — with a bare
+  // boolean the close can land second and drop the panel back down while a list
+  // is still showing.
+  useEffect(() => {
+    onOpenChange?.(label, open)
+  }, [open, onOpenChange, label])
 
   useEffect(() => {
     function onClickAway(e) {
@@ -91,9 +125,16 @@ function PlayerSelect({ value, onChange, names, label, disabled }) {
       </button>
 
       {open && (
+        // The z-index here is almost beside the point: `.glass-inset` on the
+        // Rules panel sets `backdrop-filter`, which creates a stacking context,
+        // so any number this list carries is sealed inside that panel and
+        // ranked only against its siblings. What actually decides whether the
+        // Generate button covers it is the panel's own level — raised while a
+        // list is open. Two earlier attempts raised this number instead and
+        // changed nothing, which is the symptom of exactly that.
         <ul
           role="listbox"
-          className="glass-raised absolute z-20 mt-1.5 max-h-48 w-full overflow-auto py-1"
+          className="glass-raised absolute z-10 mt-1.5 max-h-48 w-full overflow-auto py-1"
         >
           {names.map((n) => (
             <li key={n} role="option" aria-selected={n === value}>
@@ -138,15 +179,66 @@ export function TeamGeneratorPage() {
   const setupHeight = useElementHeight(setupRef)
   const isWide = useMediaQuery('(min-width: 64rem)')
 
-  const [rosterText, setRosterText] = useState('')
+  // Everything a host has actually entered survives a reload. Typing ten names,
+  // setting up rules and rolling teams is several minutes of work, and losing
+  // it to an accidental refresh — or to following a link and coming back — is
+  // the kind of thing that makes people distrust the page and keep a paper
+  // list. Held in one record rather than five keys so a reload restores a
+  // coherent setup: a stored result whose roster had already been cleared would
+  // show teams built from names no longer on the page.
+  const [saved, setSaved] = useLocalStorage(STORAGE_KEY, EMPTY_SETUP)
+
+  const { rosterText, teamCount, constraints, result, teamNames } = saved
+  const patch = useCallback(
+    (changes) => setSaved((current) => ({ ...current, ...changes })),
+    [setSaved],
+  )
+
+  const setRosterText = useCallback(
+    (next) =>
+      setSaved((current) => ({
+        ...current,
+        rosterText: typeof next === 'function' ? next(current.rosterText) : next,
+      })),
+    [setSaved],
+  )
+
   const names = useMemo(() => parseNames(rosterText), [rosterText])
 
-  const [teamCount, setTeamCount] = useState(2)
-  const [constraints, setConstraints] = useState([])
+  const setTeamCount = useCallback(
+    (next) =>
+      setSaved((current) => ({
+        ...current,
+        teamCount: typeof next === 'function' ? next(current.teamCount) : next,
+      })),
+    [setSaved],
+  )
+
+  // Deliberately not persisted. `draft` is a half-built rule and `error` is a
+  // complaint about the last click — restoring either would greet a returning
+  // host with a stale grievance rather than with their teams.
   const [draft, setDraft] = useState({ kind: 'apart', a: '', b: '' })
-  const [result, setResult] = useState(null)
-  const [teamNames, setTeamNames] = useState({})
   const [error, setError] = useState(null)
+
+  // Which player dropdowns are open, lifted out of `PlayerSelect` because the
+  // panel that has to be raised is its ancestor, not its child. A set keyed by
+  // select rather than a boolean: moving from one open list to the other is a
+  // close and an open in one commit, and a boolean records whichever effect ran
+  // last instead of whether anything is still showing.
+  const [openPickers, setOpenPickers] = useState(() => new Set())
+
+  const handlePickerOpen = useCallback((key, isOpen) => {
+    setOpenPickers((current) => {
+      if (current.has(key) === isOpen) return current
+
+      const next = new Set(current)
+      if (isOpen) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  }, [])
+
+  const pickerOpen = openPickers.size > 0
 
   const nameFor = (index) => teamNames[index]?.trim() || `Team ${index + 1}`
 
@@ -191,8 +283,8 @@ export function TeamGeneratorPage() {
         avoid: result?.teams?.map((team) => team.map((p) => p.id)) ?? null,
       })
 
-      setResult({
-        teams: teams.map((team) => team.map((p) => ({ id: p.id, name: p.name }))),
+      patch({
+        result: { teams: teams.map((team) => team.map((p) => ({ id: p.id, name: p.name }))) },
       })
       touchLocal(names)
     } catch (err) {
@@ -206,7 +298,7 @@ export function TeamGeneratorPage() {
     const [a, b] = [draft.a, draft.b].sort()
 
     const exists = constraints.some((c) => c.kind === draft.kind && c.a === a && c.b === b)
-    if (!exists) setConstraints([...constraints, { kind: draft.kind, a, b }])
+    if (!exists) patch({ constraints: [...constraints, { kind: draft.kind, a, b }] })
 
     setDraft({ kind: draft.kind, a: '', b: '' })
   }
@@ -301,7 +393,15 @@ export function TeamGeneratorPage() {
               </div>
 
               {/* Rules */}
-              <div className="glass-inset p-3">
+              {/* `relative z-20` while a player list is open, and this is the
+                  element that has to carry it: `.glass-inset` sets
+                  `backdrop-filter`, which makes this panel a stacking context,
+                  so a z-index on the list inside is ranked only against its
+                  siblings in here and can never clear the Generate button
+                  outside. Raising the context root is the only thing that
+                  works. Applied only while open so the panel does not sit above
+                  the page the rest of the time. */}
+              <div className={`glass-inset p-3 ${pickerOpen ? 'relative z-20' : ''}`}>
                 <div className="mb-2">
                   <span className="text-sm font-medium">Rules</span>
                   <p className="text-base-content/50 mt-0.5 text-xs">
@@ -350,6 +450,7 @@ export function TeamGeneratorPage() {
                       onChange={(a) => setDraft({ ...draft, a })}
                       names={names}
                       disabled={names.length === 0}
+                      onOpenChange={handlePickerOpen}
                     />
 
                     <span className="text-base-content/40 shrink-0 text-center text-xs sm:text-left">
@@ -362,6 +463,7 @@ export function TeamGeneratorPage() {
                       onChange={(b) => setDraft({ ...draft, b })}
                       names={names}
                       disabled={names.length === 0}
+                      onOpenChange={handlePickerOpen}
                     />
 
                     <button
@@ -408,11 +510,11 @@ export function TeamGeneratorPage() {
                           type="button"
                           aria-label="Remove rule"
                           onClick={() =>
-                            setConstraints(
-                              constraints.filter(
+                            patch({
+                              constraints: constraints.filter(
                                 (x) => !(x.kind === c.kind && x.a === c.a && x.b === c.b),
                               ),
-                            )
+                            })
                           }
                           className="text-base-content/40 hover:text-error hover:bg-error/10 grid h-7 w-7 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
                         >
@@ -496,7 +598,7 @@ export function TeamGeneratorPage() {
                               value={teamNames[index] ?? ''}
                               placeholder={`Team ${index + 1}`}
                               onChange={(e) =>
-                                setTeamNames({ ...teamNames, [index]: e.target.value })
+                                patch({ teamNames: { ...teamNames, [index]: e.target.value } })
                               }
                               aria-label={`Name for team ${index + 1}`}
                             />

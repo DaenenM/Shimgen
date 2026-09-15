@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Check, RotateCcw, Shuffle, Users } from '@/components/icons'
-import { useEffect } from 'react'
+import { ArrowLeft, Check, RotateCcw, Share2, Shuffle, Users } from '@/components/icons'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { tournaments as tournamentsApi } from '@/api/endpoints'
@@ -29,11 +29,36 @@ export function DraftLobbyPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [copied, setCopied] = useState(false)
 
   const { data: tournament, isLoading } = useQuery({
     queryKey: queryKeys.tournaments.detail(id),
     queryFn: () => tournamentsApi.get(id),
   })
+
+  /**
+   * The lobby's own link, for sending straight to the people in the draft.
+   *
+   * Not a spectator link: this route is gated like any other view of the
+   * tournament, so it opens only for the host, a captain, or somebody in the
+   * pool. It saves them hunting through their tournament list, and nothing
+   * more — anyone without access still cannot see it.
+   *
+   * Declared after the query it reads: `tournament` is a `const`, so referring
+   * to it above its own declaration is a temporal dead zone error rather than
+   * an undefined — it throws on first render.
+   */
+  const lobbyUrl = `${window.location.origin}${paths.draft(id, tournament?.title)}`
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(lobbyUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard access can be denied; nothing is lost, the URL is in the bar.
+    }
+  }
 
   const { data: draft } = useQuery({
     queryKey: queryKeys.tournaments.draft(id),
@@ -196,6 +221,9 @@ export function DraftLobbyPage() {
   // fast run of picks is exactly the normal case.
   const busy = complete.isPending
   const ready = draft.pool.length === 0
+  // Building the bracket is a host action on the server, so the control is a
+  // host control here. A captain picks; only the host ends the draft.
+  const isHost = Boolean(tournament?.is_host)
   const current = draft.teams.find((team) => team.is_picking)
   const error = pick.error ?? undo.error ?? complete.error
 
@@ -209,24 +237,43 @@ export function DraftLobbyPage() {
         All tournaments
       </Link>
 
-      <div className="rise-in rise-delay-2 mb-6">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {tournament?.title || 'Team draft'}
-        </h1>
+      <div className="rise-in rise-delay-2 mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            {tournament?.title || 'Team draft'}
+          </h1>
 
-        {/* The turn indicator is the most important thing on the page: with one
+          {/* The turn indicator is the most important thing on the page: with one
             device being passed around, whoever is holding it needs to know at a
             glance whether it is their turn. */}
-        <p className="text-base-content/60 mt-1 text-sm">
-          {ready ? (
-            <>Every player has a team. Review the sides below, then build the bracket.</>
+          <p className="text-base-content/60 mt-1 text-sm">
+            {ready ? (
+              <>Every player has a team. Review the sides below, then build the bracket.</>
+            ) : (
+              <>
+                <span className="text-primary font-semibold">{current?.captain_label}</span> picks —{' '}
+                {draft.picks_remaining} left
+              </>
+            )}
+          </p>
+        </div>
+
+        {/* A friend added to the pool has no way of knowing until their own
+            browser asks again, so handing them the link beats telling them to
+            go and look. */}
+        <button
+          className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] sm:px-4"
+          onClick={copyLink}
+          title="Copy a link to this lobby for the people in the draft"
+          aria-label={copied ? 'Lobby link copied' : 'Share lobby'}
+        >
+          {copied ? (
+            <Check className="h-4 w-4 shrink-0" />
           ) : (
-            <>
-              <span className="text-primary font-semibold">{current?.captain_label}</span> picks —{' '}
-              {draft.picks_remaining} left
-            </>
+            <Share2 className="h-4 w-4 shrink-0" />
           )}
-        </p>
+          <span className="hidden sm:inline">{copied ? 'Link copied' : 'Share lobby'}</span>
+        </button>
       </div>
 
       {error && (
@@ -348,16 +395,43 @@ export function DraftLobbyPage() {
 
           {/* Confirmation rather than auto-generating on the final pick: the
               last tap of a draft is the one most likely to be a misclick, and
-              building the bracket is not undoable from here. */}
+              building the bracket is not undoable from here.
+
+              Host only. Completing the draft creates the entrants and generates
+              the bracket — `draft_complete` is gated on IsTournamentHost, so
+              for anybody else the button was an action that could only fail.
+              Everyone else gets the state instead of the control. */}
           <div className="mt-5">
-            <Button
-              icon={ready ? Check : Shuffle}
-              onClick={() => complete.mutate()}
-              disabled={!ready || busy}
-              loading={complete.isPending}
-            >
-              {ready ? 'Build the bracket' : `${draft.picks_remaining} picks to go`}
-            </Button>
+            {isHost ? (
+              <Button
+                icon={ready ? Check : Shuffle}
+                onClick={() => complete.mutate()}
+                disabled={!ready || busy}
+                loading={complete.isPending}
+              >
+                {ready ? 'Build the bracket' : `${draft.picks_remaining} picks to go`}
+              </Button>
+            ) : ready ? (
+              // Green because it is the one moment in the draft that is simply
+              // good news: every team is settled and the bracket is moments
+              // away. The redirect fires on its own when the host builds it, so
+              // this says "wait" without asking anyone to do anything.
+              <div className="border-success/30 bg-success/10 flex items-start gap-3 rounded-xl border p-4">
+                <span className="bg-success/15 text-success grid h-9 w-9 shrink-0 place-items-center rounded-full">
+                  <Check className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-success text-sm font-semibold">Draft complete</p>
+                  <p className="text-base-content/60 mt-0.5 text-sm">
+                    Every player has a team. The bracket opens here as soon as the host builds it.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-base-content/50 text-sm">
+                {draft.picks_remaining} {draft.picks_remaining === 1 ? 'pick' : 'picks'} to go.
+              </p>
+            )}
           </div>
         </div>
       </div>

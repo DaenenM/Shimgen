@@ -121,6 +121,8 @@ export function TournamentCard({
   // tap away. Without this the row would render three controls wired to
   // handlers the caller never passed.
   readOnly = false,
+  // The signed-in account, so the row can tell whose tournament this is.
+  viewer = null,
 }) {
   const name = tournament.title || 'Untitled tournament'
   const tone = formatTone(tournament.format)
@@ -128,6 +130,13 @@ export function TournamentCard({
   // A drafting tournament has no bracket yet, so the bracket page would show an
   // empty one — the lobby is where it actually continues, for a captain about
   // to pick and for anyone watching alike.
+  // Matches how the bracket page decides the same thing. An unclaimed
+  // quick-start bracket has no owner at all, and whoever is holding it is
+  // effectively its host — the same bargain the server strikes.
+  const isOwner = Boolean(
+    tournament.created_by == null || (viewer?.id && tournament.created_by?.id === viewer.id),
+  )
+
   const isDrafting = tournament.state === 'drafting'
   const target = isDrafting
     ? paths.draft(tournament.id, name)
@@ -239,7 +248,15 @@ export function TournamentCard({
           </div>
         </Link>
 
-        {!readOnly && (
+        {/* Owner only. Archiving, deleting and running back are all gated on
+            IsTournamentHost server-side, so for anybody else these were three
+            buttons that could only ever return 403 — which is exactly what they
+            did for a player looking at a tournament somebody else hosts.
+
+            The list shows tournaments you play in as well as ones you run, so
+            this is the common case, not an edge one. Pinning goes with them:
+            `favourite` is host-gated too. */}
+        {!readOnly && isOwner && (
           <div className="flex shrink-0 items-center">
             {/* Run it back.
 

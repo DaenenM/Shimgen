@@ -136,7 +136,7 @@ function RunBackDialog({ tournament, pending, error, onConfirm, onCancel }) {
 }
 
 export function TournamentsPage() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
@@ -164,6 +164,13 @@ export function TournamentsPage() {
     // Nothing to list for a signed-out visitor — their brackets live in the
     // links they hold, not in an account.
     enabled: isAuthenticated,
+    // Ten seconds rather than the global two minutes. This list is how somebody
+    // finds a lobby they have just been added to, and nothing on their device
+    // knows it happened — the invalidation after creating a tournament runs in
+    // the *host's* browser, not in theirs. Two minutes of "fresh" meant a
+    // friend opened this page and saw nothing, with no way to tell whether they
+    // had been added or not.
+    staleTime: 10_000,
   })
 
   // Fetched up front rather than on expand: the section only appears when it
@@ -233,6 +240,9 @@ export function TournamentsPage() {
   const busy = archive.isPending || restore.isPending
 
   const cardHandlers = {
+    // Who is looking, so a row can hide controls that would 403 for anyone but
+    // the tournament's owner.
+    viewer: user,
     onFavourite: (id) => favourite.mutate(id),
     onArchive: (id) => archive.mutate(id),
     onRestore: (id) => restore.mutate(id),

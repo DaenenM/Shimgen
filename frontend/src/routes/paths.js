@@ -45,6 +45,11 @@ export const paths = {
   tournaments: '/tournaments',
   tournament: (id, name) => `/tournaments/${id}${nameSegment(name)}`,
 
+  // The captain-draft lobby. A separate route rather than a mode of the
+  // bracket page: a drafting tournament has no bracket to show yet, and the
+  // link is the thing a host sends round the room.
+  draft: (id, name) => `/tournaments/${id}/draft${nameSegment(name)}`,
+
   // Read-only public view. No account required — this is the acquisition
   // channel (plan §4, NEW 2), so it must stay reachable while signed out.
   spectate: (publicSlug, name) => `/t/${publicSlug}${nameSegment(name)}`,

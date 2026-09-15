@@ -78,6 +78,7 @@ const PILL =
 
 const STATE_DOT = {
   draft: 'bg-base-content/30',
+  drafting: 'bg-success',
   active: 'bg-success',
   complete: 'bg-base-content/40',
 }
@@ -93,8 +94,17 @@ const STATE_DOT = {
  */
 const STATE_PILL = {
   draft: 'bg-base-content/8 text-base-content/60',
+  // The one state that is asking something of the reader: a lobby is open and
+  // somebody is waiting on them to pick. Solid rather than the 15% wash `active`
+  // uses, because a live draft has to win against a list of finished nights.
+  drafting: 'bg-success text-success-content',
   active: 'bg-success/15 text-success',
   complete: 'bg-base-content/8 text-base-content/60',
+}
+
+/** What the state pill says. Only `drafting` differs from the raw value. */
+const STATE_LABEL = {
+  drafting: 'Live draft',
 }
 
 export function TournamentCard({
@@ -115,11 +125,29 @@ export function TournamentCard({
   const name = tournament.title || 'Untitled tournament'
   const tone = formatTone(tournament.format)
 
+  // A drafting tournament has no bracket yet, so the bracket page would show an
+  // empty one — the lobby is where it actually continues, for a captain about
+  // to pick and for anyone watching alike.
+  const isDrafting = tournament.state === 'drafting'
+  const target = isDrafting
+    ? paths.draft(tournament.id, name)
+    : paths.tournament(tournament.id, name)
+
   return (
     // `glass-inset` rather than `glass-panel`: these are dense list rows, and
     // a full panel's blur plus drop shadow, stacked twenty deep, reads as
     // twenty floating cards instead of one list.
-    <li className="group glass-inset hover:border-base-content/25 hover:bg-base-content/5 relative min-w-0 transition-colors duration-200">
+    // A draft in progress is the one row somebody has to act on, so it is lit
+    // rather than tinted: a green ground and a matching edge, against rows that
+    // are all the same neutral glass. Everything else keeps the quiet treatment
+    // — colour every state and none of them stands out.
+    <li
+      className={`group relative min-w-0 transition-colors duration-200 ${
+        isDrafting
+          ? 'border-success/40 bg-success/12 shadow-success/15 rounded-[0.875rem] border shadow-md'
+          : 'glass-inset hover:border-base-content/25 hover:bg-base-content/5'
+      }`}
+    >
       {tournament.favourited_at && (
         <span
           className="bg-warning absolute inset-y-0 left-0 w-0.5 rounded-l-[0.875rem]"
@@ -128,7 +156,7 @@ export function TournamentCard({
       )}
 
       <div className="flex items-center gap-1.5 py-2.5 pr-1.5 pl-3 sm:gap-3 sm:pr-3 sm:pl-4">
-        <Link to={paths.tournament(tournament.id, name)} className="min-w-0 flex-1 py-0.5">
+        <Link to={target} className="min-w-0 flex-1 py-0.5">
           <div className="flex min-w-0 items-center gap-2">
             <span
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${
@@ -190,13 +218,22 @@ export function TournamentCard({
             ) : (
               <span
                 className={`${PILL} capitalize ${STATE_PILL[tournament.state] ?? STATE_PILL.draft}`}
+                title={isDrafting ? 'A captain draft is in progress' : undefined}
+                // "drafting" beside "draft" is two states a glance cannot tell
+                // apart, and they mean opposite things — one is waiting to
+                // start, the other is happening right now.
               >
-                {tournament.state === 'active' && (
+                {(tournament.state === 'active' || isDrafting) && (
                   // A live dot, so an in-progress night is findable by movement
-                  // in a long list rather than only by reading each row.
-                  <span className="bg-success h-1.5 w-1.5 animate-pulse rounded-full" />
+                  // in a long list rather than only by reading each row. A
+                  // draft earns it most: somebody is waiting on a pick.
+                  <span
+                    className={`h-1.5 w-1.5 animate-pulse rounded-full ${
+                      isDrafting ? 'bg-success-content' : 'bg-success'
+                    }`}
+                  />
                 )}
-                {tournament.state}
+                {STATE_LABEL[tournament.state] ?? tournament.state}
               </span>
             )}
           </div>

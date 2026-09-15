@@ -39,6 +39,7 @@ const TournamentDetailPage = named(
   () => import('@/pages/TournamentDetailPage'),
   'TournamentDetailPage',
 )
+const DraftLobbyPage = named(() => import('@/pages/DraftLobbyPage'), 'DraftLobbyPage')
 const TeamGeneratorPage = named(() => import('@/pages/TeamGeneratorPage'), 'TeamGeneratorPage')
 const StatsPage = named(() => import('@/pages/StatsPage'), 'StatsPage')
 const BoardPage = named(() => import('@/pages/BoardPage'), 'BoardPage')
@@ -107,6 +108,16 @@ export const router = createBrowserRouter([
           description:
             'Every bracket you host, help run or play in, with its format, entrants and winner.',
         },
+      },
+      // Before the bracket route, which would otherwise match /:id/draft with
+      // "draft" as the decorative name segment and render an empty bracket.
+      // Public for the same reason the bracket is: a drafted quick-start
+      // tournament has no account behind it, and gating the lobby would strand
+      // the host on the page they just created.
+      {
+        path: `${paths.draft(':id')}/:name?`,
+        element: <DraftLobbyPage />,
+        handle: { title: 'Team draft' },
       },
       {
         path: `${paths.tournament(':id')}/:name?`,

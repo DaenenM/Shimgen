@@ -91,6 +91,19 @@ export const tournaments = {
   archive: (id) => api.post(`/tournaments/${id}/archive/`).then((r) => r.data),
   restore: (id) => api.post(`/tournaments/${id}/restore/`).then((r) => r.data),
   claim: (id, token) => api.post(`/tournaments/${id}/claim/`, { token }).then((r) => r.data),
+
+  // ── Captain drafts ────────────────────────────────────────────────────────
+  // A draft sits between "created" and "has a bracket": the tournament exists
+  // with no entrants until the pool is empty. Each of these returns the draft
+  // state, so the caller writes the response straight into the cache rather
+  // than refetching — the same bargain `batchReport` makes.
+  draft: (id) => api.get(`/tournaments/${id}/draft/`).then((r) => r.data),
+  draftPick: (id, label) =>
+    api.post(`/tournaments/${id}/draft/pick/`, { label }).then((r) => r.data),
+  draftUndo: (id) => api.post(`/tournaments/${id}/draft/undo/`).then((r) => r.data),
+  // Returns the finished tournament, not the draft — this is the call that
+  // creates the entrants and builds the bracket.
+  draftComplete: (id) => api.post(`/tournaments/${id}/draft/complete/`).then((r) => r.data),
 }
 
 export const matches = {

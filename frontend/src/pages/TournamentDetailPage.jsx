@@ -18,6 +18,7 @@ import { StandingsTable } from '@/features/bracket/StandingsTable'
 import { FORMAT_LABELS } from '@/features/bracket/layout'
 import { applyResult, clearResult, scoreForClick } from '@/features/bracket/optimistic'
 import { useReportQueue } from '@/features/bracket/useReportQueue'
+import { useTournamentSocket } from '@/hooks/useTournamentSocket'
 import { useAuth } from '@/hooks/useAuth'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
@@ -181,7 +182,7 @@ export function TournamentDetailPage() {
     [id, queryClient],
   )
 
-  const { enqueue, flush } = useReportQueue({
+  const { enqueue, flush, hasPending } = useReportQueue({
     tournamentId: id,
     delay: 3_000,
     onFlush: sendBatch,
@@ -191,6 +192,27 @@ export function TournamentDetailPage() {
     // never happened.
     onPendingChange: (pending) =>
       setSaveState((current) => (pending ? 'saving' : current === 'saving' ? 'saved' : current)),
+  })
+
+  /**
+   * Somebody else changed this bracket — pull the new version.
+   *
+   * The server sends a bare nudge rather than the data, so each viewer refetches
+   * through their own query and gets the serialization their own account is
+   * entitled to. This is what fixes a co-host reporting on their phone while the
+   * host's laptop shows the old bracket until they navigate away and back.
+   *
+   * Skipped entirely while this device has unsent clicks. The broadcast the
+   * reporter triggers comes back to them too, and refetching then would replace
+   * their optimistic bracket with a server version that does not yet contain the
+   * results still sitting in the queue — the bracket would visibly jump
+   * backwards mid-run. Their own flush already writes the reconciled bracket, so
+   * nothing is missed by waiting.
+   */
+  useTournamentSocket(id, () => {
+    if (hasPending()) return
+    queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.detail(id) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.standings(id) })
   })
 
   /** Move the bracket now, and queue the result to be sent with its neighbours. */

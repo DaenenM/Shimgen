@@ -7,7 +7,16 @@ from apps.accounts.serializers import PublicUserSerializer
 from apps.groups.models import Player
 from apps.groups.serializers import PlayerSerializer
 
-from .models import Entrant, FFAResult, Match, Participation, Role, Tournament
+from .models import (
+    DraftTeam,
+    Entrant,
+    FFAResult,
+    Match,
+    Participation,
+    Role,
+    TeamDraft,
+    Tournament,
+)
 from .standings import champion_entrant_id
 
 
@@ -249,6 +258,11 @@ class TournamentDetailSerializer(TournamentSerializer):
     # only whether one exists, which is enough to warn before a delete but not
     # enough for the bracket page to show the host what it is pointed at.
     stats_board = serializers.SerializerMethodField()
+    # Null for every tournament that was not drafted, which is most of them.
+    # Present so the bracket page can redirect to the lobby in the one request
+    # it already makes, rather than discovering mid-render that this tournament
+    # has no entrants yet because its draft is still running.
+    team_draft = serializers.SerializerMethodField()
 
     class Meta(TournamentSerializer.Meta):
         fields = (
@@ -262,9 +276,20 @@ class TournamentDetailSerializer(TournamentSerializer):
             "can_report",
             "is_host",
             "stats_board",
+            "team_draft",
             "started_at",
             "completed_at",
         )
+
+    # The schema is spelled out rather than referencing TeamDraftSerializer,
+    # which is defined below this class: a decorator argument is evaluated at
+    # class-definition time, so naming it here would be a NameError on import.
+    @extend_schema_field({"type": "object", "nullable": True})
+    def get_team_draft(self, obj):
+        draft = getattr(obj, "team_draft", None)
+        if draft is None:
+            return None
+        return TeamDraftSerializer(draft, context=self.context).data
 
     def get_can_report(self, obj) -> bool:
         """So the client knows whether to render result inputs at all."""
@@ -404,3 +429,100 @@ class CreateTournamentSerializer(serializers.ModelSerializer):
             )
 
         return attrs
+
+
+class DraftTeamSerializer(serializers.ModelSerializer):
+    """One side mid-draft: its captain, and whoever has been picked so far."""
+
+    members = serializers.SerializerMethodField()
+    is_picking = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DraftTeam
+        fields = ("id", "position", "label", "captain_label", "members", "is_picking")
+        read_only_fields = fields
+
+    @extend_schema_field({"type": "array", "items": {"type": "string"}})
+    def get_members(self, obj):
+        """
+        The captain first, then their picks in the order they were taken.
+
+        The captain leads because they are on the team and that is how the room
+        says it out loud — "Ada's team: Ada, Grace, Alan". It also matches the
+        shape entrant creation receives when the draft completes, so what the
+        page shows mid-draft is what the bracket will show afterwards.
+        """
+        return [obj.captain_label, *[pick.label for pick in obj.picks.all()]]
+
+    def get_is_picking(self, obj) -> bool:
+        return obj.draft.current_team_index == obj.position
+
+
+class TeamDraftSerializer(serializers.ModelSerializer):
+    """
+    A draft in progress: whose turn it is, who is left, and how it will end.
+
+    `pool` and `picks_per_team` are computed rather than stored. The pool is
+    "everyone not yet picked", which is a query the picks already answer —
+    keeping a second copy in sync by hand is exactly the drift the standings
+    rule warns about.
+    """
+
+    teams = DraftTeamSerializer(many=True, read_only=True)
+    pool = serializers.SerializerMethodField()
+    current_team = serializers.SerializerMethodField()
+    picks_remaining = serializers.SerializerMethodField()
+    expected_sizes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeamDraft
+        fields = (
+            "id",
+            "team_count",
+            "captain_mode",
+            "teams",
+            "pool",
+            # The whole rotation, not just whose turn it is now. The client
+            # applies a pick to its own cache the instant it is tapped — a draft
+            # is a room of people watching one screen, and a name that hangs for
+            # a round trip before moving reads as a missed tap — which means it
+            # has to work out the *next* turn locally. `current_team` alone can
+            # only say where the draft is, never where it goes next.
+            "pick_order",
+            "current_team",
+            "picks_made",
+            "picks_remaining",
+            "expected_sizes",
+            "completed_at",
+        )
+        read_only_fields = fields
+
+    @extend_schema_field({"type": "array", "items": {"type": "string"}})
+    def get_pool(self, obj):
+        """Whoever has not been picked yet, in the order they were entered."""
+        taken = {pick.label.lower() for pick in obj.picks.all()}
+        return [
+            name
+            for name in (obj.tournament.settings or {}).get("draft_pool", [])
+            if name.lower() not in taken
+        ]
+
+    def get_current_team(self, obj) -> int | None:
+        return obj.current_team_index
+
+    def get_picks_remaining(self, obj) -> int:
+        return max(0, len(obj.pick_order) - obj.picks_made)
+
+    @extend_schema_field({"type": "array", "items": {"type": "integer"}})
+    def get_expected_sizes(self, obj):
+        """
+        How many players each team ends up with, captain included.
+
+        Surfaced so the page can say up front that an uneven pool leaves one
+        team a player short, rather than letting a host discover it on the
+        final pick.
+        """
+        from .drafting import picks_per_team
+
+        pool_size = len(obj.pick_order)
+        return [count + 1 for count in picks_per_team(obj.team_count, pool_size)]

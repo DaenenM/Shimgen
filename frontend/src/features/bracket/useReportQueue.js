@@ -64,6 +64,15 @@ function saveQueue(id, operations) {
  * flushes early when the tab closes, when it is hidden, when the network drops,
  * and on demand — see `flush`. The delay is a batching window, not a buffer the
  * user can lose a night's results in.
+ *
+ * The window earns more than it used to. One flush is one `batch-report`, which
+ * recomputes a linked stats board from scratch, re-reads the bracket with nine
+ * prefetches and serialises the whole detail payload — and since live updates
+ * landed it also fans out to every viewer, each of whom refetches that payload.
+ * Eight clicks batched are one broadcast and N refetches; eight clicks sent
+ * separately are eight broadcasts and 8N. `inFlight` also means unbatched
+ * clicks queue behind each other rather than going in parallel, so a shorter
+ * window trades throughput for latency rather than buying both.
  */
 export function useReportQueue({ tournamentId, delay = 3_000, onFlush, onError, onPendingChange }) {
   const queue = useRef([])

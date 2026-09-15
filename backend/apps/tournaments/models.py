@@ -32,6 +32,12 @@ class Tournament(TimeStampedModel):
 
     class State(models.TextChoices):
         DRAFT = "draft", "Draft"
+        # A captain draft is running: the tournament exists and has settings,
+        # but no entrants yet — they are created when the draft completes. Note
+        # the unfortunate near-collision with DRAFT above, which means "created
+        # but not started" and has nothing to do with drafting players. See
+        # TeamDraft.
+        DRAFTING = "drafting", "Drafting teams"
         ACTIVE = "active", "Active"
         COMPLETE = "complete", "Complete"
 
@@ -351,3 +357,166 @@ class Rating(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.player} — {self.mode}: {self.elo:.0f}"
+
+
+class TeamDraft(TimeStampedModel):
+    """
+    A captain draft: the phase between "tournament created" and "bracket exists".
+
+    Captains take turns picking from a shared pool until it is empty, and only
+    then are Entrants created and the match graph generated. That ordering is
+    the whole design: the existing generator takes a list of entrants and knows
+    nothing about how they were formed, so a draft is a *seeding phase* rather
+    than a sixth format. Every format stays available — a drafted set of teams
+    can feed single elimination, double, round robin, Swiss or FFA without the
+    bracket code changing at all.
+
+    Deliberately NOT called a "draft tournament". `Tournament.State.DRAFT`
+    already means "created but not started", which is a different idea entirely;
+    the state added for this is `DRAFTING`, and the two are easy to confuse when
+    skimming. Read `state == "draft"` as "not started yet", never as "a player
+    draft is running".
+
+    Why a model rather than a blob in `Tournament.settings`: picks reference
+    real Players, the pool has to be queried to render the page, and a
+    half-finished draft must be resumable after a refresh. A JSON blob gives up
+    foreign-key integrity on every one of those.
+    """
+
+    class CaptainMode(models.TextChoices):
+        RANDOM = "random", "Randomised captains"
+        MANUAL = "manual", "Chosen captains"
+
+    tournament = models.OneToOneField(
+        Tournament, related_name="team_draft", on_delete=models.CASCADE
+    )
+    team_count = models.PositiveSmallIntegerField(validators=[MinValueValidator(2)])
+    captain_mode = models.CharField(
+        max_length=8, choices=CaptainMode.choices, default=CaptainMode.RANDOM
+    )
+
+    # The pick order, as team indexes into `teams`. Generated once when the
+    # draft opens and never recomputed: a host who refreshes mid-draft must see
+    # the same order they did before, and re-randomising would silently change
+    # whose turn it is.
+    pick_order = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Team indexes in the order they pick, one full cycle per round.",
+    )
+    picks_made = models.PositiveSmallIntegerField(
+        default=0, help_text="How far through `pick_order` the draft has got."
+    )
+
+    # Accounts belonging to people named in the pool, so a friend who is being
+    # drafted can watch the lobby from their own device.
+    #
+    # A denormalised list rather than a join, because the thing it has to answer
+    # — "may this user see this draft?" — runs inside the tournament list's
+    # queryset, and `settings.draft_pool` is bare strings with nothing to join
+    # against. Captains are covered separately by `DraftTeam.captain_user`;
+    # this is only the people still waiting to be picked.
+    #
+    # Written once when the draft opens and never updated: the pool is fixed at
+    # that moment, so there is no second copy to drift out of sync with.
+    pool_user_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="User ids of linked accounts in the draft pool. Visibility only.",
+    )
+
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"Draft for {self.tournament_id} ({self.team_count} teams)"
+
+    @property
+    def is_complete(self) -> bool:
+        return self.completed_at is not None
+
+    @property
+    def current_team_index(self) -> int | None:
+        """Whose turn it is, or None when every pick has been made."""
+        if self.picks_made >= len(self.pick_order):
+            return None
+        return self.pick_order[self.picks_made]
+
+
+class DraftTeam(TimeStampedModel):
+    """
+    One side being assembled, and the captain assembling it.
+
+    `captain_user` is set when the captain's roster entry is a linked account.
+    Nothing in the local draft reads it — the host taps every pick — but it is
+    what lets a second pass hand that person their own turn over a socket
+    without a migration. Recording it now is close to free; retrofitting it
+    later means reshaping rows that already exist.
+    """
+
+    draft = models.ForeignKey(TeamDraft, related_name="teams", on_delete=models.CASCADE)
+    position = models.PositiveSmallIntegerField(help_text="0-based index into the pick order.")
+    label = models.CharField(max_length=80, blank=True)
+
+    captain = models.ForeignKey(
+        Player,
+        null=True,
+        blank=True,
+        related_name="captained_draft_teams",
+        on_delete=models.SET_NULL,
+    )
+    captain_label = models.CharField(
+        max_length=80,
+        help_text="The captain's name as typed, so an anonymous draft still reads correctly.",
+    )
+    captain_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="captained_drafts",
+        on_delete=models.SET_NULL,
+        help_text="Set when the captain is a linked account. Unused until live drafting lands.",
+    )
+
+    class Meta:
+        ordering = ["position"]
+        constraints = [
+            models.UniqueConstraint(fields=["draft", "position"], name="uniq_draft_team_position")
+        ]
+
+    def __str__(self) -> str:
+        return self.label or f"{self.captain_label}'s team"
+
+
+class DraftPick(TimeStampedModel):
+    """
+    One player taken off the pool by one team.
+
+    Stored as rows rather than as an array on the team so the pool is a query
+    (`everyone not yet picked`) rather than a set difference maintained by hand
+    — the kind of bookkeeping that drifts the moment a pick is undone.
+    """
+
+    draft = models.ForeignKey(TeamDraft, related_name="picks", on_delete=models.CASCADE)
+    team = models.ForeignKey(DraftTeam, related_name="picks", on_delete=models.CASCADE)
+
+    player = models.ForeignKey(
+        Player,
+        null=True,
+        blank=True,
+        related_name="draft_picks",
+        on_delete=models.SET_NULL,
+    )
+    label = models.CharField(max_length=80, help_text="The picked name as typed.")
+
+    # The pick's place in the overall order, so an undo knows what to roll back
+    # to and the page can replay the draft in sequence.
+    ordinal = models.PositiveSmallIntegerField()
+
+    class Meta:
+        ordering = ["ordinal"]
+        constraints = [
+            models.UniqueConstraint(fields=["draft", "ordinal"], name="uniq_draft_pick_ordinal")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.label} to {self.team_id}"

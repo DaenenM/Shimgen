@@ -2,6 +2,8 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { auth } from '@/api/endpoints'
+import { LogOut } from '@/components/icons'
+import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -53,21 +55,13 @@ export function ProfilePage() {
             </span>
           </label>
 
-          <label className="form-control">
-            <span className="label-text mb-1">Email</span>
-            <input
-              className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none disabled:opacity-50"
-              value={user?.email ?? ''}
-              disabled
-            />
-            <span className="text-base-content/50 mt-1 text-xs">
-              Your email is how you sign in and cannot be changed here.
-            </span>
-          </label>
-
           {/* The handle, and the one field here that has to be unique — it is
               how a friend request is addressed. Display names are free to
-              collide precisely because this cannot. */}
+              collide precisely because this cannot.
+
+              Sits above the email so the two fields somebody can actually edit
+              are together, and the read-only one they cannot ends the form
+              rather than interrupting it. */}
           <label className="form-control">
             <span className="label-text mb-1">Username</span>
             <div className="glass-inset focus-within:border-primary/50 flex h-11 w-full items-center px-3 transition-colors">
@@ -95,6 +89,18 @@ export function ProfilePage() {
             </span>
           </label>
 
+          <label className="form-control">
+            <span className="label-text mb-1">Email</span>
+            <input
+              className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 h-11 w-full px-3 text-sm transition-colors focus:outline-none disabled:opacity-50"
+              value={user?.email ?? ''}
+              disabled
+            />
+            <span className="text-base-content/50 mt-1 text-xs">
+              Your email is how you sign in and cannot be changed here.
+            </span>
+          </label>
+
           {save.isError && (
             <div
               role="alert"
@@ -115,19 +121,19 @@ export function ProfilePage() {
         </form>
       </div>
 
-      <div className="glass-panel rise-in rise-delay-3 mt-6">
-        <div className="p-4">
-          <h2 className="text-sm font-semibold">Session</h2>
-          <p className="text-base-content/60 mb-2 text-sm">
-            Signing out clears your tokens on this device.
-          </p>
-          <button
-            className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 inline-flex h-9 w-fit items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-            onClick={logout}
-          >
-            Sign out
-          </button>
-        </div>
+      {/* The button alone, with no panel around it. A heading and a sentence
+          explaining what signing out does was scaffolding around a control that
+          already says what it does — and a glass card holding one small button
+          reads as a section that lost its content.
+
+          Red and bordered, the same register as every other destructive control
+          in the app. Not the solid `bg-error` fill `ConfirmDialog` uses: that is
+          reserved for commits that destroy something, and signing out loses
+          nothing. */}
+      <div className="rise-in rise-delay-3 mt-6">
+        <Button variant="danger" icon={LogOut} size="sm" onClick={logout}>
+          Sign out
+        </Button>
       </div>
     </div>
   )

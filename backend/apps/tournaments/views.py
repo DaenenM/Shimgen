@@ -1,5 +1,6 @@
 """Tournament endpoints: generation, reporting, spectating and claiming."""
 
+import re
 import secrets
 
 from django.contrib.auth import get_user_model
@@ -10,7 +11,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.generics import RetrieveAPIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -97,10 +98,21 @@ class TournamentViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return base.filter(unclaimed) if by_id else base.none()
 
+        # A drafting tournament has no entrants yet — they are created when the
+        # last pick lands — so the participation clause below cannot see it, and
+        # a friend being drafted would find no lobby in their list until the
+        # bracket already existed. Captains are matched by their own column;
+        # everyone still in the pool by the ids recorded when the draft opened.
+        drafting = models.Q(state=Tournament.State.DRAFTING) & (
+            models.Q(team_draft__teams__captain_user=user)
+            | models.Q(team_draft__pool_user_ids__contains=user.id)
+        )
+
         mine = (
             models.Q(created_by=user)
             | models.Q(roles__user=user)
             | models.Q(entrants__participations__user=user)
+            | drafting
         )
 
         queryset = base.filter(mine | unclaimed if by_id else mine).distinct()
@@ -125,14 +137,34 @@ class TournamentViewSet(viewsets.ModelViewSet):
         # `create` is deliberately open: the no-account quick start is the whole
         # point of the front door (plan §4, NEW 6), and an anonymous bracket is
         # protected by its claim token rather than by a login.
-        if self.action in ("update", "partial_update", "destroy", "generate", "reset"):
+        if self.action in (
+            "update",
+            "partial_update",
+            "destroy",
+            "generate",
+            "reset",
+            # Undo rewrites somebody else's pick and completing ends the draft
+            # outright, so both stay with the host. Picking is the exception
+            # below: a captain takes their own turn.
+            "draft_undo",
+            "draft_complete",
+        ):
             return [IsTournamentHost()]
+        if self.action == "draft_pick":
+            return [CanPickInDraft()]
         # Restaging creates a tournament owned by the caller, so it needs an
         # account to own it — the anonymous quick-start path has nowhere to put
         # the clone.
         if self.action == "restage":
             return [IsAuthenticated()]
-        if self.action in ("list", "retrieve", "create", "claim", "standings"):
+        # `draft` is a read, and it has to stay open for the same reason the
+        # bracket does: an anonymous quick-start host creates a captains
+        # tournament and is redirected straight to its lobby. Gating it behind a
+        # login meant they could build a draft and then not run it, which is the
+        # no-account path broken at its last step (plan §4, NEW 6). What may be
+        # *changed* is still gated — picking goes through CanPickInDraft, undo
+        # and complete through IsTournamentHost.
+        if self.action in ("list", "retrieve", "create", "claim", "standings", "draft"):
             return [AllowAny()]
         # Same rule as reporting one result: host, co-host or linked player —
         # and an unclaimed quick-start bracket stays reportable signed out, or
@@ -154,6 +186,10 @@ class TournamentViewSet(viewsets.ModelViewSet):
             created_by=request.user if request.user.is_authenticated else None
         )
 
+        if not (tournament.title or "").strip():
+            tournament.title = _next_untitled_title(request.user)
+            tournament.save(update_fields=["title", "updated_at"])
+
         # An anonymous quick-start bracket gets a claim token so it can be
         # attached to an account later (plan §7, v1). Written after save rather
         # than passed to it: claim_token is not a serializer field, so save()
@@ -165,7 +201,14 @@ class TournamentViewSet(viewsets.ModelViewSet):
         if request.user.is_authenticated:
             Role.objects.create(tournament=tournament, user=request.user, role=Role.Kind.HOST)
 
-        if teams:
+        # A captain draft replaces entrant creation rather than following it:
+        # who is on which team is not known yet, so there is nothing to seed.
+        # The entrants appear when the draft completes (see draft_complete).
+        draft_config = (serializer.validated_data.get("settings") or {}).get("team_draft")
+
+        if draft_config:
+            _open_team_draft(tournament, labels, draft_config, request.user)
+        elif teams:
             _create_team_entrants(tournament, teams, request.user)
             _generate(tournament, seeding)
         elif labels:
@@ -209,6 +252,155 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         return Response(TournamentDetailSerializer(tournament, context={"request": request}).data)
 
+    @action(detail=True, methods=["get"], url_path="draft")
+    def draft(self, request, pk=None):
+        """The lobby as it stands: whose turn, who is left, who has whom."""
+        return _draft_response(_draft_or_400(self.get_object()), request)
+
+    @action(detail=True, methods=["post"], url_path="draft/pick")
+    def draft_pick(self, request, pk=None):
+        """
+        Take a player off the pool for whichever team is currently picking.
+
+        The team is taken from the stored order rather than from the request:
+        letting the caller name the team would make it possible to pick out of
+        turn, which is the one thing a draft cannot allow.
+        """
+        from .models import DraftPick
+
+        tournament = self.get_object()
+        draft = _draft_or_400(tournament)
+
+        if draft.is_complete:
+            raise ValidationError("This draft is already finished.")
+
+        position = draft.current_team_index
+        if position is None:
+            raise ValidationError("Every player has been picked.")
+
+        label = str(request.data.get("label") or "").strip()
+        if not label:
+            raise ValidationError("Name the player being picked.")
+
+        pool = [name.lower() for name in (tournament.settings or {}).get("draft_pool", [])]
+        taken = {pick.label.lower() for pick in draft.picks.all()}
+
+        if label.lower() not in pool:
+            # Covers both "not in this tournament" and "is a captain": captains
+            # were removed from the pool when the draft opened, so they simply
+            # are not in it.
+            raise ValidationError(f"{label} is not in the draft pool.")
+        if label.lower() in taken:
+            raise ValidationError(f"{label} has already been picked.")
+
+        team = draft.teams.get(position=position)
+
+        with transaction.atomic():
+            DraftPick.objects.create(
+                draft=draft,
+                team=team,
+                player=team.captain and _player_named(request.user, label)
+                if request.user.is_authenticated
+                else None,
+                label=label,
+                ordinal=draft.picks_made,
+            )
+            draft.picks_made += 1
+            draft.save(update_fields=["picks_made", "updated_at"])
+
+        _broadcast_draft(draft)
+
+        return _draft_response(draft, request)
+
+    @action(detail=True, methods=["post"], url_path="draft/undo")
+    def draft_undo(self, request, pk=None):
+        """
+        Roll the last pick back.
+
+        A misclick during a draft is the same problem as a misreported result,
+        and the answer is the same: make it undoable rather than making people
+        careful. Only the most recent pick, so the turn order stays coherent.
+        """
+        tournament = self.get_object()
+        draft = _draft_or_400(tournament)
+
+        if draft.is_complete:
+            raise ValidationError("This draft is finished. Undo is no longer available.")
+
+        last = draft.picks.order_by("-ordinal").first()
+        if last is None:
+            raise ValidationError("Nothing has been picked yet.")
+
+        with transaction.atomic():
+            last.delete()
+            draft.picks_made = max(0, draft.picks_made - 1)
+            draft.save(update_fields=["picks_made", "updated_at"])
+
+        _broadcast_draft(draft)
+
+        return _draft_response(draft, request)
+
+    @action(detail=True, methods=["post"], url_path="draft/complete")
+    def draft_complete(self, request, pk=None):
+        """
+        Turn the finished draft into a bracket.
+
+        This is the step where a drafted tournament stops being special: the
+        teams become ordinary entrants and the existing generator runs against
+        them, so whichever format the host chose works with no draft-specific
+        code anywhere in the bracket engine.
+        """
+        from .drafting import teams_payload
+
+        tournament = self.get_object()
+        draft = _draft_or_400(tournament)
+
+        if draft.is_complete:
+            raise ValidationError("This draft has already been turned into a bracket.")
+
+        remaining = len(draft.pick_order) - draft.picks_made
+        if remaining > 0:
+            raise ValidationError(
+                f"{remaining} player{'s' if remaining != 1 else ''} still to pick."
+            )
+
+        teams = list(draft.teams.prefetch_related("picks"))
+        captains = [team.captain_label for team in teams]
+        picks_by_team = {team.position: [pick.label for pick in team.picks.all()] for team in teams}
+        labels = [team.label for team in teams]
+
+        with transaction.atomic():
+            _create_team_entrants(
+                tournament, teams_payload(captains, picks_by_team, labels), request.user
+            )
+
+            # `get_queryset` prefetches `entrants`, and this object was fetched
+            # while the draft still had none — so the relation carries an empty
+            # cache that `_generate` would read straight through, and refuse to
+            # build a bracket for a tournament that now has entrants. Dropping
+            # the cache is what makes the rows just created visible.
+            #
+            # Local to this action on purpose: every other caller of `_generate`
+            # works on a freshly saved object with no prefetch behind it, so the
+            # fix belongs here rather than inside the generator.
+            tournament = Tournament.objects.get(pk=tournament.pk)
+
+            _generate(tournament, request.data.get("seeding", "random"))
+
+            # Back to an ordinary un-started tournament: the bracket exists and
+            # the host starts it when the room is ready, exactly as they would
+            # have done had they typed the teams in themselves.
+            tournament.state = Tournament.State.DRAFT
+            draft.completed_at = timezone.now()
+            draft.save(update_fields=["completed_at", "updated_at"])
+            tournament.save(update_fields=["state", "updated_at"])
+
+        # Tells every watching lobby the draft is over, so they follow through
+        # to the bracket instead of sitting on a finished draft.
+        _broadcast_draft(draft)
+
+        return Response(TournamentDetailSerializer(tournament, context={"request": request}).data)
+
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
         """Move from draft to active, locking the entrant list for brackets."""
@@ -220,6 +412,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
         tournament.state = Tournament.State.ACTIVE
         tournament.started_at = timezone.now()
         tournament.save(update_fields=["state", "started_at", "updated_at"])
+
+        _broadcast_tournament(tournament.id)
 
         return Response(self.get_serializer(tournament).data)
 
@@ -258,6 +452,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
             joined_round=0 if tournament.state == Tournament.State.DRAFT else last_round,
         )
         _link_participants(entrant)
+
+        _broadcast_tournament(tournament.id)
 
         return Response(
             EntrantSerializer(entrant, context={"request": request}).data,
@@ -298,6 +494,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
         entrant.save(update_fields=["label", "updated_at"])
         _link_participants(entrant)
 
+        _broadcast_tournament(entrant.tournament_id)
+
         return Response(EntrantSerializer(entrant, context={"request": request}).data)
 
     @action(detail=True, methods=["post"], url_path="next-round")
@@ -322,6 +520,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         if not created:
             raise ValidationError("There are no further rounds to play.")
+
+        _broadcast_tournament(tournament.id)
 
         return Response(
             MatchSerializer(created, many=True, context={"request": request}).data,
@@ -420,6 +620,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         # The whole bracket comes back, so the flush doubles as the reconcile
         # the client would otherwise have to request separately.
+        _broadcast_tournament(tournament.id)
+
         tournament = self.get_queryset().get(pk=tournament.pk)
         return Response(TournamentDetailSerializer(tournament, context={"request": request}).data)
 
@@ -722,6 +924,8 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
         _settle_state(match.tournament)
         _sync_linked_stats(match.tournament)
 
+        _broadcast_tournament(match.tournament_id)
+
         return Response(MatchSerializer(match, context={"request": request}).data)
 
     @action(detail=True, methods=["post"], url_path="report-ffa")
@@ -745,6 +949,8 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
             raise ValidationError(str(exc)) from exc
 
         match.refresh_from_db()
+        _broadcast_tournament(match.tournament_id)
+
         return Response(MatchSerializer(match, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
@@ -760,6 +966,8 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
         # give back a trophy awarded for a result that no longer stands.
         _settle_state(match.tournament)
         _sync_linked_stats(match.tournament)
+
+        _broadcast_tournament(match.tournament_id)
 
         return Response(MatchSerializer(match, context={"request": request}).data)
 
@@ -1320,3 +1528,256 @@ def _sync_linked_stats(tournament):
     link = getattr(tournament, "stats_link", None)
     if link is not None:
         sync_tournament_stats(link)
+
+
+# ── Captain drafts ────────────────────────────────────────────────────────────
+
+
+def _open_team_draft(tournament, labels, config, user):
+    """
+    Turn a pool of names into an open draft instead of a bracket.
+
+    Called from `create` when the request carries `settings.team_draft`. The
+    tournament is left with no entrants at all: they are created when the draft
+    completes, from the teams it produced. That ordering is what keeps every
+    format working — the generator receives a normal entrant list and never
+    learns a draft happened.
+
+    The pool is stashed on `settings.draft_pool` rather than in its own table.
+    It is a list of strings that never changes once the draft opens — picks are
+    what move, and those are rows — so a table would buy integrity over nothing.
+    """
+    from .drafting import DraftError, assign_captains, build_pick_order
+    from .models import DraftTeam, TeamDraft
+
+    team_count = int(config.get("team_count") or 0)
+    chosen = config.get("captains") or None
+
+    try:
+        captains, pool = assign_captains(labels, team_count, chosen=chosen)
+        pick_order = build_pick_order(team_count, len(pool))
+    except DraftError as error:
+        raise ValidationError(str(error)) from error
+
+    tournament.state = Tournament.State.DRAFTING
+    tournament.settings = {**(tournament.settings or {}), "draft_pool": pool}
+    tournament.save(update_fields=["state", "settings", "updated_at"])
+
+    # Pool names are resolved to roster entries the same way captains are, so a
+    # friend waiting to be picked can watch the lobby from their own device.
+    # Only accounts are recorded — a name with no roster link behind it yields
+    # nothing, which is the anonymous case and stays invisible.
+    pool_user_ids = []
+    if user is not None and user.is_authenticated:
+        for name in pool:
+            linked = _player_named(user, name).user_id
+            if linked is not None and linked not in pool_user_ids:
+                pool_user_ids.append(linked)
+
+    draft = TeamDraft.objects.create(
+        tournament=tournament,
+        team_count=team_count,
+        captain_mode=(TeamDraft.CaptainMode.MANUAL if chosen else TeamDraft.CaptainMode.RANDOM),
+        pick_order=pick_order,
+        pool_user_ids=pool_user_ids,
+    )
+
+    for position, captain_label in enumerate(captains):
+        player = None
+        captain_user_id = None
+
+        # A captain who is a linked account is recorded now. Nothing local reads
+        # it — the host taps every pick — but live drafting needs it to hand
+        # that person their own turn, and retrofitting it later means reshaping
+        # rows that already exist.
+        if user is not None and user.is_authenticated:
+            player = _player_named(user, captain_label)
+            captain_user_id = player.user_id
+
+        DraftTeam.objects.create(
+            draft=draft,
+            position=position,
+            captain=player,
+            captain_label=captain_label,
+            captain_user_id=captain_user_id,
+        )
+
+    return draft
+
+
+def _draft_or_400(tournament):
+    """The draft attached to this tournament, or a clear refusal."""
+    draft = getattr(tournament, "team_draft", None)
+    if draft is None:
+        raise ValidationError("This tournament is not being drafted.")
+    return draft
+
+
+def _draft_response(draft, request):
+    from .serializers import TeamDraftSerializer
+
+    draft.refresh_from_db()
+    return Response(TeamDraftSerializer(draft, context={"request": request}).data)
+
+
+class CanPickInDraft(BasePermission):
+    """
+    Taking a turn in a captain draft: the host, or the captain whose turn it is.
+
+    The host can always pick, because the ordinary case is one device being
+    passed around a table and the host tapping for whoever is up. A captain with
+    a linked account may also pick — but only on their own turn, which is what
+    makes a shared lobby safe: there is no way to take someone else's pick, so
+    nobody has to trust the room to behave.
+
+    Deliberately not a co-host grant. Reporting a result is a clerical act
+    somebody else can do for you; choosing who is on your team is not.
+    """
+
+    message = "It is not your turn to pick."
+
+    def has_object_permission(self, request, view, obj):
+        tournament = obj if hasattr(obj, "roles") else getattr(obj, "tournament", None)
+        if tournament is None:
+            return False
+
+        # An unclaimed quick-start draft belongs to whoever is holding it, the
+        # same bargain every other anonymous action strikes.
+        if is_unclaimed(tournament):
+            return True
+
+        if _is_host(tournament, request.user):
+            return True
+
+        if not request.user.is_authenticated:
+            return False
+
+        draft = getattr(tournament, "team_draft", None)
+        if draft is None or draft.is_complete:
+            return False
+
+        position = draft.current_team_index
+        if position is None:
+            return False
+
+        return draft.teams.filter(position=position, captain_user=request.user).exists()
+
+
+def _broadcast_draft(draft):
+    """
+    Push the draft's new state to everyone watching the lobby.
+
+    Sent after the surrounding transaction commits, never inside it: a pick that
+    is rolled back must not have already told six other screens it happened, and
+    a broadcast from inside the transaction can also reach a listener that then
+    reads the pre-commit state back from the database.
+
+    Serialised once here rather than per-socket. Every viewer of a draft is
+    entitled to the same payload — the lobby has nothing per-person in it — so
+    fanning out one copy avoids re-serialising for each connection.
+
+    Failures are swallowed. A draft whose socket layer is unavailable is still a
+    perfectly good draft: the REST response has already returned the new state
+    to whoever acted, and the others are one refresh behind rather than looking
+    at a broken page.
+    """
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+
+    from .serializers import TeamDraftSerializer
+
+    payload = TeamDraftSerializer(draft).data
+
+    def send():
+        try:
+            layer = get_channel_layer()
+            if layer is None:
+                return
+            async_to_sync(layer.group_send)(
+                f"draft.{draft.tournament_id}",
+                {"type": "draft.update", "draft": payload},
+            )
+        except Exception:  # noqa: BLE001 — see below; the breadth is the point
+            # Deliberately blind. The pick has already committed and its HTTP
+            # response has gone back to whoever made it, so nothing raised here
+            # can be usefully handled — and anything that escapes would turn a
+            # successful pick into a 500. Narrowing this to Redis' own
+            # exceptions would also miss whatever a different channel layer
+            # raises, which is exactly the case worth surviving.
+            pass
+
+    transaction.on_commit(send)
+
+
+def _broadcast_tournament(tournament_id):
+    """
+    Tell everyone watching this bracket that something changed.
+
+    A bare nudge, not the data. The detail payload is every match, entrant, role
+    and player — serialising that on each click and pushing it to each viewer is
+    real work for a page that mostly sits idle — and a host and a spectator are
+    entitled to different serializations of it, so one broadcast blob would
+    either leak or under-serve. Each client refetches through its own query and
+    gets its own view.
+
+    Sent after commit, and failures are swallowed, for the same reasons as
+    `_broadcast_draft`: a result that has already been written and returned must
+    not be turned into a 500 by a channel layer that is unavailable.
+    """
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+
+    def send():
+        try:
+            layer = get_channel_layer()
+            if layer is None:
+                return
+            async_to_sync(layer.group_send)(
+                f"tournament.{tournament_id}",
+                {"type": "tournament.update"},
+            )
+        except Exception:  # noqa: BLE001 — same reasoning as _broadcast_draft
+            pass
+
+    transaction.on_commit(send)
+
+
+UNTITLED_BASE = "Untitled Tournament"
+
+# "Untitled Tournament 4", with the number at the very end. Anchored so a
+# tournament somebody renamed to "Untitled Tournament 4 Redemption" is not
+# mistaken for a counter.
+_UNTITLED_NUMBER = re.compile(rf"^{re.escape(UNTITLED_BASE)}\s*(\d+)\s*$", re.IGNORECASE)
+
+
+def _next_untitled_title(user) -> str:
+    """
+    The default name for a tournament created without one.
+
+    Counted per account rather than globally: the number exists so a host can
+    tell their own untitled nights apart in their own list, and a global counter
+    would jump unpredictably as strangers created brackets.
+
+    Taken from the **highest number already in use**, not from how many exist.
+    Counting rows reuses a number after a deletion — delete #2 of three and the
+    next one is also #3 — which is exactly the collision this is meant to
+    prevent. The same reasoning `next_restage_title` documents.
+
+    An anonymous quick-start bracket has no account to scope a count to, and
+    nobody has a list of them to disambiguate, so it keeps the bare base name.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return UNTITLED_BASE
+
+    highest = 0
+    for title in Tournament.objects.filter(
+        created_by=user, title__istartswith=UNTITLED_BASE
+    ).values_list("title", flat=True):
+        found = _UNTITLED_NUMBER.match((title or "").strip())
+        if found:
+            highest = max(highest, int(found.group(1)))
+        else:
+            # A bare "Untitled Tournament" with no number is the first one.
+            highest = max(highest, 1)
+
+    return f"{UNTITLED_BASE} {highest + 1}"

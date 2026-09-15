@@ -74,6 +74,7 @@ export const queryKeys = {
     detail: (slug) => ['tournaments', slug],
     matches: (slug) => ['tournaments', slug, 'matches'],
     standings: (slug) => ['tournaments', slug, 'standings'],
+    draft: (slug) => ['tournaments', slug, 'draft'],
   },
   roster: {
     all: ['roster'],

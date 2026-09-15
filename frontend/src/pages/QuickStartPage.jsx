@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Info, Trophy } from '@/components/icons'
+import { BarChart3, Info, Minus, Plus, Trophy } from '@/components/icons'
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -51,6 +51,12 @@ export function QuickStartPage() {
   const incoming = location.state?.squads ?? null
 
   const [mode, setMode] = useState(incoming ? 'teams' : 'solo')
+  // Captains mode: how many sides, and who leads them. The players box stays
+  // the source of truth — captains are drawn *from* that list, which is why
+  // this mode reuses the solo entry UI rather than adding its own.
+  const [captainTeams, setCaptainTeams] = useState(2)
+  const [captainMode, setCaptainMode] = useState('random')
+  const [chosenCaptains, setChosenCaptains] = useState([])
   // The players box is the source of truth for solo mode, and it is text: the
   // picker is a textarea, so the list only exists as parsed output of it.
   const [rosterText, setRosterText] = useState((location.state?.names ?? []).join('\n'))
@@ -142,6 +148,18 @@ export function QuickStartPage() {
         settings: {
           best_of: { default: bestOf },
           ...(format === 'double' ? { bracket_reset: bracketReset } : {}),
+          // Captains mode sends no entrants at all — just the pool and how to
+          // split it. The server opens a draft instead of building a bracket,
+          // and the entrants appear when the last player is picked.
+          ...(mode === 'captains'
+            ? {
+                team_draft: {
+                  team_count: captainTeams,
+                  captain_mode: captainMode,
+                  ...(captainMode === 'manual' ? { captains: chosenCaptains } : {}),
+                },
+              }
+            : {}),
         },
       }),
     onSuccess: (tournament) => {
@@ -152,7 +170,13 @@ export function QuickStartPage() {
       // the new tournament appeared to be missing until a hard refresh.
       queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
 
-      navigate(paths.tournament(tournament.id, tournament.title))
+      // A drafted tournament has no bracket yet, so the bracket page would show
+      // an empty one. The lobby is where it actually continues.
+      navigate(
+        mode === 'captains'
+          ? paths.draft(tournament.id, tournament.title)
+          : paths.tournament(tournament.id, tournament.title),
+      )
     },
   })
 
@@ -169,15 +193,29 @@ export function QuickStartPage() {
   )
 
   const isElimination = format === 'single' || format === 'double'
-  // One entrant count for both modes: a team is one entrant regardless of how
-  // many people are in it, so the bracket maths is identical.
-  const entrantCount = mode === 'teams' ? teams.length : names.length
+  // One entrant count for every mode: a team is one entrant regardless of how
+  // many people are in it, so the bracket maths is identical. In captains mode
+  // the entrants are the teams the draft will produce — the players typed in
+  // are the pool those teams get drawn from, not entrants themselves.
+  const entrantCount =
+    mode === 'teams' ? teams.length : mode === 'captains' ? captainTeams : names.length
   const warning = byeWarning(format, entrantCount)
 
   // Every team needs at least one player — an empty team is a bracket slot
   // with nobody in it, which the bracket cannot resolve.
   const emptyTeams = mode === 'teams' && teams.some((t) => t.members.length === 0)
-  const canCreate = entrantCount >= 2 && !emptyTeams
+
+  // A draft needs a captain per team plus somebody left to pick. Exactly one
+  // player per team is a valid split but an empty draft — every captain leads
+  // a team of one and nobody ever picks — so the pool has to be non-empty.
+  const shortPool = mode === 'captains' && names.length <= captainTeams
+  // Manual captains must all be named before the lobby can open; the server
+  // refuses a partial list, and finding that out after pressing Create is a
+  // worse way to learn it.
+  const missingCaptains =
+    mode === 'captains' && captainMode === 'manual' && chosenCaptains.length !== captainTeams
+
+  const canCreate = entrantCount >= 2 && !emptyTeams && !shortPool && !missingCaptains
 
   // Everyone already placed, so the roster can show them as taken. In teams
   // mode that spans every team — nobody plays for two sides at once.
@@ -268,6 +306,10 @@ export function QuickStartPage() {
                 {[
                   ['solo', 'Solo players'],
                   ['teams', 'Teams'],
+                  // Captains is still a list of solo players — the teams are
+                  // what the draft produces, not what the host types. It shares
+                  // the solo entry box for exactly that reason.
+                  ['captains', 'Team captains'],
                 ].map(([value, label]) => (
                   <button
                     key={value}
@@ -318,6 +360,124 @@ export function QuickStartPage() {
                 chosen one. Five cards each carrying a permanent subtitle cost
                 about 350px — a third of the viewport — to describe four
                 formats the host was not picking. */}
+            {/* Captains: how many sides, and who leads them.
+
+                Sits above Format rather than below it because it decides what
+                the entrants *are* — the format then decides how those entrants
+                play each other. Both still apply: a drafted set of teams feeds
+                single elimination, round robin or any other format exactly as
+                typed-in teams would. */}
+            {mode === 'captains' && (
+              <div>
+                <span className="text-sm font-medium">Teams</span>
+                <p className="text-base-content/50 mt-0.5 text-xs">
+                  Captains are taken out of the player list, then draft the rest between them.
+                </p>
+
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="glass-raised flex shrink-0 items-center overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setCaptainTeams((n) => Math.max(2, n - 1))}
+                      disabled={captainTeams <= 2}
+                      aria-label="One team fewer"
+                      className="hover:text-primary grid h-9 w-9 place-items-center rounded-l-lg transition-colors disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+
+                    <span className="tabular w-10 text-center text-lg font-bold">
+                      {captainTeams}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCaptainTeams((n) => Math.min(Math.max(2, names.length), n + 1))
+                      }
+                      disabled={captainTeams >= Math.max(2, names.length)}
+                      aria-label="One team more"
+                      className="hover:text-primary grid h-9 w-9 place-items-center rounded-r-lg transition-colors disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-base-content/50 min-w-0 text-xs">
+                    {names.length > captainTeams
+                      ? `${captainTeams} captains draft ${names.length - captainTeams} players.`
+                      : 'Add players to see the split.'}
+                  </p>
+                </div>
+
+                <div className="glass-raised mt-3 inline-flex gap-0.5 rounded-xl p-1">
+                  {[
+                    ['random', 'Random captains'],
+                    ['manual', 'Choose captains'],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setCaptainMode(value)}
+                      aria-pressed={captainMode === value}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
+                        captainMode === value
+                          ? 'bg-primary text-primary-content shadow-[inset_0_1px_0_0_oklch(100%_0_0/0.28),0_2px_10px_-2px_var(--color-primary)]'
+                          : 'text-base-content/60 hover:bg-base-content/8 hover:text-base-content'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Chosen from the names already typed rather than a separate
+                    field: a captain who is not in the player list is a captain
+                    the draft cannot seat. Clicking toggles, and the count caps
+                    at the team count so the selection cannot overrun. */}
+                {captainMode === 'manual' && (
+                  <div className="mt-2.5">
+                    {names.length === 0 ? (
+                      <p className="text-base-content/50 text-xs">
+                        Add players first, then pick which of them captain.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {names.map((name) => {
+                          const picked = chosenCaptains.includes(name)
+                          const full = chosenCaptains.length >= captainTeams
+
+                          return (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() =>
+                                setChosenCaptains((current) =>
+                                  current.includes(name)
+                                    ? current.filter((n) => n !== name)
+                                    : current.length < captainTeams
+                                      ? [...current, name]
+                                      : current,
+                                )
+                              }
+                              disabled={!picked && full}
+                              className={`h-8 rounded-full px-3 text-sm font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-30 ${
+                                picked
+                                  ? 'bg-primary text-primary-content'
+                                  : 'glass-raised hover:border-primary/50 hover:text-primary'
+                              }`}
+                            >
+                              {name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <span className="text-sm font-medium">Format</span>
               {/* Individual rounded rows rather than a bordered box of them.
@@ -602,9 +762,13 @@ export function QuickStartPage() {
 
             {!canCreate && (
               <p className="text-base-content/50 -mt-3 text-center text-xs">
-                {entrantCount < 2
-                  ? `Add at least two ${mode === 'teams' ? 'teams' : 'players'}.`
-                  : 'Every team needs at least one player.'}
+                {shortPool
+                  ? `Add more than ${captainTeams} players — the captains come out of this list, so there has to be somebody left to draft.`
+                  : missingCaptains
+                    ? `Choose ${captainTeams} captains.`
+                    : entrantCount < 2
+                      ? `Add at least two ${mode === 'teams' ? 'teams' : 'players'}.`
+                      : 'Every team needs at least one player.'}
               </p>
             )}
           </div>

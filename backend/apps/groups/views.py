@@ -8,12 +8,13 @@ from rest_framework.response import Response
 
 from apps.common.permissions import IsOwner
 
-from .models import Game, GameMode, Player
+from .models import Game, GameMode, Player, SavedTeam
 from .serializers import (
     GameModeSerializer,
     GameSerializer,
     PlayerBulkSerializer,
     PlayerSerializer,
+    SavedTeamSerializer,
 )
 
 
@@ -163,3 +164,40 @@ class GameModeViewSet(viewsets.ModelViewSet):
         queryset = GameMode.objects.select_related("game")
         game = self.request.query_params.get("game")
         return queryset.filter(game_id=game) if game else queryset
+
+
+class SavedTeamViewSet(viewsets.ModelViewSet):
+    """
+    Squads the signed-in user keeps between nights.
+
+    Owner-scoped exactly like the roster it is built from: a team is a grouping
+    of *your* Player rows, so it is private to you and edited only by you.
+    """
+
+    serializer_class = SavedTeamSerializer
+    permission_classes = [IsOwner]
+
+    def get_serializer_context(self):
+        # The nested PlayerSerializer reports `is_friend` per member, which is a
+        # query each without this — and a team list renders every member of
+        # every team.
+        from apps.accounts.models import friend_ids_for
+
+        context = {**super().get_serializer_context()}
+        if self.request.user.is_authenticated:
+            context["friend_ids"] = friend_ids_for(self.request.user)
+        return context
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return SavedTeam.objects.none()
+
+        return (
+            SavedTeam.objects.filter(owner=user)
+            .prefetch_related("members", "members__user")
+            .order_by("name")
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)

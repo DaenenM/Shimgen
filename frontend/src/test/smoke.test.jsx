@@ -17,6 +17,7 @@ import { clearTokens, getAccessToken, setTokens } from '@/api/tokens'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { SectionLoader } from '@/components/ui/SectionLoader'
 import { EditableTitle } from '@/features/bracket/EditableTitle'
+import { BracketView } from '@/features/bracket/BracketView'
 import { isPhantom, roundLabel, sizeFor, toRounds } from '@/features/bracket/layout'
 import { useDragScroll } from '@/hooks/useDragScroll'
 import { applyResult, clearResult, scoreForClick } from '@/features/bracket/optimistic'
@@ -815,6 +816,107 @@ describe('team generator persistence', () => {
   })
 })
 
+/**
+ * A losers bracket whose byes leave gaps in it.
+ *
+ * The 28-entrant case. A draw of 28 pads to 32, so winners round 1 is sixteen
+ * matches of which four are byes — and a bye produces no loser, so four of
+ * losers round 1's eight slots can never be filled.
+ *
+ * The bug this pins: a column lays its cards out as equal shares of its own
+ * height. Dropping the four dead slots left the four real matches spread across
+ * a four-way split while losers round 2 beside them was still on an eight-way
+ * one, so every card sat off its feeder's midpoint and every connector stretched
+ * to reach it. Keeping the slot and drawing nothing in it is what holds the grid.
+ *
+ * Plan §8 names double elimination as the place where a layout bug destroys
+ * trust instantly, which is why this is asserted rather than eyeballed.
+ */
+describe('a losers bracket with byes above it', () => {
+  /**
+   * Winners round 1 as sixteen matches, every fourth one a bye, wired to eight
+   * losers slots two feeders apiece — the real shape, in miniature.
+   */
+  function bracketWithByes() {
+    const matches = []
+
+    for (let i = 0; i < 16; i += 1) {
+      const isBye = i % 4 === 0
+      matches.push({
+        id: 100 + i,
+        bracket: 'main',
+        round_no: 1,
+        position: i,
+        a: 200 + i,
+        // Every fourth match is a bye: one entrant, nobody to play, so it
+        // drops no loser into the losers bracket.
+        b: isBye ? null : 300 + i,
+        a_label: `Team ${i}`,
+        b_label: isBye ? null : `Team ${i + 50}`,
+        winner: isBye ? 200 + i : null,
+        best_of: 1,
+        score: {},
+        next_match_win: 900,
+        next_match_lose: 500 + Math.floor(i / 2),
+      })
+    }
+
+    // Eight losers round 1 slots. The four fed by a bye-containing pair can
+    // only ever receive one entrant, so `isPhantom` hides them.
+    for (let i = 0; i < 8; i += 1) {
+      matches.push({
+        id: 500 + i,
+        bracket: 'losers',
+        round_no: 1,
+        position: i,
+        a: null,
+        b: null,
+        a_label: null,
+        b_label: null,
+        winner: null,
+        best_of: 1,
+        score: {},
+        next_match_win: 600 + Math.floor(i / 2),
+        next_match_lose: null,
+      })
+    }
+
+    return matches
+  }
+
+  it('keeps a slot for every generated match, drawn or not', () => {
+    const matches = bracketWithByes()
+    const { container } = render(<BracketView matches={matches} canReport={false} />)
+
+    // The losers section is the second one rendered; its first column is the
+    // round under test. Eight children, because eight slots were generated —
+    // four cards and four spacers holding the grid.
+    const sections = container.querySelectorAll('section')
+    expect(sections.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('hides exactly the slots that can never be played', () => {
+    const matches = bracketWithByes()
+    const losersRound1 = matches.filter((m) => m.bracket === 'losers' && m.round_no === 1)
+
+    const hidden = losersRound1.filter((m) => isPhantom(m, matches))
+    const shown = losersRound1.filter((m) => !isPhantom(m, matches))
+
+    // Four byes upstream means four dead slots, and four real matches left.
+    expect(hidden).toHaveLength(4)
+    expect(shown).toHaveLength(4)
+  })
+
+  it('renders without dropping the losers bracket entirely', () => {
+    // The guard that matters at the other end: a round with *nothing* real in
+    // it should vanish, but a round that is merely half empty must not.
+    const matches = bracketWithByes()
+    const { container } = render(<BracketView matches={matches} canReport={false} />)
+
+    expect(container.textContent).toContain('Losers')
+  })
+})
+
 describe('SaveIndicator', () => {
   it('shows nothing before anything has been reported', () => {
     const { container } = render(<SaveIndicator state="idle" />)
@@ -1591,7 +1693,9 @@ describe('drag to scroll', () => {
 })
 
 describe('bracket sizing by depth', () => {
-  const REM = { 'w-64': 16, 'w-48': 12, 'w-40': 10, 'w-34': 8.5, 'w-26': 6.5, 'w-20': 5 }
+  // Laptop widths only: the phone width is one value across every tier now, so
+  // the depth stepping these tests check lives entirely in the `sm:` tokens.
+  const REM = { 'w-64': 16, 'w-48': 12, 'w-40': 10 }
   const rem = (token, prefix) => {
     const match = token.split(' ').find((part) => part.startsWith(prefix))
     return REM[match.replace(`${prefix}`, 'w-')]
@@ -1599,18 +1703,31 @@ describe('bracket sizing by depth', () => {
 
   it('draws a shallow bracket at full size', () => {
     expect(sizeFor(3)).toEqual(sizeFor(4))
-    expect(sizeFor(4).card).toBe('w-34 sm:w-64')
+    // The laptop half is what "full size" means now: every tier shares one
+    // phone width, because fitting two columns is a property of the viewport
+    // rather than of how deep the draw is.
+    expect(sizeFor(4).card).toBe('w-40 sm:w-64')
   })
 
-  it('draws phone columns markedly narrower than laptop ones', () => {
-    // Two full columns have to fit a phone at once (~390px of viewport), which
-    // the laptop widths never did. Asserted as a ratio rather than as literal
-    // tokens so the scale can be retuned without rewriting the intent.
-    for (const count of [4, 5, 6]) {
-      const phone = rem(sizeFor(count).card, 'w-')
-      const laptop = rem(sizeFor(count).card, 'sm:w-')
+  it('fits about two columns on a phone at every depth', () => {
+    // The constraint that actually matters, asserted directly rather than as a
+    // ratio against the laptop width. A 390px screen less ~32px of gutters
+    // leaves ~358px, so one card plus one gap has to be near 179px however deep
+    // the draw is — a shallow bracket and a 28-entrant losers bracket alike.
+    //
+    // This replaced a "phone is 30% narrower than laptop" assertion, which was
+    // true only while the phone width shrank with depth. It did, and that is
+    // exactly what put four unreadable columns on screen.
+    const usable = 390 - 32
 
-      expect(phone).toBeLessThan(laptop * 0.7)
+    for (const count of [3, 4, 5, 6, 9]) {
+      const { card, gap } = sizeFor(count)
+      const unit = (token) => Number(token.split(' ')[0].match(/\d+/)[0]) * 4
+
+      const columns = usable / (unit(card) + unit(gap))
+
+      expect(columns).toBeGreaterThan(1.9)
+      expect(columns).toBeLessThan(2.4)
     }
   })
 

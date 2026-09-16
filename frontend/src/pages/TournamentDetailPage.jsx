@@ -25,7 +25,7 @@ import { paths } from '@/routes/paths'
 
 // Formats with no tree to draw: nobody is eliminated, so a bracket layout
 // would imply a structure that is not there.
-const LIST_FORMATS = new Set(['rr', 'swiss', 'ffa'])
+const LIST_FORMATS = new Set(['rr', 'swiss'])
 
 export function TournamentDetailPage() {
   const { id } = useParams()

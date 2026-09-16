@@ -58,6 +58,13 @@ export const paths = {
   stats: '/stats',
   board: (slug, name) => `/stats/${slug}${nameSegment(name)}`,
   roster: '/roster',
+  // Deliberately not under `/teams`, which belongs to the team generator.
+  // NavLink marks a link active when the path merely *starts with* its `to`, so
+  // `/teams/saved` lit the Team Generator tab on a page that has nothing to do
+  // with it. Marking that link `end` would have fixed the symptom while
+  // breaking prefix matching for any real sub-route it gains later — and a
+  // saved team is a sibling of the roster, not a mode of the generator.
+  savedTeams: '/saved-teams',
   friends: '/friends',
   profile: '/profile',
 }

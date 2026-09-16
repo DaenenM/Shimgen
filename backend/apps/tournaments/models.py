@@ -21,14 +21,13 @@ from apps.groups.models import GameMode, Player
 
 
 class Tournament(TimeStampedModel):
-    """One event: a bracket, a round robin, a Swiss pool or an FFA series."""
+    """One event: a bracket, a round robin or a Swiss pool."""
 
     class Format(models.TextChoices):
         SINGLE = "single", "Single elimination"
         DOUBLE = "double", "Double elimination"
         ROUND_ROBIN = "rr", "Round robin"
         SWISS = "swiss", "Swiss"
-        FFA = "ffa", "Free-for-all"
 
     class State(models.TextChoices):
         DRAFT = "draft", "Draft"
@@ -72,7 +71,7 @@ class Tournament(TimeStampedModel):
 
     # Format-specific configuration that would otherwise need a column per
     # format: grand-final bracket reset, round-robin points, best_of defaults
-    # per round, FFA lobby size and advancement rules.
+    # per round, and the captain-draft setup.
     settings = models.JSONField(default=dict, blank=True)
 
     # The spectator link (plan §4, NEW 2). Unguessable, so an unlisted URL is
@@ -127,7 +126,7 @@ class Tournament(TimeStampedModel):
             return True
         if self.state == self.State.COMPLETE:
             return False
-        return self.format in {self.Format.SWISS, self.Format.ROUND_ROBIN, self.Format.FFA}
+        return self.format in {self.Format.SWISS, self.Format.ROUND_ROBIN}
 
 
 class Role(TimeStampedModel):
@@ -308,30 +307,6 @@ class Match(TimeStampedModel):
         return self.a_id is not None and self.b_id is not None
 
 
-class FFAResult(TimeStampedModel):
-    """
-    One entrant's placement in a free-for-all lobby.
-
-    FFA rounds are not head-to-head, so they do not fit Match's a/b shape: a
-    lobby of six produces six placements. The Match row represents the lobby and
-    these rows carry the finishing order (plan §3).
-    """
-
-    match = models.ForeignKey(Match, related_name="ffa_results", on_delete=models.CASCADE)
-    entrant = models.ForeignKey(Entrant, related_name="ffa_results", on_delete=models.CASCADE)
-    placement = models.IntegerField(validators=[MinValueValidator(1)])
-    points = models.FloatField(default=0)
-
-    class Meta:
-        ordering = ["match", "placement"]
-        constraints = [
-            models.UniqueConstraint(fields=["match", "entrant"], name="uniq_ffa_result_per_entrant")
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.entrant} #{self.placement}"
-
-
 class Rating(TimeStampedModel):
     """
     A player's Elo in one game mode (plan §4, NEW 1).
@@ -368,7 +343,7 @@ class TeamDraft(TimeStampedModel):
     the whole design: the existing generator takes a list of entrants and knows
     nothing about how they were formed, so a draft is a *seeding phase* rather
     than a sixth format. Every format stays available — a drafted set of teams
-    can feed single elimination, double, round robin, Swiss or FFA without the
+    can feed single elimination, double, round robin or Swiss without the
     bracket code changing at all.
 
     Deliberately NOT called a "draft tournament". `Tournament.State.DRAFT`

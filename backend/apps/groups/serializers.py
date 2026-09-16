@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from apps.accounts.serializers import PublicUserSerializer
 
-from .models import Game, GameMode, Player
+from .models import Game, GameMode, Player, SavedTeam
 
 
 class PlayerSerializer(serializers.ModelSerializer):
@@ -124,3 +124,66 @@ class GameSerializer(serializers.ModelSerializer):
         model = Game
         fields = ("id", "name", "slug", "modes")
         read_only_fields = ("id", "slug")
+
+
+class SavedTeamSerializer(serializers.ModelSerializer):
+    """
+    A squad kept between game nights.
+
+    `members` is written as a list of Player ids and read back as full player
+    rows, so the picker can show who is on a team without a second request —
+    the same trade `EntrantSerializer` makes with `player_ids`.
+    """
+
+    members = PlayerSerializer(many=True, read_only=True)
+    member_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        write_only=True,
+        required=False,
+        source="members",
+        queryset=Player.objects.none(),
+    )
+
+    class Meta:
+        model = SavedTeam
+        fields = ("id", "name", "logo", "members", "member_ids", "created_at")
+        read_only_fields = ("id", "created_at")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Scoped to the caller's own roster rather than every Player row. Without
+        # this a crafted request could put somebody else's roster entry — and
+        # the account behind it — into a team.
+        request = self.context.get("request")
+        if request is not None and request.user.is_authenticated:
+            self.fields["member_ids"].child_relation.queryset = Player.objects.filter(
+                owner=request.user
+            )
+
+    def validate_name(self, value):
+        name = (value or "").strip()
+        if not name:
+            raise serializers.ValidationError("Give the team a name.")
+        return name
+
+    def validate_logo(self, value):
+        """
+        A base64 data URL, small enough to travel inside the team list.
+
+        Checked here rather than on the model so the refusal can say what went
+        wrong: a silent truncation would leave a corrupt image that renders as a
+        broken crest with no explanation.
+        """
+        if not value:
+            return ""
+
+        if not value.startswith("data:image/"):
+            raise serializers.ValidationError("A logo must be an image.")
+
+        if len(value.encode("utf-8")) > SavedTeam.LOGO_MAX_BYTES:
+            raise serializers.ValidationError(
+                "That image is too large — pick one under about 190KB."
+            )
+
+        return value

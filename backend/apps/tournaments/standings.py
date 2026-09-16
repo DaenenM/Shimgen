@@ -161,7 +161,7 @@ def placements(tournament) -> dict[int, int]:
     """
     Map entrant id -> finishing position, sharing a position on an exact tie.
 
-    Used for FFA scoring and for the stat tracker's placement distribution.
+    Used for the stat tracker's placement distribution.
     """
     table = compute_standings(tournament)
     result: dict[int, int] = {}

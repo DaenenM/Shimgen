@@ -21,7 +21,6 @@ from apps.groups.models import Player
 
 from .brackets.advance import ResultError, clear_result, report_result
 from .brackets.double_elimination import generate_double_elimination
-from .brackets.ffa import generate_ffa, next_ffa_round, report_ffa_result
 from .brackets.round_robin import generate_round_robin
 from .brackets.seeding import seed_entrants
 from .brackets.single_elimination import generate_single_elimination
@@ -34,7 +33,6 @@ from .serializers import (
     CreateTournamentSerializer,
     EntrantSerializer,
     MatchSerializer,
-    ReportFFASerializer,
     ReportResultSerializer,
     SpectatorSerializer,
     TournamentDetailSerializer,
@@ -77,7 +75,6 @@ class TournamentViewSet(viewsets.ModelViewSet):
             "matches__b",
             "matches__winner",
             "matches__reported_by",
-            "matches__ffa_results__entrant",
         )
 
         # An unclaimed quick-start bracket has no owner, so an ownership filter
@@ -503,20 +500,18 @@ class TournamentViewSet(viewsets.ModelViewSet):
         """
         Pair the next round.
 
-        Only Swiss and FFA need this — every other format's graph is complete
-        from generation.
+        Only Swiss needs this — every other format's graph is complete from
+        generation.
         """
         tournament = self.get_object()
 
         if not acts_as_host(tournament, request.user):
             raise PermissionDenied("Only the host can advance the round.")
 
-        if tournament.format == Tournament.Format.SWISS:
-            created = pair_next_round(tournament)
-        elif tournament.format == Tournament.Format.FFA:
-            created = next_ffa_round(tournament)
-        else:
+        if tournament.format != Tournament.Format.SWISS:
             raise ValidationError("This format generates every round up front.")
+
+        created = pair_next_round(tournament)
 
         if not created:
             raise ValidationError("There are no further rounds to play.")
@@ -928,31 +923,6 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response(MatchSerializer(match, context={"request": request}).data)
 
-    @action(detail=True, methods=["post"], url_path="report-ffa")
-    def report_ffa(self, request, pk=None):
-        """Record a free-for-all lobby's finishing order."""
-        match = self.get_object()
-        self.check_object_permissions(request, match)
-
-        serializer = ReportFFASerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        placements = {int(k): int(v) for k, v in serializer.validated_data["placements"].items()}
-
-        try:
-            report_ffa_result(
-                match,
-                placements,
-                reported_by=request.user if request.user.is_authenticated else None,
-            )
-        except ValueError as exc:
-            raise ValidationError(str(exc)) from exc
-
-        match.refresh_from_db()
-        _broadcast_tournament(match.tournament_id)
-
-        return Response(MatchSerializer(match, context={"request": request}).data)
-
     @action(detail=True, methods=["post"])
     def clear(self, request, pk=None):
         """Undo a result, including everything it advanced."""
@@ -994,7 +964,6 @@ class SpectatorView(RetrieveAPIView):
         "matches__b",
         "matches__winner",
         "matches__reported_by",
-        "matches__ffa_results__entrant",
     )
 
 
@@ -1270,8 +1239,6 @@ def _generate(tournament, seeding="random"):
         )
     elif fmt == Tournament.Format.SWISS:
         generate_swiss(tournament, entrants)
-    elif fmt == Tournament.Format.FFA:
-        generate_ffa(tournament, entrants)
 
     # Re-seed in the order actually used, so the bracket and the entrant list
     # agree about who is seed 1.

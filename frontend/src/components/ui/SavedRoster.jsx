@@ -22,12 +22,22 @@ export function SavedRoster({
   title = 'Saved roster',
   glass = false,
   maxHeight = null,
+  // Whether this card pins itself to the viewport on a tall page. Off when it
+  // is one panel of a stack: a sticky child detaches from its siblings and
+  // rides up over them, which is what put this card on top of the saved-teams
+  // panel below it. A stack pins as a whole from its wrapper instead.
+  sticky = true,
 }) {
   const surface = glass ? 'glass-panel' : 'card bg-base-100 border-base-300 border'
 
   // `self-start` keeps the card shrink-wrapped to its contents. The cap is a
   // max-height rather than a height, so a short roster stays short.
-  const sizing = maxHeight ? 'self-start overflow-hidden' : 'self-start lg:sticky lg:top-20'
+  // `min-w-0 w-full` for the same reason as the team picker: without it a long
+  // name sets the card's width instead of the column doing it, and `truncate`
+  // has nothing to truncate against.
+  const sizing = maxHeight
+    ? 'w-full min-w-0 self-start overflow-hidden'
+    : `w-full min-w-0 self-start ${sticky ? 'lg:sticky lg:top-20' : ''}`
   const capStyle = maxHeight ? { maxHeight: `${maxHeight}px` } : undefined
 
   const { players, forget, archive, isLoading } = useRoster()

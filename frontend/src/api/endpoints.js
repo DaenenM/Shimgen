@@ -37,6 +37,13 @@ export const roster = {
   mergeLocal: (names) => api.post('/players/merge_local/', { names }).then((r) => r.data),
 }
 
+export const savedTeams = {
+  list: () => api.get('/saved-teams/').then((r) => r.data),
+  create: (payload) => api.post('/saved-teams/', payload).then((r) => r.data),
+  update: (id, payload) => api.patch(`/saved-teams/${id}/`, payload).then((r) => r.data),
+  remove: (id) => api.delete(`/saved-teams/${id}/`).then((r) => r.data),
+}
+
 export const games = {
   list: () => api.get('/games/').then((r) => r.data),
   modes: (game) => api.get('/modes/', { params: { game } }).then((r) => r.data),
@@ -109,8 +116,6 @@ export const tournaments = {
 export const matches = {
   report: (id, scoreA, scoreB) =>
     api.post(`/matches/${id}/report/`, { score_a: scoreA, score_b: scoreB }).then((r) => r.data),
-  reportFFA: (id, placements) =>
-    api.post(`/matches/${id}/report-ffa/`, { placements }).then((r) => r.data),
   clear: (id) => api.post(`/matches/${id}/clear/`).then((r) => r.data),
 }
 

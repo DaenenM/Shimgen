@@ -2,7 +2,6 @@ from django.contrib import admin
 
 from .models import (
     Entrant,
-    FFAResult,
     Match,
     Participation,
     Rating,
@@ -67,7 +66,7 @@ class RatingAdmin(admin.ModelAdmin):
     raw_id_fields = ("player", "mode")
 
 
-admin.site.register([Participation, FFAResult, Role])
+admin.site.register([Participation, Role])
 
 # Branding for the /admin/ dashboard.
 admin.site.site_header = "Shimgen administration"

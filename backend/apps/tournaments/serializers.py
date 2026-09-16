@@ -10,7 +10,6 @@ from apps.groups.serializers import PlayerSerializer
 from .models import (
     DraftTeam,
     Entrant,
-    FFAResult,
     Match,
     Participation,
     Role,
@@ -51,14 +50,6 @@ class EntrantSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "eliminated")
 
 
-class FFAResultSerializer(serializers.ModelSerializer):
-    entrant_label = serializers.CharField(source="entrant.label", read_only=True)
-
-    class Meta:
-        model = FFAResult
-        fields = ("id", "entrant", "entrant_label", "placement", "points")
-
-
 class MatchSerializer(serializers.ModelSerializer):
     """One node of the match graph."""
 
@@ -66,7 +57,6 @@ class MatchSerializer(serializers.ModelSerializer):
     b_label = serializers.CharField(source="b.label", read_only=True, default=None)
     wins_needed = serializers.IntegerField(read_only=True)
     is_ready = serializers.BooleanField(read_only=True)
-    ffa_results = FFAResultSerializer(many=True, read_only=True)
     reported_by = PublicUserSerializer(read_only=True)
 
     class Meta:
@@ -87,7 +77,6 @@ class MatchSerializer(serializers.ModelSerializer):
             "score",
             "next_match_win",
             "next_match_lose",
-            "ffa_results",
             "reported_at",
             "reported_by",
         )
@@ -146,12 +135,6 @@ class BatchReportSerializer(serializers.Serializer):
     operations = serializers.ListField(
         child=BatchOperationSerializer(), allow_empty=False, max_length=200
     )
-
-
-class ReportFFASerializer(serializers.Serializer):
-    """A lobby's finishing order: entrant id -> placement."""
-
-    placements = serializers.DictField(child=serializers.IntegerField(min_value=1))
 
 
 class RoleSerializer(serializers.ModelSerializer):

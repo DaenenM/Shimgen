@@ -15,7 +15,7 @@ import { FORMAT_LABELS } from '@/features/bracket/layout'
 import { useTournamentSocket } from '@/hooks/useTournamentSocket'
 import { paths } from '@/routes/paths'
 
-const LIST_FORMATS = new Set(['rr', 'swiss', 'ffa'])
+const LIST_FORMATS = new Set(['rr', 'swiss'])
 
 /**
  * The public bracket (plan §4, NEW 2).

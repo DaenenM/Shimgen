@@ -38,7 +38,7 @@ const PODIUM = {
  * Standings.
  *
  * The API returns one of two shapes depending on format: points-based rows for
- * round robin, Swiss and FFA, or a placement per entrant for a knockout — where
+ * round robin and Swiss, or a placement per entrant for a knockout — where
  * ranking by points would be meaningless, since a bracket ranks by how far you
  * got. This renders whichever arrived.
  */

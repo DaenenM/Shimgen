@@ -8,6 +8,7 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { RosterPicker } from '@/components/ui/RosterPicker'
 import { SavedRoster } from '@/components/ui/SavedRoster'
+import { SavedTeamPicker } from '@/components/ui/SavedTeamPicker'
 import { TeamBuilder } from '@/components/ui/TeamBuilder'
 import { byeWarning } from '@/features/bracket/byes'
 import { useAuth } from '@/hooks/useAuth'
@@ -20,7 +21,6 @@ const FORMATS = [
   { value: 'double', label: 'Double elimination', hint: 'Losers bracket, second chance.' },
   { value: 'rr', label: 'Round robin', hint: 'Everyone plays everyone.' },
   { value: 'swiss', label: 'Swiss', hint: 'Paired on score, nobody eliminated.' },
-  { value: 'ffa', label: 'Free-for-all', hint: 'Lobbies, points by placement.' },
 ]
 
 const BEST_OF = [1, 3, 5, 7]
@@ -221,6 +221,30 @@ export function QuickStartPage() {
   // mode that spans every team — nobody plays for two sides at once.
   const placed = mode === 'teams' ? teams.flatMap((t) => t.members) : names
 
+  /**
+   * Drop a saved team into the form, players and all.
+   *
+   * Fills the first empty side rather than appending: teams mode starts with
+   * two blank teams, so appending would leave those blanks stranded above the
+   * ones just added. Only once both are used does this grow the list.
+   *
+   * The members come across as names, which is what `entrant_teams` carries —
+   * the saved team's Player rows are the roster link, and the server re-matches
+   * those names against the roster when it creates the entrants.
+   */
+  function addSavedTeam(team) {
+    const members = team.members.map((member) => member.display_name)
+
+    setTeams((current) => {
+      const blank = current.findIndex((t) => !t.label.trim() && t.members.length === 0)
+      const filled = { label: team.name, members }
+
+      if (blank === -1) return [...current, filled]
+
+      return current.map((t, index) => (index === blank ? filled : t))
+    })
+  }
+
   /** Put a roster name into the players box, or into the team being filled. */
   function addFromRoster(name) {
     if (mode !== 'teams') {
@@ -273,14 +297,23 @@ export function QuickStartPage() {
         {/* `self-start` travels onto the wrapper with the animation, the same
             way it does on the Team Generator: wrapping makes this div the grid
             item, and without it the roster rail stretches to the row's height. */}
-        <div className="rise-in rise-delay-2 self-start">
+        <div className="rise-in rise-delay-2 flex min-w-0 flex-col gap-4 self-start lg:sticky lg:top-20">
           <SavedRoster
             selected={placed}
             onAdd={addFromRoster}
             onRemove={removeFromRoster}
             title={mode === 'teams' ? `Add to team ${activeTeam + 1}` : 'Saved roster'}
             glass
+            // The wrapper does the pinning now, so both panels travel together.
+            sticky={false}
           />
+
+          {/* Teams mode only. A saved team has nowhere to go in solo mode —
+              the players box takes names, not sides — so offering it there
+              would be a panel whose every click does nothing. */}
+          {mode === 'teams' && (
+            <SavedTeamPicker onPick={addSavedTeam} placed={teams.map((team) => team.label)} glass />
+          )}
         </div>
 
         <div className="glass-panel rise-in rise-delay-3 min-w-0">

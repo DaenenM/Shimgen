@@ -44,6 +44,7 @@ const TeamGeneratorPage = named(() => import('@/pages/TeamGeneratorPage'), 'Team
 const StatsPage = named(() => import('@/pages/StatsPage'), 'StatsPage')
 const BoardPage = named(() => import('@/pages/BoardPage'), 'BoardPage')
 const RosterPage = named(() => import('@/pages/RosterPage'), 'RosterPage')
+const SavedTeamsPage = named(() => import('@/pages/SavedTeamsPage'), 'SavedTeamsPage')
 const FriendsPage = named(() => import('@/pages/FriendsPage'), 'FriendsPage')
 const ProfilePage = named(() => import('@/pages/ProfilePage'), 'ProfilePage')
 const NotFoundPage = named(() => import('@/pages/NotFoundPage'), 'NotFoundPage')
@@ -157,6 +158,11 @@ export const router = createBrowserRouter([
         children: [
           { path: paths.dashboard, element: <DashboardPage />, handle: { title: 'Dashboard' } },
           { path: paths.roster, element: <RosterPage />, handle: { title: 'My Roster' } },
+          {
+            path: paths.savedTeams,
+            element: <SavedTeamsPage />,
+            handle: { title: 'Saved Teams' },
+          },
           { path: paths.friends, element: <FriendsPage />, handle: { title: 'Friends' } },
           { path: paths.profile, element: <ProfilePage />, handle: { title: 'Profile' } },
         ],

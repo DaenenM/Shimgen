@@ -11,7 +11,6 @@ export const FORMAT_LABELS = {
   double: 'Double elimination',
   rr: 'Round robin',
   swiss: 'Swiss',
-  ffa: 'Free-for-all',
 }
 
 /**
@@ -140,22 +139,30 @@ export function roundLabel(roundNo, totalRounds, section = 'main', displayNo = r
  * else. Losing the tail of "Team 28" beats losing the bracket.
  *
  * The unprefixed token is the phone width and the `sm:` one the laptop width,
- * and they are tuned against different constraints. Phone is ~35% narrower than
- * laptop on purpose: a phone has to show two full columns at once, because a
- * bracket you can only read one column at a time is not a bracket. Do not
- * "tidy" the two into a single scale — the `sm:` values were sized for a laptop
- * and are not a phone's business.
+ * and they are tuned against different constraints. Do not "tidy" the two into
+ * a single scale — the `sm:` values were sized for a laptop and are not a
+ * phone's business.
+ *
+ * Every tier shares one phone width, and that is deliberate. "Two columns" is a
+ * property of the viewport, not of how deep the draw is: a 390px screen less
+ * its gutters leaves ~358px, so a card plus its gap has to be ~179px whatever
+ * else is true. Letting the phone width shrink with depth is what put a
+ * 28-entrant losers bracket at 96px a column — nearly four columns on screen,
+ * each too narrow to read. `w-40` + `w-4` is 176px, which lands just over two.
+ *
+ * Only the `sm:` widths still step down with depth, because a laptop has the
+ * room to trade card size for seeing more of the shape at once.
  *
  * Lives here rather than in `BracketView` because it is a pure function, and a
  * component file that also exports one breaks Fast Refresh.
  */
 const SIZES = {
   // Four columns or fewer: a quarterfinal onward, which fits comfortably.
-  roomy: { card: 'w-34 sm:w-64', gap: 'w-6 sm:w-16', arm: 'w-3 sm:w-8' },
+  roomy: { card: 'w-40 sm:w-64', gap: 'w-4 sm:w-16', arm: 'w-2 sm:w-8' },
   // Five columns — the winners bracket of a 17-32 entrant draw.
-  compact: { card: 'w-26 sm:w-48', gap: 'w-4 sm:w-10', arm: 'w-2 sm:w-5' },
+  compact: { card: 'w-40 sm:w-48', gap: 'w-4 sm:w-10', arm: 'w-2 sm:w-5' },
   // Six or more, which is where a losers bracket of that size lands.
-  tight: { card: 'w-20 sm:w-40', gap: 'w-4 sm:w-8', arm: 'w-2 sm:w-4' },
+  tight: { card: 'w-40 sm:w-40', gap: 'w-4 sm:w-8', arm: 'w-2 sm:w-4' },
 }
 
 /**

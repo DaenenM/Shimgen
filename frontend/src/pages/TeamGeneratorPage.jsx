@@ -220,6 +220,26 @@ export function TeamGeneratorPage() {
   const [draft, setDraft] = useState({ kind: 'apart', a: '', b: '' })
   const [error, setError] = useState(null)
 
+  /**
+   * Back to an empty page — what "Clear all" means here.
+   *
+   * Everything on this page hangs off the player list: the teams were generated
+   * from it, the rules name people in it, and the team count is bounded by how
+   * many there are. Clearing only the names left teams on screen built from
+   * players who were no longer listed, and rules pointing at nobody.
+   *
+   * Written as one assignment to `EMPTY_SETUP` rather than five patches, so the
+   * stored record can never come back half-cleared — a reload after a partial
+   * reset would restore exactly the stale teams this is meant to remove.
+   */
+  const clearEverything = useCallback(() => {
+    setSaved(EMPTY_SETUP)
+    // The unsaved pair go too. A half-typed rule surviving a clear is the same
+    // bug at smaller scale.
+    setDraft({ kind: 'apart', a: '', b: '' })
+    setError(null)
+  }, [setSaved])
+
   // Which player dropdowns are open, lifted out of `PlayerSelect` because the
   // panel that has to be raised is its ancestor, not its child. A set keyed by
   // select rather than a boolean: moving from one open list to the other is a
@@ -355,6 +375,7 @@ export function TeamGeneratorPage() {
                 onChange={setRosterText}
                 count={names.length}
                 glass
+                onClear={clearEverything}
               />
 
               <div className="glass-inset flex items-center justify-between gap-3 p-3">

@@ -200,6 +200,7 @@ function AccountMenu({ user, onLogout }) {
 
         <MenuLink to={paths.dashboard} label="Dashboard" />
         <MenuLink to={paths.roster} label="My Roster" />
+        <MenuLink to={paths.savedTeams} label="Saved Teams" />
         <MenuLink to={paths.friends} label="Friends" icon={Users} badge={waiting} />
         <MenuLink to={paths.profile} label="Profile" />
 

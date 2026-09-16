@@ -59,14 +59,30 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
   const totalRounds = rounds[rounds.length - 1].roundNo
 
   // Phantom matches are structural placeholders the engine never fills, so
-  // they are dropped before anything is drawn — a connector to one would point
-  // at empty space.
+  // nothing is drawn for them — a connector to one would point at empty space.
+  //
+  // They are *marked*, not removed. A column lays its cards out as equal shares
+  // of the column's height, so dropping four of eight leaves the survivors
+  // spread across a four-way split while the round beside them is still on an
+  // eight-way one — every card off its feeder's midpoint and every arm
+  // stretched to reach. That is what a 28-entrant draw looked like: losers
+  // round 1 generates eight slots, four of which are fed by a bye that produces
+  // no loser, and the four real matches drifted apart.
+  //
+  // Keeping the slot and rendering nothing in it holds the original grid, so a
+  // surviving card stays exactly where its feeders point.
   const columns = rounds
     .map((round) => ({
       ...round,
-      matches: round.matches.filter((match) => !isPhantom(match, matches)),
+      matches: round.matches.map((match) => ({
+        match,
+        hidden: isPhantom(match, matches),
+      })),
     }))
-    .filter((round) => round.matches.length > 0)
+    // A round with nothing real left in it goes entirely — that is a dead
+    // round, not a gap inside a live one, and reserving space for it would
+    // leave an empty column with a heading over it.
+    .filter((round) => round.matches.some((slot) => !slot.hidden))
 
   // Measured after phantoms are dropped, so a losers bracket whose dead rounds
   // are hidden is sized by what is actually drawn rather than by what the
@@ -116,6 +132,9 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
           {columns.map((round, index) => (
             <Round
               key={round.roundNo}
+              // Slots, not matches: a column carries its hidden placeholders so
+              // the flex shares stay on the grid the connectors were drawn
+              // against.
               matches={round.matches}
               // The column that *receives* draws the whole join, so it needs to
               // know which of the previous column's matches feed each of its
@@ -142,8 +161,15 @@ function BracketSection({ section, matches, showHeading, canReport, onReport, on
  * are looked up by the same index — which is what lets one element draw both
  * halves of a join.
  */
-function feedersFor(matches, previous) {
-  return matches.map((match) => previous.filter((feeder) => feeder.next_match_win === match.id))
+function feedersFor(slots, previousSlots) {
+  // Both sides arrive as `{ match, hidden }` slots. A hidden feeder is dropped
+  // rather than counted: it is a match nobody will play, so an arm from it
+  // would be drawn from empty space — which is the whole reason it is hidden.
+  // Dropping it is also what turns a pair into the single flat connector a
+  // surviving card wants when its partner was a bye.
+  const previous = previousSlots.filter((slot) => !slot.hidden).map((slot) => slot.match)
+
+  return slots.map(({ match }) => previous.filter((feeder) => feeder.next_match_win === match.id))
 }
 
 /**
@@ -165,32 +191,48 @@ function Round({ matches, feeders, canReport, onReport, onClear, tone, size }) {
     <div className="flex items-stretch">
       {feeders && (
         <div className="flex shrink-0 flex-col">
-          {matches.map((match, index) => (
+          {matches.map(({ match, hidden }, index) => (
             // One slot per card, sharing the column height exactly as the cards
             // do — so whatever vertical this slot centres on is the vertical
-            // the card centres on.
-            <div key={match.id} className="flex flex-1 items-stretch py-1.5">
-              <Connector count={feeders[index]?.length ?? 0} size={size} />
+            // the card centres on. A hidden slot still takes its share, which
+            // is what keeps the cards around it on the grid their feeders were
+            // drawn against.
+            //
+            // No vertical padding here, unlike the card slots beside it. The
+            // riser has to span from one feeder card's midpoint to the other's,
+            // and those two cards sit in slots half this one's height — so the
+            // gap between their centres is exactly this slot's full height.
+            // Padding this slot shortened the riser by 3px at each end while
+            // the cards stayed put, which is what left the corners sitting
+            // inside the cards' midlines instead of on them.
+            <div key={match.id} className="flex flex-1 items-stretch">
+              {hidden ? (
+                <span className={`${size.gap} shrink-0`} />
+              ) : (
+                <Connector count={feeders[index]?.length ?? 0} size={size} />
+              )}
             </div>
           ))}
         </div>
       )}
 
       <div className={`${size.card} flex shrink-0 flex-col`}>
-        {matches.map((match) => (
+        {matches.map(({ match, hidden }) => (
           // Each card takes an equal share of the column's height and centres
           // itself in it. That is what puts a later round's card level with the
           // midpoint of the group feeding it, at any depth.
           <div key={match.id} className="flex flex-1 items-center py-1.5">
-            <div className="w-full">
-              <MatchCard
-                match={match}
-                canReport={canReport}
-                onReport={(side) => onReport(match.id, side)}
-                onClear={() => onClear(match.id)}
-                tone={tone}
-              />
-            </div>
+            {!hidden && (
+              <div className="w-full">
+                <MatchCard
+                  match={match}
+                  canReport={canReport}
+                  onReport={(side) => onReport(match.id, side)}
+                  onClear={() => onClear(match.id)}
+                  tone={tone}
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>

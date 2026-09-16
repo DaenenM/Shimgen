@@ -9,7 +9,7 @@ import { useRoster } from '@/hooks/useRoster'
  * box *is* the player list. A name clicked from the saved roster lands here
  * too, as text, rather than in a list this component no longer has.
  */
-export function RosterPicker({ value, onChange, count, glass = false }) {
+export function RosterPicker({ value, onChange, count, glass = false, onClear }) {
   // Saved on blur rather than per keystroke — a save on every character
   // would spam the roster with half-typed names.
   const { remember } = useRoster()
@@ -31,9 +31,14 @@ export function RosterPicker({ value, onChange, count, glass = false }) {
         {/* Always rendered, disabled when there is nothing to clear. Mounting
             it only when the box had text made the header — and so the whole
             container — change height on the first and last keystroke. */}
+        {/* `onClear` lets a caller clear more than the names. The team
+            generator's teams, rules and team count are all downstream of this
+            box, and leaving them behind meant "Clear all" cleared the players
+            and left their teams on screen. Falls back to emptying the text,
+            which is all a caller with nothing else to reset needs. */}
         <button
           type="button"
-          onClick={() => onChange('')}
+          onClick={() => (onClear ? onClear() : onChange(''))}
           disabled={!value.trim()}
           className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content rounded-lg px-2 py-1 text-xs font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-30"
         >

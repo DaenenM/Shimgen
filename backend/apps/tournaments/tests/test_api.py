@@ -359,7 +359,7 @@ def test_impossible_constraints_return_a_useful_message(api_client):
 # ── Formats end to end ────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("fmt", ["single", "double", "rr", "swiss", "ffa"])
+@pytest.mark.parametrize("fmt", ["single", "double", "rr", "swiss"])
 def test_every_format_generates_through_the_api(auth_client, fmt):
     response = auth_client.post(
         create_url(),

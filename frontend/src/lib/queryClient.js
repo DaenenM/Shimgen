@@ -79,6 +79,9 @@ export const queryKeys = {
   roster: {
     all: ['roster'],
   },
+  savedTeams: {
+    all: ['saved-teams'],
+  },
   friends: {
     all: ['friends'],
     accepted: ['friends', 'accepted'],

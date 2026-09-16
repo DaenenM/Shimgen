@@ -8,7 +8,6 @@ const FORMAT_LABELS = {
   double: 'Double elimination',
   rr: 'Round robin',
   swiss: 'Swiss',
-  ffa: 'Free-for-all',
 }
 
 /**
@@ -28,7 +27,6 @@ const FORMAT_LABELS_SHORT = {
   double: 'Double',
   rr: 'Round robin',
   swiss: 'Swiss',
-  ffa: 'Free-for-all',
 }
 
 /**
@@ -46,7 +44,6 @@ const FORMAT_HUES = {
   double: 195,
   rr: 150,
   swiss: 300,
-  ffa: 55,
 }
 
 const formatTone = (format) => {

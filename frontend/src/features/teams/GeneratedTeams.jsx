@@ -56,7 +56,10 @@ export function GeneratedTeams({ teams, teamNames, nameFor, onRename, onArrange 
       <Link
         to={paths.quickStart}
         state={{
-          names: teams.map((_, i) => nameFor(i)),
+          // The players, not the team names: this seeds the solo and captains
+          // box, which takes people. Team names there turned "Team 1" into a
+          // player the moment the host switched mode.
+          names: teams.flatMap((team) => team.map((p) => p.name)),
           squads: teams.map((team, i) => ({
             label: nameFor(i),
             members: team.map((p) => p.name),

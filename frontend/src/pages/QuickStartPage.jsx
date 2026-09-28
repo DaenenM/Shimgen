@@ -1,5 +1,4 @@
 import { Info, Trophy } from '@/components/icons'
-import { useState } from 'react'
 
 import { PageShell } from '@/components/layout/PageShell'
 import { ActionSheen } from '@/components/ui/ActionButton'
@@ -38,9 +37,6 @@ export function QuickStartPage() {
   const { isAuthenticated } = useAuth()
   const form = useNewTournamentForm()
   const { mode, create, blocker, warning } = form
-  // Page state rather than form state: it changes how the teams are shown,
-  // not what gets created.
-  const [teamsExpanded, setTeamsExpanded] = useState(false)
 
   return (
     <PageShell width="wide" className="glass-backdrop">
@@ -120,14 +116,11 @@ export function QuickStartPage() {
                   className="mb-4"
                 />
 
-                {/* The entrant list scrolls inside itself rather than growing the
-                  page. Capped against the viewport so it always ends above the
-                  fold — unless the host has opened the teams out to see them
-                  all at once, when the page scrolls instead. */}
+                {/* The teams grow the page rather than scrolling inside a capped
+                  box: squeezed into one on a phone, the cards stacked on top of
+                  each other, and an expand toggle was one more thing to find. */}
                 <div
-                  className={`flex flex-col ${
-                    mode === 'teams' && teamsExpanded ? '' : 'max-h-[calc(100vh-21rem)]'
-                  }`}
+                  className={`flex flex-col ${mode === 'teams' ? '' : 'max-h-[calc(100vh-21rem)]'}`}
                 >
                   {mode === 'teams' ? (
                     <TeamBuilder
@@ -135,8 +128,6 @@ export function QuickStartPage() {
                       onChange={form.setTeams}
                       activeTeam={form.activeTeam}
                       onFocusTeam={form.setActiveTeam}
-                      expanded={teamsExpanded}
-                      onExpandedChange={setTeamsExpanded}
                     />
                   ) : (
                     <RosterPicker

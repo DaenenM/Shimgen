@@ -1,5 +1,5 @@
-import { ChevronDown, Plus, Trash2 } from '@/components/icons'
-import { useEffect, useRef, useState } from 'react'
+import { Plus, Trash2 } from '@/components/icons'
+import { useState } from 'react'
 
 import { Select } from '@/components/ui/Select'
 import { DraggableMembers, TeamDragProvider } from '@/features/teams/TeamDrag'
@@ -7,7 +7,6 @@ import { useTeamDropTarget } from '@/features/teams/teamDragState'
 import { TeamCardShell } from '@/features/teams/TeamCardShell'
 import { teamTone } from '@/features/teams/tone'
 import { useAutoSaveRoster } from '@/hooks/useAutoSaveRoster'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useRoster } from '@/hooks/useRoster'
 
 /**
@@ -25,56 +24,13 @@ import { useRoster } from '@/hooks/useRoster'
  *
  * The saved roster lives beside the form as its own column, and `activeTeam`
  * says which card its clicks land in.
+ *
+ * The list grows with its teams and the page scrolls — it is not capped into
+ * a scroll box of its own. Capped, the cards crushed together on a phone.
  */
-export function TeamBuilder({
-  teams,
-  onChange,
-  activeTeam = 0,
-  onFocusTeam = () => {},
-  expanded = false,
-  onExpandedChange = () => {},
-}) {
+export function TeamBuilder({ teams, onChange, activeTeam = 0, onFocusTeam = () => {} }) {
   const { remember } = useRoster()
   const [autoSave] = useAutoSaveRoster()
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
-
-  // Whether the capped list has more than it can show — the expand toggle is
-  // only worth a row when there is something hidden behind it. Measured by a
-  // ResizeObserver on the list *and* its children: the list's own box does not
-  // change size when a team is added to it (it is capped), its content does.
-  const root = useRef(null)
-  const list = useRef(null)
-  const [overflowing, setOverflowing] = useState(false)
-
-  useEffect(() => {
-    const el = list.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-
-    const observer = new ResizeObserver(() => {
-      setOverflowing(el.scrollHeight > el.clientHeight + 1)
-    })
-    observer.observe(el)
-    for (const child of el.children) observer.observe(child)
-
-    return () => observer.disconnect()
-  }, [teams.length, expanded])
-
-  /**
-   * Open the list out onto the page, or fold it back.
-   *
-   * Collapsing after scrolling down through a long list would otherwise leave
-   * the reader looking at whatever moved up into the space — so the heading is
-   * brought back into view, but only if it has gone off the top.
-   */
-  function toggleExpanded() {
-    const next = !expanded
-    onExpandedChange(next)
-
-    if (!next && root.current && root.current.getBoundingClientRect().top < 0) {
-      root.current.scrollIntoView({ block: 'start', behavior: reducedMotion ? 'auto' : 'smooth' })
-    }
-  }
-
   const update = (index, patch) =>
     onChange(teams.map((team, i) => (i === index ? { ...team, ...patch } : team)))
 
@@ -98,10 +54,7 @@ export function TeamBuilder({
   const assigned = new Set(teams.flatMap((team) => team.members.map((name) => name.toLowerCase())))
 
   return (
-    // A column that fills whatever height it is given, so the list between the
-    // header and the add button is the only part that scrolls — both stay put
-    // and reachable no matter how many teams there are.
-    <div ref={root} className="@container flex min-h-0 scroll-mt-20 flex-col gap-3">
+    <div className="@container flex flex-col gap-3">
       <div className="flex shrink-0 items-baseline justify-between">
         <span className="text-sm font-medium">
           Teams <span className="text-base-content/50">({teams.length})</span>
@@ -144,30 +97,8 @@ export function TeamBuilder({
         {/* Two across once the column is wide enough (28rem), one below it.
             A container query rather than a breakpoint: what matters is the
             width of this column, not the screen — two across in a narrow
-            column truncated every team name to "Tea…".
-
-            The padding is for the outlines: this list scrolls, so it clips, and
-            the active card's ring sits 2px outside the card. The negative
-            margins cancel it, so the cards still line up with the heading above
-            and the "Add a team" button below.
-
-            On the right the list reaches out through the form panel's own
-            1.25rem padding, so the scrollbar runs down the panel's edge rather
-            than floating in the middle of the form. `pr-3` plus a thin
-            scrollbar (~8px) gives back almost exactly that 1.25rem, and the
-            stable gutter keeps the cards the same width whether the list is
-            long enough to scroll or not.
-
-            Expanded, none of that applies: the page scrolls instead, so the
-            list is just a column of cards with room for their outlines. */}
-        <ul
-          ref={list}
-          className={`-my-1 -ml-1 grid min-h-0 flex-1 grid-cols-1 content-start items-start gap-3 py-1 pl-1 @md:grid-cols-2 ${
-            expanded
-              ? '-mr-1 pr-1'
-              : '-mr-5 [scrollbar-width:thin] [scrollbar-gutter:stable] overflow-y-auto pr-3'
-          }`}
-        >
+            column truncated every team name to "Tea…". */}
+        <ul className="grid grid-cols-1 items-start gap-3 @md:grid-cols-2">
           {teams.map((team, index) => (
             <TeamCard
               key={index}
@@ -190,23 +121,6 @@ export function TeamBuilder({
         <Plus className="h-4 w-4" />
         Add a team
       </button>
-
-      {(overflowing || expanded) && (
-        // A chevron that points the way it will move the list: down to open it
-        // out onto the page, up to fold it back into its scroll box.
-        <button
-          type="button"
-          onClick={toggleExpanded}
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse the team list' : 'Show all teams'}
-          title={expanded ? 'Collapse' : 'Show all teams'}
-          className="text-base-content/50 hover:text-base-content hover:bg-base-content/8 mx-auto -mt-1 grid h-8 w-12 shrink-0 place-items-center rounded-full transition-colors duration-150"
-        >
-          <ChevronDown
-            className={`h-5 w-5 transition-transform duration-200 ease-out ${expanded ? 'rotate-180' : ''}`}
-          />
-        </button>
-      )}
 
       {teams.length === 1 && (
         <p className="text-base-content/50 text-center text-xs">
@@ -235,11 +149,7 @@ function TeamCard({ team, index, active, onFocus, onUpdate, onRemove }) {
       onRename={(label) => onUpdate({ label })}
       count={team.members.length}
       surface="glass-inset"
-      // `shrink-0` is load-bearing. The list is a height-capped flex column, and
-      // flex items shrink by default — so once the teams outgrew it, every card
-      // was squashed instead of the list scrolling, and the card's own
-      // `overflow-hidden` cut off its last players.
-      className={`shrink-0 cursor-pointer ${drop.highlight.className}`}
+      className={`cursor-pointer ${drop.highlight.className}`}
       style={drop.highlight.style}
       actions={
         <button

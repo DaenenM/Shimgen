@@ -90,6 +90,7 @@ export function TeamGeneratorPage() {
                 teamNames={gen.teamNames}
                 nameFor={gen.nameFor}
                 onRename={gen.renameTeam}
+                onArrange={gen.arrangeTeams}
               />
             ) : (
               <div className="border-base-content/12 text-base-content/40 flex h-full min-h-[16rem] items-center justify-center rounded-[1.25rem] border border-dashed p-8 text-center text-sm">

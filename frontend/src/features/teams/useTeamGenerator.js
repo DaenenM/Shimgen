@@ -175,6 +175,23 @@ export function useTeamGenerator() {
   const renameTeam = (index, name) => patch({ teamNames: { ...teamNames, [index]: name } })
   const nameFor = (index) => teamNames[index]?.trim() || `Team ${index + 1}`
 
+  /**
+   * Rearrange the rolled teams by hand — a player dragged from one team to
+   * another, or up and down within one.
+   *
+   * `groups` is the teams as lists of player ids in their new order. Ids rather
+   * than names because two players may share a name; the records themselves
+   * are looked up again, so nothing about a player changes except where they
+   * sit. Stored like any other result, so a reload keeps the adjustment, and
+   * the next re-roll avoids this arrangement just as it would a rolled one.
+   */
+  function arrangeTeams(groups) {
+    const byId = new Map((result?.teams ?? []).flat().map((player) => [String(player.id), player]))
+    patch({
+      result: { teams: groups.map((ids) => ids.map((id) => byId.get(id)).filter(Boolean)) },
+    })
+  }
+
   return {
     names,
     rosterText,
@@ -196,5 +213,6 @@ export function useTeamGenerator() {
     removeConstraint,
     renameTeam,
     nameFor,
+    arrangeTeams,
   }
 }

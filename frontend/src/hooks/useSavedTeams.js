@@ -29,12 +29,15 @@ export function useSavedTeams() {
     [queryClient],
   )
 
+  // SavedTeamsPage shows create and update errors inside their own forms.
   const create = useMutation({
+    meta: { errorShown: true },
     mutationFn: (payload) => savedTeamsApi.create(payload),
     onSuccess: invalidate,
   })
 
   const update = useMutation({
+    meta: { errorShown: true },
     mutationFn: ({ id, ...payload }) => savedTeamsApi.update(id, payload),
     onSuccess: invalidate,
   })

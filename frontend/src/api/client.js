@@ -55,6 +55,19 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+/**
+ * Wording for a response that arrived without the envelope.
+ *
+ * Only responses Django never handed to DRF land here: an unhandled exception's
+ * HTML 500, or a proxy's 502/504 while the host restarts.
+ */
+function fallbackMessage(status) {
+  if (status >= 500) return 'Something broke on our end. Try again in a moment.'
+  if (status === 404) return 'That could not be found. It may have been deleted.'
+  if (status === 413) return 'That is too large to upload.'
+  return 'Something went wrong. Try again.'
+}
+
 // Shared across every 401 that arrives while a refresh is already running.
 let refreshPromise = null
 
@@ -95,9 +108,15 @@ api.interceptors.response.use(
 
     // No response at all: offline, DNS failure, CORS rejection or timeout.
     if (!response) {
+      // A timeout is worth telling apart: the host sleeps when idle, so the
+      // first request after a quiet spell can outlast the 20s limit while the
+      // connection itself is fine.
+      const timedOut = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
       throw new ApiError({
-        message: 'Could not reach the server. Check your connection.',
-        code: 'network_error',
+        message: timedOut
+          ? 'The server took too long to respond. It may be starting up — try again in a moment.'
+          : 'Could not reach the server. Check your connection.',
+        code: timedOut ? 'timeout' : 'network_error',
         status: 0,
       })
     }
@@ -116,9 +135,18 @@ api.interceptors.response.use(
       }
     }
 
+    // Past the refresh, a 401 means the session is over. The server's wording
+    // ("Given token not valid for any token type") is for developers.
+    // Only when a token was actually sent: signed out, there was no session to
+    // expire and the server's "credentials were not provided" is accurate.
+    const sessionEnded =
+      response.status === 401 && !isAuthEndpoint && Boolean(config?.headers?.Authorization)
+
     const envelope = response.data?.error
     throw new ApiError({
-      message: envelope?.message ?? 'Something went wrong.',
+      message: sessionEnded
+        ? 'Your session has expired. Sign in again.'
+        : (envelope?.message ?? fallbackMessage(response.status)),
       code: envelope?.code ?? 'error',
       details: envelope?.details,
       status: response.status,

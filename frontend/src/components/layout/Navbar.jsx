@@ -3,6 +3,7 @@ import { BarChart3, ChevronDown, House, LogOut, Shuffle, Trophy, Users } from '@
 import { Link, NavLink } from 'react-router-dom'
 
 import { friends as friendsApi } from '@/api/endpoints'
+import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/hooks/useAuth'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
@@ -160,12 +161,6 @@ function AccountMenu({ user, onLogout }) {
 
   const waiting = pending?.length ?? 0
 
-  // A single initial rather than a generated avatar image: no network request,
-  // no layout shift, and it still gives the menu a recognisable anchor. One
-  // letter rather than two — at 32px a two-letter pair is set small enough to
-  // read as a smudge, where one glyph fills the square and stays legible.
-  const initials = (user?.display_name || user?.username || '?').slice(0, 1).toUpperCase()
-
   return (
     <div className="dropdown dropdown-end">
       <button
@@ -174,9 +169,7 @@ function AccountMenu({ user, onLogout }) {
         aria-label="Account menu"
       >
         <span className="relative">
-          <span className="from-primary to-secondary text-primary-content grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br text-xs font-bold">
-            {initials}
-          </span>
+          <Avatar name={user?.display_name || user?.username} />
           {/* A dot rather than a number: the menu below carries the count, and
               this only has to say "there is something in here". */}
           {waiting > 0 && (

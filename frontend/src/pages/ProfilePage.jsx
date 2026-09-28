@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { auth } from '@/api/endpoints'
 import { LogOut } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -14,6 +15,7 @@ export function ProfilePage() {
   const [saved, setSaved] = useState(false)
 
   const save = useMutation({
+    meta: { errorShown: true },
     mutationFn: () =>
       auth.updateMe({ display_name: displayName.trim(), username: username.trim() }),
     onSuccess: (updated) => {
@@ -101,14 +103,7 @@ export function ProfilePage() {
             </span>
           </label>
 
-          {save.isError && (
-            <div
-              role="alert"
-              className="border-error/30 bg-error/12 text-error rounded-xl border px-3 py-2 text-sm"
-            >
-              {save.error.message}
-            </div>
-          )}
+          <ErrorAlert>{save.error?.message}</ErrorAlert>
 
           <button
             type="submit"

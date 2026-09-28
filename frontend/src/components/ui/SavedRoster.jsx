@@ -1,46 +1,34 @@
-import { Archive, Check, Plus, Trash2, User, Users, X } from '@/components/icons'
+import { Archive, Check, Plus, Save, Trash2, User, Users, X } from '@/components/icons'
 import { useMemo } from 'react'
 
+import { Toggle } from '@/components/ui/Toggle'
+import { useAutoSaveRoster } from '@/hooks/useAutoSaveRoster'
 import { useRoster } from '@/hooks/useRoster'
 
 /**
- * `glass` is opt-in rather than the default: the Team Generator is the only
- * page trialling the glass treatment, and the flat card is still correct
- * everywhere else until that look is signed off.
+ * The saved roster rail: every saved name, one click to put them in or take
+ * them out of whatever is being built.
  *
- * `maxHeight` caps the card, scrolling the list past that point while still
- * shrinking to fit a short roster — so four saved names give a small card, not
- * a tall empty one. Callers pass the measured height of a sibling (see
- * `useElementHeight`); CSS alone cannot express "as tall as my sibling, but no
- * taller than my content", because in a grid the row's height is derived from
- * the items in it, which makes the constraint circular.
+ * The same rail on the team generator and the new-tournament form, and it
+ * decides everything about how it looks and sizes itself — the pages only say
+ * what is selected and where a click goes. Width, height, surface and title
+ * used to be props, and each page set them differently: one capped the rail to
+ * its neighbour's measured height, one to a fixed 26rem; one pinned the rail,
+ * one pinned the column; one retitled it per team. The two rails drifted into
+ * two different-feeling controls. Now there are no such props to disagree on.
+ *
+ * The list scrolls inside the rail past 26rem, or sooner on a short screen, so
+ * a long roster never pushes the page. Pinning is the page column's job —
+ * the new-tournament form stacks saved teams under this rail, and a sticky
+ * child would ride up over its sibling.
+ *
+ * `target`, when a click lands in one of several places — a team in the
+ * tournament form — is `{ label, color }` and is shown under the title, in the
+ * team's colour, so it is clear where a name is about to go.
  */
-export function SavedRoster({
-  selected,
-  onAdd,
-  onRemove,
-  title = 'Saved roster',
-  glass = false,
-  maxHeight = null,
-  // Whether this card pins itself to the viewport on a tall page. Off when it
-  // is one panel of a stack: a sticky child detaches from its siblings and
-  // rides up over them, which is what put this card on top of the saved-teams
-  // panel below it. A stack pins as a whole from its wrapper instead.
-  sticky = true,
-}) {
-  const surface = glass ? 'glass-panel' : 'card bg-base-100 border-base-300 border'
-
-  // `self-start` keeps the card shrink-wrapped to its contents. The cap is a
-  // max-height rather than a height, so a short roster stays short.
-  // `min-w-0 w-full` for the same reason as the team picker: without it a long
-  // name sets the card's width instead of the column doing it, and `truncate`
-  // has nothing to truncate against.
-  const sizing = maxHeight
-    ? 'w-full min-w-0 self-start overflow-hidden'
-    : `w-full min-w-0 self-start ${sticky ? 'lg:sticky lg:top-20' : ''}`
-  const capStyle = maxHeight ? { maxHeight: `${maxHeight}px` } : undefined
-
+export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
   const { players, forget, archive, isLoading } = useRoster()
+  const [autoSave, setAutoSave] = useAutoSaveRoster()
 
   /**
    * You first, then friends alphabetically, then everybody else as they came.
@@ -72,9 +60,13 @@ export function SavedRoster({
 
   const chosen = new Set(selected.map((n) => n.toLowerCase()))
 
+  // `min-w-0` so a long name truncates against the column rather than setting
+  // its width.
+  const shell = 'glass-panel flex w-full min-w-0 flex-col self-start'
+
   if (isLoading) {
     return (
-      <aside className={`${surface} ${sizing}`} style={capStyle}>
+      <aside className={shell}>
         <div className="flex flex-col gap-2 p-3">
           <span className="loading loading-spinner loading-sm self-center" />
         </div>
@@ -83,18 +75,38 @@ export function SavedRoster({
   }
 
   return (
-    <aside className={`${surface} ${sizing} flex flex-col`} style={capStyle}>
+    <aside className={shell}>
       <div className="flex min-h-0 flex-col gap-3 py-3">
-        <div className="px-3">
-          <span className="flex items-center gap-1.5 text-sm font-medium">
-            <Users className="h-4 w-4" />
-            {title}
-          </span>
-          <p className="text-base-content/50 mt-0.5 text-xs">
-            {players.length === 0
-              ? 'Names you use are remembered here.'
-              : 'Click a name to add or remove them.'}
-          </p>
+        <div className="flex items-center justify-between gap-2 px-3">
+          <div className="min-w-0">
+            <span className="flex items-center gap-1.5 text-sm font-medium">
+              <Users className="h-4 w-4 shrink-0" />
+              <span className="truncate">Saved roster</span>
+            </span>
+            {target && (
+              <span
+                className="mt-0.5 flex items-center gap-1.5 text-xs font-medium"
+                style={{ color: target.color }}
+              >
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: target.color }}
+                  aria-hidden="true"
+                />
+                <span className="truncate">Adding to {target.label}</span>
+              </span>
+            )}
+          </div>
+          {/* Icon only: the rail is narrow, and the save glyph on the knob says
+              what the switch is for. The name is still there for hover and
+              for screen readers. */}
+          <Toggle
+            label={autoSave ? 'Saving new names to your roster' : 'Not saving new names'}
+            checked={autoSave}
+            onChange={setAutoSave}
+            icon={Save}
+            hideLabel
+          />
         </div>
 
         {players.length === 0 ? (
@@ -102,9 +114,7 @@ export function SavedRoster({
             Nobody saved yet. The names you add will show up here next time.
           </p>
         ) : (
-          <ul
-            className={`space-y-0.5 overflow-y-auto pr-1 pl-3 ${maxHeight ? 'min-h-0' : 'max-h-[26rem]'}`}
-          >
+          <ul className="max-h-[min(26rem,calc(100vh-14rem))] space-y-0.5 overflow-y-auto pr-1 pl-3">
             {ordered.map((player) => {
               const added = chosen.has(player.display_name.toLowerCase())
 

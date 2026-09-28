@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigation } from 'react-router-dom'
 
 import { RouteErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { PageLoader } from '@/components/ui/PageLoader'
@@ -23,8 +23,14 @@ export function RootLayout() {
   useDocumentTitle()
   useScrollToTop()
 
+  // True while a navigation waits on a page chunk that has not arrived yet.
+  // The current page stays up meanwhile, so this bar is the only sign that
+  // the click registered.
+  const navigating = useNavigation().state === 'loading'
+
   return (
     <div className="bg-base-200 flex min-h-screen flex-col">
+      <NavigationProgress active={navigating} />
       {/* Two navigations, one per breakpoint: the Navbar hides itself under
           `lg`, and MobileNav hides itself at `lg` and above. */}
       <Navbar />
@@ -51,5 +57,27 @@ export function RootLayout() {
 
       <Footer />
     </div>
+  )
+}
+
+/**
+ * A thin bar across the top while a page is on its way.
+ *
+ * Held back for 150ms before it shows, so a page that arrives quickly — which
+ * is every page once the background preload has run — never flashes it.
+ */
+function NavigationProgress({ active }) {
+  return (
+    <div
+      aria-hidden="true"
+      // Creeps toward three quarters while waiting, since how long is unknown,
+      // and is gone the moment the page lands. It resets without a transition,
+      // so it never visibly runs backwards.
+      className={`bg-primary pointer-events-none fixed inset-x-0 top-0 z-[70] h-0.5 origin-left ${
+        active
+          ? 'scale-x-75 opacity-100 transition-[transform,opacity] delay-150 duration-[1500ms] ease-out'
+          : 'scale-x-0 opacity-0'
+      }`}
+    />
   )
 }

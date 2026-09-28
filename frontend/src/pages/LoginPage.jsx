@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton'
 import { useAuth } from '@/hooks/useAuth'
 import { paths } from '@/routes/paths'
@@ -71,14 +72,7 @@ export function LoginPage() {
             </p>
           </div>
 
-          {error && (
-            <div
-              role="alert"
-              className="border-error/30 bg-error/12 text-error rounded-xl border px-3 py-2 text-sm"
-            >
-              {error}
-            </div>
-          )}
+          <ErrorAlert>{error}</ErrorAlert>
 
           <label className="form-control">
             <span className="label-text mb-1">Email</span>

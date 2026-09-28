@@ -1,11 +1,13 @@
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { useEffect } from 'react'
 import { RouterProvider } from 'react-router-dom'
 
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { Toaster } from '@/components/ui/Toaster'
 import { AuthProvider } from '@/context/AuthProvider'
 import { persistOptions } from '@/lib/persist'
 import { queryClient } from '@/lib/queryClient'
-import { router } from '@/routes/router'
+import { preloadPages, router } from '@/routes/router'
 
 /**
  * Provider stack.
@@ -23,12 +25,17 @@ import { router } from '@/routes/router'
  * deliberately not.
  */
 export default function App() {
+  // Once, after the first page is up: fetch the rest in the background, so no
+  // later navigation waits on a download.
+  useEffect(preloadPages, [])
+
   return (
     <ErrorBoundary>
       <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
         <AuthProvider>
           <RouterProvider router={router} />
         </AuthProvider>
+        <Toaster />
       </PersistQueryClientProvider>
     </ErrorBoundary>
   )

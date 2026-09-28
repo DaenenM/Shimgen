@@ -501,6 +501,55 @@
       transform: translate3d(0, 0, 0);
     }
   }
+
+  /* A dragged player being picked up: a small scale with a slight overshoot,
+     so it reads as lifted off the card rather than swapped for a copy. Scale
+     only — the tilt is the drag's own physics (`LiftedPlayer`), which leans
+     with sideways speed and sits level otherwise; a fixed tilt here would
+     leave it leaning while dragged straight up or down. */
+  .pill-lift {
+    animation: pill-lift 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  @keyframes pill-lift {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.06);
+    }
+  }
+
+  /* A dropdown list opening: a short fade and a few pixels of drop, so it
+     reads as coming out of its trigger rather than appearing over the page. */
+  .menu-in {
+    animation: menu-in 0.14s cubic-bezier(0.2, 0, 0, 1);
+    transform-origin: top;
+  }
+
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
+
+  /* And set down: dnd-kit tags the overlay with `pill-drop` while it glides
+     back into the slot, so the scale unwinds over the same flight rather than
+     snapping off when the overlay unmounts. Any lean left over settles on its
+     own — the pointer has stopped, so the spring is already pulling it level. */
+  .pill-drop .pill-lift {
+    animation: pill-settle 0.22s cubic-bezier(0.2, 0, 0, 1) forwards;
+  }
+
+  @keyframes pill-settle {
+    from {
+      transform: scale(1.06);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
 }
 
 @layer utilities {

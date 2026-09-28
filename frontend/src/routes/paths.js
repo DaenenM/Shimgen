@@ -35,7 +35,7 @@ export const paths = {
 
   // The no-account quick start (plan §4, NEW 6): build a bracket in ten seconds,
   // get prompted to save it afterwards.
-  quickStart: '/new',
+  quickStart: '/new-tournament',
 
   login: '/login',
   register: '/register',

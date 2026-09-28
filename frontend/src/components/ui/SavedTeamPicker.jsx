@@ -1,5 +1,6 @@
 import { Plus, Users } from '@/components/icons'
 
+import { TeamCrest } from '@/components/ui/TeamCrest'
 import { useSavedTeams } from '@/hooks/useSavedTeams'
 
 /**
@@ -51,11 +52,6 @@ export function SavedTeamPicker({ onPick, placed = [], glass = false, maxHeight 
             <Users className="h-4 w-4" />
             Saved teams
           </span>
-          <p className="text-base-content/50 mt-0.5 text-xs">
-            {teams.length === 0
-              ? 'Squads you save show up here.'
-              : 'Click a team to add it and its players.'}
-          </p>
         </div>
 
         {teams.length === 0 ? (
@@ -84,7 +80,7 @@ export function SavedTeamPicker({ onPick, placed = [], glass = false, maxHeight 
                     }
                     className="hover:bg-primary/10 hover:text-primary flex w-full min-w-0 items-center gap-2 rounded-lg px-1 py-1.5 text-left text-sm transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
                   >
-                    <TeamCrest team={team} />
+                    <TeamCrest team={team} size="sm" />
 
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{team.name}</span>
@@ -104,21 +100,5 @@ export function SavedTeamPicker({ onPick, placed = [], glass = false, maxHeight 
         )}
       </div>
     </aside>
-  )
-}
-
-/** The team's logo, or its initial when it has none. */
-function TeamCrest({ team }) {
-  if (team.logo) {
-    return <img src={team.logo} alt="" className="h-7 w-7 shrink-0 rounded-md object-cover" />
-  }
-
-  return (
-    <span
-      className="from-primary to-secondary text-primary-content grid h-7 w-7 shrink-0 place-items-center rounded-md bg-gradient-to-br text-[0.625rem] font-bold"
-      aria-hidden="true"
-    >
-      {(team.name || '?').slice(0, 1).toUpperCase()}
-    </span>
   )
 }

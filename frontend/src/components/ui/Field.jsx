@@ -49,14 +49,6 @@ export function TextArea({ className = '', rows = 4, ...rest }) {
   )
 }
 
-export function Select({ className = '', children, ...rest }) {
-  return (
-    <select className={`${CONTROL} ${className}`} {...rest}>
-      {children}
-    </select>
-  )
-}
-
 /**
  * A group of mutually exclusive choices, as cards rather than radio dots.
  *

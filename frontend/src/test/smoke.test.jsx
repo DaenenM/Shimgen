@@ -56,7 +56,7 @@ describe('token store', () => {
 describe('ApiError', () => {
   it('exposes per-field messages from the error envelope', () => {
     const error = new ApiError({
-      message: 'Validation failed.',
+      message: 'Email: Already registered.',
       code: 'validation_error',
       details: { email: ['Already registered.'] },
       status: 400,
@@ -604,7 +604,7 @@ describe('Button', () => {
   // If the component swallowed unknown props that handoff would break silently.
   it('passes extra props through to the link', () => {
     wrap(
-      <Button to="/new" state={{ squads: [] }} data-testid="handoff">
+      <Button to="/new-tournament" state={{ squads: [] }} data-testid="handoff">
         Put these teams in a bracket
       </Button>,
     )

@@ -1,3 +1,4 @@
+import { useAutoSaveRoster } from '@/hooks/useAutoSaveRoster'
 import { useRoster } from '@/hooks/useRoster'
 
 /**
@@ -13,8 +14,11 @@ export function RosterPicker({ value, onChange, count, glass = false, onClear })
   // Saved on blur rather than per keystroke — a save on every character
   // would spam the roster with half-typed names.
   const { remember } = useRoster()
+  // Switched off from the saved roster's header, for one-off names.
+  const [autoSave] = useAutoSaveRoster()
 
   function handleBlur() {
+    if (!autoSave) return
     const names = value
       .split(/[\n,]/)
       .map((n) => n.trim())

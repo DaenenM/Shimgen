@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 import { ApiError } from '@/api/client'
 import { roster } from '@/api/endpoints'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton'
 import { useAuth } from '@/hooks/useAuth'
 import { useLocalRoster } from '@/hooks/useLocalRoster'
@@ -92,14 +93,7 @@ export function RegisterPage() {
             </p>
           </div>
 
-          {errors._ && (
-            <div
-              role="alert"
-              className="border-error/30 bg-error/12 text-error rounded-xl border px-3 py-2 text-sm"
-            >
-              {errors._}
-            </div>
-          )}
+          <ErrorAlert>{errors._}</ErrorAlert>
 
           <label className="form-control">
             <span className="label-text mb-1">

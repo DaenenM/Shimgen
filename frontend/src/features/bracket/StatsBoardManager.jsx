@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Check, ChevronDown, Plus } from '@/components/icons'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { boards as boardsApi } from '@/api/endpoints'
+import { useDismiss } from '@/hooks/useDismiss'
 import { queryKeys } from '@/lib/queryClient'
 
 /**
@@ -28,24 +29,7 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
   const [createError, setCreateError] = useState(null)
   const container = useRef(null)
 
-  useEffect(() => {
-    if (!open) return
-
-    const onPointerDown = (event) => {
-      if (!container.current?.contains(event.target)) setOpen(false)
-    }
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
+  useDismiss(container, open, () => setOpen(false))
 
   // Only asked for once the menu is open: a bracket page should not fetch a
   // board list nobody has looked at.

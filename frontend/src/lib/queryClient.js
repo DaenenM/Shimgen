@@ -5,11 +5,29 @@
  * monitor for hours, and a roster that changes rarely.
  */
 
-import { QueryClient } from '@tanstack/react-query'
+import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 
 import { ApiError } from '@/api/client'
+import { toast } from '@/lib/toast'
 
 export const queryClient = new QueryClient({
+  // A failed action is toasted unless the mutation shows its own error inline
+  // — mark those `meta: { errorShown: true }`. Toasting by default means a new
+  // mutation can never fail silently just because nobody wired up its error.
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      if (mutation.meta?.errorShown) return
+      toast.error(error.message)
+    },
+  }),
+  queryCache: new QueryCache({
+    // Only a failed *refetch* is toasted. A first load has no data to show, so
+    // the page renders its own empty or error state; a refetch failing behind
+    // cached data would otherwise leave stale data looking current.
+    onError: (error, query) => {
+      if (query.state.data !== undefined) toast.error(error.message)
+    },
+  }),
   defaultOptions: {
     queries: {
       // Two minutes of freshness. Anything that changes because of something

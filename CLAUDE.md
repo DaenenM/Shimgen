@@ -43,6 +43,7 @@ advancement code.
 | A route                        | `frontend/src/routes/paths.js` + `router.jsx`|
 | A page                         | `frontend/src/pages/`                        |
 | A self-contained product slice | `frontend/src/features/<name>/`              |
+| A page's queries and mutations | a `use<Thing>` hook in that feature folder   |
 | Something shared + presentational | `frontend/src/components/ui/`             |
 
 ## Conventions
@@ -52,6 +53,13 @@ advancement code.
   exceptions and let it do the work.
 - Query keys come from `queryKeys` in `lib/queryClient.js`. Never inline.
 - Route paths come from `paths` in `routes/paths.js`. Never inline.
+- Pages compose; they don't hold logic. Data lives in a feature hook, sections
+  are feature components, and a page file should read top to bottom as layout.
+- Every dropdown is `components/ui/Select` — never a native `<select>`, whose
+  list the OS draws and the glass cannot match.
+- Reach for `components/ui/` before hand-rolling: `Button`, `ErrorAlert`,
+  `CopyLinkButton`, `SegmentedControl`, `Stepper`, `Toggle`, `Avatar`, `TeamCrest`, and
+  `useDismiss` for popovers.
 - Run `ruff check . --fix && ruff format .` before finishing backend work,
   `npm run lint && npm run format` before finishing frontend work.
 - Comments explain *why*, not *what*. Reference plan sections (plan §4, NEW 1)

@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { Check, Plus, UserPlus, Users, X } from '@/components/icons'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { friends as friendsApi } from '@/api/endpoints'
 import { useAuth } from '@/hooks/useAuth'
+import { useDismiss } from '@/hooks/useDismiss'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
 
@@ -67,24 +68,7 @@ export function CohostManager({ cohosts, creatorId, onAdd, onRemove, pending }) 
 
   // Click-away and Escape, so the popover behaves like every other one on the
   // page rather than needing its own button pressed again.
-  useEffect(() => {
-    if (!open) return
-
-    const onPointerDown = (event) => {
-      if (!container.current?.contains(event.target)) setOpen(false)
-    }
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
+  useDismiss(container, open, () => setOpen(false))
 
   return (
     <div className="static sm:relative" ref={container}>

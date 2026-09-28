@@ -33,3 +33,7 @@ globalThis.ResizeObserver = class {
   unobserve() {}
   disconnect() {}
 }
+
+// Also missing from jsdom: `Select` keeps the keyboard's option in view with
+// it, and every browser has it.
+Element.prototype.scrollIntoView = function scrollIntoView() {}

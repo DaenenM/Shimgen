@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 
 const SIZES = {
-  sm: { track: 'h-9', option: 'px-3 text-sm' },
-  md: { track: 'h-9', option: 'px-4 text-sm' },
+  sm: { track: 'h-9', option: 'px-3' },
+  md: { track: 'h-9', option: 'px-4' },
 }
 
 /**
@@ -26,6 +26,12 @@ const SIZES = {
  * `options` is a list of `[value, label]` pairs. `block` stretches the track
  * to its container and shares the width equally, for a switcher that heads a
  * panel rather than sitting inline with other controls.
+ *
+ * A block track can also take `[value, label, shortLabel]`: the short one is
+ * shown while the track is under 24rem, which on a phone is where three full
+ * labels stop fitting and ran into each other. It keys off the track's own
+ * width rather than the screen's, and only for `block` — an inline track sizes
+ * to its content, so it cannot be a container without collapsing to nothing.
  */
 export function SegmentedControl({
   options,
@@ -98,7 +104,7 @@ export function SegmentedControl({
       aria-label={label}
       onKeyDown={onKeyDown}
       className={`glass-inset relative items-stretch gap-0.5 rounded-xl p-0.5 ${
-        block ? 'flex w-full' : 'inline-flex'
+        block ? '@container flex w-full' : 'inline-flex'
       } ${sizing.track} ${className}`}
     >
       {marker && (
@@ -113,7 +119,7 @@ export function SegmentedControl({
         />
       )}
 
-      {options.map(([optionValue, optionLabel], i) => {
+      {options.map(([optionValue, optionLabel, shortLabel], i) => {
         const selected = i === index
 
         return (
@@ -125,17 +131,31 @@ export function SegmentedControl({
             type="button"
             role="radio"
             aria-checked={selected}
+            // With two labels in the DOM, one hidden by CSS, the name must be
+            // pinned to the full one — not whichever the viewport happens to show.
+            aria-label={block && shortLabel ? optionLabel : undefined}
             // Roving tabindex: one stop for the whole group, on the chosen
             // option; the arrows do the rest.
             tabIndex={selected || (index === -1 && i === 0) ? 0 : -1}
             onClick={() => choose(i)}
             className={`focus-visible:outline-primary relative z-[1] rounded-[0.625rem] font-semibold whitespace-nowrap ${
-              block ? 'min-w-0 flex-1' : ''
-            } transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-1 ${
-              sizing.option
-            } ${selected ? 'text-primary' : 'text-base-content/60 hover:text-base-content'}`}
+              // Equal cells centre their labels, so padding is only a floor
+              // there — kept small so it is not what pushes a label to
+              // truncate, which is the last resort below even the short one.
+              // Under 20rem (the smallest phones) the text steps down too.
+              block
+                ? 'min-w-0 flex-1 truncate px-1 text-xs @xs:px-2 @xs:text-sm'
+                : `${sizing.option} text-sm`
+            } transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-1 ${selected ? 'text-primary' : 'text-base-content/60 hover:text-base-content'}`}
           >
-            {optionLabel}
+            {block && shortLabel ? (
+              <>
+                <span className="@sm:hidden">{shortLabel}</span>
+                <span className="hidden @sm:inline">{optionLabel}</span>
+              </>
+            ) : (
+              optionLabel
+            )}
           </button>
         )
       })}

@@ -18,13 +18,14 @@ import { useNewTournamentForm } from '@/features/new-tournament/useNewTournament
 import { teamTone } from '@/features/teams/tone'
 import { useAuth } from '@/hooks/useAuth'
 
+// The third entry is the phone label, where three full ones do not fit.
 const MODES = [
-  ['solo', 'Solo players'],
+  ['solo', 'Solo players', 'Solo'],
   ['teams', 'Teams'],
   // Captains is still a list of solo players — the teams are what the draft
   // produces, not what the host types. It shares the solo entry box for
   // exactly that reason.
-  ['captains', 'Team captains'],
+  ['captains', 'Team captains', 'Captains'],
 ]
 
 /**

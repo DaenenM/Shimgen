@@ -326,10 +326,14 @@ function AddPlayersBar({ teams, target, assigned, onTarget, onAdd }) {
           line and its border come to exactly that, matching the dropdown's
           `lg` size and the button. The side controls are held at that height and
           top-aligned, so when a pasted list grows the box downward they stay
-          level with its first line instead of drifting to its middle. */}
-      <div className="flex items-start gap-2">
+          level with its first line instead of drifting to its middle.
+
+          Under 24rem of column (a phone) the row wraps: the names box takes a
+          line of its own and the team picker stretches under it. Kept on one
+          line, the fixed-width picker left the box too narrow to type in. */}
+      <div className="flex flex-wrap items-start gap-2 @sm:flex-nowrap">
         <textarea
-          className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 min-h-0 min-w-0 flex-1 resize-none px-3 py-[9px] text-sm transition-all duration-150 focus:outline-none"
+          className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 min-h-0 w-full min-w-0 resize-none px-3 py-[9px] text-sm transition-all duration-150 focus:outline-none @sm:w-auto @sm:flex-1"
           rows={
             draft.includes('\n') || focused ? Math.min(4, Math.max(1, draft.split('\n').length)) : 1
           }
@@ -350,7 +354,7 @@ function AddPlayersBar({ teams, target, assigned, onTarget, onAdd }) {
           aria-label={`Add players to ${teamName(target)}`}
         />
 
-        <div className="flex h-10 shrink-0 items-center gap-2 text-xs">
+        <div className="flex h-10 min-w-0 flex-1 items-center gap-2 text-xs @sm:flex-none @sm:shrink-0">
           {/* Each team carries its colour as a swatch, in the list and on the
               trigger, so the dropdown and the outlined card below read as the
               same thing. */}
@@ -364,7 +368,7 @@ function AddPlayersBar({ teams, target, assigned, onTarget, onAdd }) {
               dot: teamTone(index).edge,
             }))}
             size="lg"
-            className="w-36"
+            className="w-full @sm:w-36"
             triggerClassName="font-semibold"
           />
 

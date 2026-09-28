@@ -13,6 +13,10 @@ import { useSavedTeams } from '@/hooks/useSavedTeams'
  *
  * Only useful in teams mode. In solo mode a "team" has nowhere to go, so the
  * caller hides it rather than this rendering a panel whose entries do nothing.
+ *
+ * Renders nothing until there is at least one saved team — an empty panel is a
+ * whole card beside the form that offers nothing to click. That includes while
+ * loading, so it never shows a spinner only to vanish.
  */
 export function SavedTeamPicker({ onPick, placed = [], glass = false, maxHeight = null }) {
   const { teams, isLoading } = useSavedTeams()
@@ -34,15 +38,7 @@ export function SavedTeamPicker({ onPick, placed = [], glass = false, maxHeight 
   // saved team it came from.
   const used = new Set(placed.map((label) => label.toLowerCase()))
 
-  if (isLoading) {
-    return (
-      <aside className={`${surface} ${sizing}`} style={capStyle}>
-        <div className="flex flex-col gap-2 p-3">
-          <span className="loading loading-spinner loading-sm self-center" />
-        </div>
-      </aside>
-    )
-  }
+  if (isLoading || teams.length === 0) return null
 
   return (
     <aside className={`${surface} ${sizing} flex flex-col`} style={capStyle}>
@@ -54,50 +50,44 @@ export function SavedTeamPicker({ onPick, placed = [], glass = false, maxHeight 
           </span>
         </div>
 
-        {teams.length === 0 ? (
-          <p className="text-base-content/40 px-3 py-4 text-center text-sm">
-            No saved teams yet. Build one from your roster and it will be one click away.
-          </p>
-        ) : (
-          <ul
-            className={`space-y-0.5 overflow-y-auto pr-1 pl-3 ${maxHeight ? 'min-h-0' : 'max-h-[26rem]'}`}
-          >
-            {teams.map((team) => {
-              const added = used.has(team.name.toLowerCase())
+        <ul
+          className={`space-y-0.5 overflow-y-auto pr-1 pl-3 ${maxHeight ? 'min-h-0' : 'max-h-[26rem]'}`}
+        >
+          {teams.map((team) => {
+            const added = used.has(team.name.toLowerCase())
 
-              return (
-                <li key={team.id}>
-                  <button
-                    type="button"
-                    onClick={() => onPick(team)}
-                    disabled={added}
-                    title={
-                      added
-                        ? `${team.name} is already in this tournament`
-                        : `Add ${team.name} and its ${team.members.length} player${
-                            team.members.length === 1 ? '' : 's'
-                          }`
-                    }
-                    className="hover:bg-primary/10 hover:text-primary flex w-full min-w-0 items-center gap-2 rounded-lg px-1 py-1.5 text-left text-sm transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    <TeamCrest team={team} size="sm" />
+            return (
+              <li key={team.id}>
+                <button
+                  type="button"
+                  onClick={() => onPick(team)}
+                  disabled={added}
+                  title={
+                    added
+                      ? `${team.name} is already in this tournament`
+                      : `Add ${team.name} and its ${team.members.length} player${
+                          team.members.length === 1 ? '' : 's'
+                        }`
+                  }
+                  className="hover:bg-primary/10 hover:text-primary flex w-full min-w-0 items-center gap-2 rounded-lg px-1 py-1.5 text-left text-sm transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <TeamCrest team={team} size="sm" />
 
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{team.name}</span>
-                      <span className="text-base-content/50 block truncate text-xs">
-                        {team.members.length === 0
-                          ? 'No players yet'
-                          : team.members.map((m) => m.display_name).join(', ')}
-                      </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{team.name}</span>
+                    <span className="text-base-content/50 block truncate text-xs">
+                      {team.members.length === 0
+                        ? 'No players yet'
+                        : team.members.map((m) => m.display_name).join(', ')}
                     </span>
+                  </span>
 
-                    {!added && <Plus className="h-3.5 w-3.5 shrink-0 opacity-40" />}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+                  {!added && <Plus className="h-3.5 w-3.5 shrink-0 opacity-40" />}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
       </div>
     </aside>
   )

@@ -127,6 +127,30 @@ export function useNewTournamentForm() {
     })
   }
 
+  /**
+   * Change who is entering, carrying the people across.
+   *
+   * Leaving teams mode puts every player from the teams into the players box —
+   * solo and captains both want people, not sides, so the team names have no
+   * place there. Added to whatever the box already holds, skipping anyone
+   * already in it, so switching back and forth never doubles a name. The teams
+   * themselves are kept, so switching back finds them as they were.
+   */
+  function changeMode(next) {
+    if (mode === 'teams' && next !== 'teams') {
+      const seen = new Set(names.map((n) => n.toLowerCase()))
+      const incomingNames = []
+      for (const name of teams.flatMap((t) => t.members)) {
+        const key = name.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        incomingNames.push(name)
+      }
+      if (incomingNames.length > 0) setRosterText([...names, ...incomingNames].join('\n'))
+    }
+    setMode(next)
+  }
+
   /** Put a roster name into the players box, or into the team being filled. */
   function addFromRoster(name) {
     if (mode !== 'teams') {
@@ -158,7 +182,7 @@ export function useNewTournamentForm() {
 
   return {
     mode,
-    setMode,
+    setMode: changeMode,
     rosterText,
     setRosterText,
     names,

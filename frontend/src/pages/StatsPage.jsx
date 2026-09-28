@@ -35,7 +35,7 @@ export function StatsPage() {
 
   if (!isAuthenticated) {
     return (
-      <PageShell className="glass-backdrop">
+      <PageShell width="list" className="glass-backdrop">
         <PageHeader title="Stats" />
         <EmptyState
           icon={BarChart3}
@@ -49,7 +49,7 @@ export function StatsPage() {
   }
 
   return (
-    <PageShell className="glass-backdrop">
+    <PageShell width="list" className="glass-backdrop">
       <PageHeader
         className="rise-in rise-delay-1"
         title="Stats"

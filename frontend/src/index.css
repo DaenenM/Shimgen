@@ -583,3 +583,18 @@
     }
   }
 }
+
+/* iOS Safari zooms the page in when a field under 16px is focused, and does not
+   zoom back out — so focusing the login email carried the zoom onto the
+   dashboard. `text-sm` at our 17px root is ~14.9px, just under the line.
+   Deliberately unlayered: that is what lets it beat `text-sm` and friends in
+   the utilities layer without `!important`. Touch only, so desktop keeps the
+   compact size. Preferred over `maximum-scale=1`, which also blocks pinch zoom
+   on Android. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

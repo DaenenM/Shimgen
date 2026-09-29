@@ -39,8 +39,3 @@ def best_of_for(settings: dict, round_no: int, total_rounds: int) -> int:
                 return value
 
     return 1
-
-
-def resolve_best_of(value, fallback: int = 1) -> int:
-    """Coerce a host-supplied best_of to a legal value."""
-    return value if value in VALID else fallback

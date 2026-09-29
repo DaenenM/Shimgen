@@ -13,16 +13,17 @@ incremented, which is what makes correcting a bracket correct the board.
 import pytest
 
 from apps.groups.models import Player
-from apps.stats.awarding import (
+from apps.stats.models import BoardLink, StatsBoard, StatsColumn
+from apps.stats.services.awarding import (
     apply_tournament_result,
     ensure_automatic_columns,
     sync_tournament_stats,
 )
-from apps.stats.models import BoardLink, StatsBoard, StatsColumn
 from apps.tournaments.brackets.advance import clear_result, report_result
 from apps.tournaments.brackets.single_elimination import generate_single_elimination
 from apps.tournaments.models import Entrant, Tournament
 from apps.tournaments.tests.factories import TournamentFactory
+from apps.tournaments.tests.helpers import post_result
 
 
 @pytest.fixture
@@ -358,10 +359,8 @@ def test_the_whole_thing_end_to_end(auth_client, table):
     match = tournament.matches.filter(a__isnull=False, b__isnull=False).first()
     a_wins = match.a.label == "Team Benis"
 
-    reported = auth_client.post(
-        f"/api/v1/matches/{match.id}/report/",
-        {"score_a": 1 if a_wins else 0, "score_b": 0 if a_wins else 1},
-        format="json",
+    reported = post_result(
+        auth_client, match.id, {"score_a": 1 if a_wins else 0, "score_b": 0 if a_wins else 1}
     )
     assert reported.status_code == 200
 
@@ -704,10 +703,10 @@ def test_solo_entrants_are_tracked_too(auth_client, table):
     match = tournament.matches.filter(a__isnull=False, b__isnull=False).first()
     benis_is_a = match.a.label == "Benis"
 
-    auth_client.post(
-        f"/api/v1/matches/{match.id}/report/",
+    post_result(
+        auth_client,
+        match.id,
         {"score_a": 2 if benis_is_a else 1, "score_b": 1 if benis_is_a else 2},
-        format="json",
     )
 
     assert _tally(table, "Benis", StatsColumn.Role.PLAYED) == 3
@@ -784,7 +783,7 @@ def test_deleting_a_tournament_takes_its_numbers_off_the_board(table, user):
     on its own, but the tallies it wrote would otherwise stand for ever with
     nothing to explain them.
     """
-    from apps.stats.awarding import strip_tournament_from_board
+    from apps.stats.services.awarding import strip_tournament_from_board
 
     tournament = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
     BoardLink.objects.create(tournament=tournament, table=table)
@@ -813,7 +812,7 @@ def test_deleting_a_tournament_takes_its_numbers_off_the_board(table, user):
 @pytest.mark.django_db
 def test_stripping_leaves_another_tournaments_trophy_alone(table, user):
     """Only the deleted tournament's own credit is taken back."""
-    from apps.stats.awarding import strip_tournament_from_board
+    from apps.stats.services.awarding import strip_tournament_from_board
 
     first = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
     BoardLink.objects.create(tournament=first, table=table)
@@ -849,7 +848,7 @@ def test_stripping_leaves_another_tournaments_trophy_alone(table, user):
 @pytest.mark.django_db
 def test_stripping_keeps_the_rows(table, user):
     """A player on a board is someone the crew tracks, not one night's residue."""
-    from apps.stats.awarding import strip_tournament_from_board
+    from apps.stats.services.awarding import strip_tournament_from_board
 
     tournament = _tournament(user, squads=[["Ann"], ["Bo"], ["Cal"], ["Dee"]])
     BoardLink.objects.create(tournament=tournament, table=table)

@@ -5,10 +5,8 @@ from rest_framework import serializers
 
 from .models import (
     BoardAccess,
-    BoardLink,
     StatsBoard,
     StatsColumn,
-    StatsEntry,
     StatsRow,
     StatsTable,
 )
@@ -223,16 +221,3 @@ class StatsBoardDetailSerializer(StatsBoardSerializer):
 
     class Meta(StatsBoardSerializer.Meta):
         fields = [*StatsBoardSerializer.Meta.fields, "tables", "people"]
-
-
-class BoardLinkSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BoardLink
-        fields = ["id", "tournament", "table", "column", "awarded", "awarded_at"]
-        read_only_fields = ["awarded", "awarded_at"]
-
-
-class StatsEntrySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = StatsEntry
-        fields = ["id", "row", "column", "count"]

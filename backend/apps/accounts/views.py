@@ -9,7 +9,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .google import GoogleAuthError, get_or_create_user, verify_token
 from .models import Friendship, User, sync_roster_entry
 from .serializers import (
     FriendRequestSerializer,
@@ -18,6 +17,7 @@ from .serializers import (
     RegisterSerializer,
     UserSerializer,
 )
+from .services.google import GoogleAuthError, get_or_create_user, verify_token
 
 
 class RegisterView(generics.CreateAPIView):

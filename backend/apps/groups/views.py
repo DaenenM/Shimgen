@@ -8,10 +8,8 @@ from rest_framework.response import Response
 
 from apps.common.permissions import IsOwner
 
-from .models import Game, GameMode, Player, SavedTeam
+from .models import Player, SavedTeam
 from .serializers import (
-    GameModeSerializer,
-    GameSerializer,
     PlayerBulkSerializer,
     PlayerSerializer,
     SavedTeamSerializer,
@@ -70,13 +68,6 @@ class PlayerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def merge_local(self, request):
-        """
-        Merge a logged-out roster into the account on signup.
-
-        The localStorage shape mirrors Player deliberately (plan §5), so this is
-        a straight bulk insert with no translation — which is what makes the
-        no-account path safe to offer in the first place.
-        """
         serializer = PlayerBulkSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         created = serializer.save()
@@ -84,19 +75,6 @@ class PlayerViewSet(viewsets.ModelViewSet):
         return Response({"merged": len(created)}, status=status.HTTP_201_CREATED)
 
     def perform_destroy(self, instance):
-        """
-        A roster entry backed by an account cannot be deleted, only archived.
-
-        Deleting one takes their rating history with it — `Rating` is CASCADE —
-        and for a friend or for yourself that history belongs to a real person
-        who did not ask for it to go. Archiving hides the row and keeps every
-        number attached to it, which is what somebody reaching for the control
-        actually wants.
-
-        Enforced here rather than only in the client, because a hidden button is
-        not a rule: the endpoint is a plain DELETE and anything holding a token
-        can call it.
-        """
         if instance.user_id is not None:
             raise ValidationError(
                 "This roster entry belongs to an account, so it cannot be deleted. "
@@ -135,35 +113,6 @@ class PlayerViewSet(viewsets.ModelViewSet):
         player.save(update_fields=["last_used_at", "updated_at"])
 
         return Response(self.get_serializer(player).data)
-
-
-class GameViewSet(viewsets.ModelViewSet):
-    """
-    The game catalogue.
-
-    A null group marks a global preset offered to everyone, so a new crew is not
-    starting from an empty list.
-    """
-
-    serializer_class = GameSerializer
-
-    def get_queryset(self):
-        user = self.request.user
-        queryset = Game.objects.prefetch_related("modes")
-
-        if not user.is_authenticated:
-            return queryset
-
-        return queryset.filter().distinct()
-
-
-class GameModeViewSet(viewsets.ModelViewSet):
-    serializer_class = GameModeSerializer
-
-    def get_queryset(self):
-        queryset = GameMode.objects.select_related("game")
-        game = self.request.query_params.get("game")
-        return queryset.filter(game_id=game) if game else queryset
 
 
 class SavedTeamViewSet(viewsets.ModelViewSet):

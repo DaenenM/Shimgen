@@ -30,7 +30,7 @@ class TournamentAdmin(admin.ModelAdmin):
     search_fields = ("title", "public_slug")
     raw_id_fields = ("mode", "created_by")
     # Generated in save(); editing either by hand would break existing links.
-    readonly_fields = ("public_slug", "claim_token")
+    readonly_fields = ("public_slug",)
     inlines = [EntrantInline, RoleInline]
 
 

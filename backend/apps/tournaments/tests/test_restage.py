@@ -16,6 +16,7 @@ from django.urls import reverse
 from apps.groups.models import Player
 from apps.stats.models import BoardLink, StatsBoard, StatsColumn
 from apps.tournaments.models import Tournament
+from apps.tournaments.tests.helpers import post_result
 
 pytestmark = pytest.mark.django_db
 
@@ -34,7 +35,7 @@ def board(user):
     teams = board.tables.create(name="Team wins", position=1)
 
     for table in (solo, teams):
-        from apps.stats.awarding import ensure_automatic_columns
+        from apps.stats.services.awarding import ensure_automatic_columns
 
         ensure_automatic_columns(table)
 
@@ -115,6 +116,9 @@ def test_an_untitled_bracket_gets_no_counter(auth_client):
     created = auth_client.post(
         CREATE, {"format": "single", "entrant_labels": ["A", "B"]}, format="json"
     ).json()
+    # Creation now names a bracket "Untitled Tournament N", so blank the title
+    # directly to reach the case this guards (e.g. one renamed to nothing).
+    Tournament.objects.filter(pk=created["id"]).update(title="")
 
     body = auth_client.post(restage_url(created["id"]), {}, format="json").json()
 
@@ -179,11 +183,7 @@ def test_team_rosters_survive_the_clone(auth_client, user):
 def test_the_clone_starts_empty_and_in_draft(auth_client, played):
     """The point is to play it again, not to read last week's results."""
     match = played.matches.filter(a__isnull=False, b__isnull=False).first()
-    auth_client.post(
-        reverse("v1:tournaments:match-report", args=[match.id]),
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
+    post_result(auth_client, match.id, {"score_a": 1, "score_b": 0})
 
     body = auth_client.post(restage_url(played.id), {}, format="json").json()
 
@@ -193,11 +193,7 @@ def test_the_clone_starts_empty_and_in_draft(auth_client, played):
 
 def test_the_original_is_untouched(auth_client, played):
     match = played.matches.filter(a__isnull=False, b__isnull=False).first()
-    auth_client.post(
-        reverse("v1:tournaments:match-report", args=[match.id]),
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
+    post_result(auth_client, match.id, {"score_a": 1, "score_b": 0})
 
     auth_client.post(restage_url(played.id), {}, format="json")
 

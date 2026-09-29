@@ -12,7 +12,7 @@ so a team result still teaches the system about the individuals in it.
 
 from django.db import transaction
 
-from .models import Rating
+from ..models import Rating
 
 __all__ = ["apply_match_result", "expected_score", "rate_tournament"]
 
@@ -136,7 +136,7 @@ def head_to_head(player_a, player_b, mode=None) -> dict:
     Cheap to compute from data already stored, and the most shareable thing a
     friend group produces — this is the screenshot that goes back into Discord.
     """
-    from .models import Match
+    from ..models import Match
 
     matches = Match.objects.filter(winner__isnull=False).filter(
         a__players=player_a, b__players=player_b

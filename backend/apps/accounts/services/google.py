@@ -19,7 +19,7 @@ from django.db import transaction
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
-from .models import User
+from ..models import User
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ def get_or_create_user(claims: dict) -> tuple[User, bool]:
 
     # Imported here rather than at module scope: `models` reaches into this
     # module for verification, and a top-level import would close that circle.
-    from .models import sync_self_roster_entry
+    from ..models import sync_self_roster_entry
 
     # Same as a password signup — your own name is a chip from the first
     # bracket onward, rather than something to retype every time.

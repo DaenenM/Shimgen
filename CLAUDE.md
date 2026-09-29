@@ -38,7 +38,10 @@ advancement code.
 | Adding…                        | Goes in                                      |
 | ------------------------------ | -------------------------------------------- |
 | A model                        | `backend/apps/<app>/models.py`               |
-| An endpoint                    | `views.py` + register in that app's `urls.py`|
+| An endpoint                    | `views.py` (or `views/<resource>.py`) + register in that app's `urls.py`|
+| A tournament viewset action    | the matching mixin in `apps/tournaments/views/tournament_*.py` |
+| Business logic (not HTTP)      | `backend/apps/<app>/services/<topic>.py`     |
+| Bracket generation/advancement | `backend/apps/tournaments/brackets/`         |
 | A shared abstract model        | `backend/apps/common/models.py`              |
 | A route                        | `frontend/src/routes/paths.js` + `router.jsx`|
 | A page                         | `frontend/src/pages/`                        |

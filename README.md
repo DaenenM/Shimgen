@@ -41,10 +41,21 @@ TTS/
 │   │   ├── routing.py       # WebSocket routes
 │   │   └── ws_auth.py       # JWT auth for WebSockets
 │   └── apps/
-│       ├── common/          # abstract models, slug helpers
-│       ├── accounts/        # User, Friendship
-│       ├── groups/          # Group, Player roster, Game/GameMode, Season
-│       └── tournaments/     # Tournament, Entrant, Match, Rating
+│       ├── common/          # abstract models, shared permissions, slug helpers
+│       ├── accounts/        # User, Friendship, Google sign-in
+│       ├── groups/          # Player roster, SavedTeam, Game/GameMode
+│       ├── stats/           # StatsBoard, tables/columns/rows, tournament links
+│       └── tournaments/     # Tournament, Entrant, Match, Rating, TeamDraft
+│           ├── brackets/    # the bracket engine: generators + advancement
+│           ├── services/    # business logic (creation, drafts, standings, stats…)
+│           ├── views/       # one module per resource; the viewset's actions
+│           │                #   are split into mixins by concern
+│           ├── consumers.py # WebSocket consumers
+│           └── permissions.py
+│
+│   Every app follows the same shape: models.py, serializers.py, urls.py,
+│   views (a module, or a package once it grows), services/ for logic that
+│   isn't request handling, and tests/.
 └── frontend/
     └── src/
         ├── api/             # axios client, every endpoint, token storage

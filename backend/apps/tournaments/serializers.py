@@ -11,12 +11,11 @@ from .models import (
     DraftTeam,
     Entrant,
     Match,
-    Participation,
     Role,
     TeamDraft,
     Tournament,
 )
-from .standings import champion_entrant_id
+from .services.standings import champion_entrant_id
 
 
 class EntrantSerializer(serializers.ModelSerializer):
@@ -96,13 +95,6 @@ class MatchSerializer(serializers.ModelSerializer):
         )
 
 
-class ReportResultSerializer(serializers.Serializer):
-    """A head-to-head result, as series wins."""
-
-    score_a = serializers.IntegerField(min_value=0)
-    score_b = serializers.IntegerField(min_value=0)
-
-
 class BatchOperationSerializer(serializers.Serializer):
     """One entry in a batch: report a score, or clear a match."""
 
@@ -143,16 +135,6 @@ class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
         fields = ("id", "user", "role")
-
-
-class ParticipationSerializer(serializers.ModelSerializer):
-    user = PublicUserSerializer(read_only=True)
-    entrant_label = serializers.CharField(source="entrant.label", read_only=True)
-
-    class Meta:
-        model = Participation
-        fields = ("id", "entrant", "entrant_label", "user", "status")
-        read_only_fields = ("id", "entrant", "user")
 
 
 class TournamentSerializer(serializers.ModelSerializer):
@@ -284,7 +266,7 @@ class TournamentDetailSerializer(TournamentSerializer):
         return CanReportResults().has_object_permission(request, None, obj)
 
     def get_is_host(self, obj) -> bool:
-        from apps.tournaments.views import acts_as_host
+        from apps.tournaments.permissions import acts_as_host
 
         request = self.context.get("request")
         if request is None:
@@ -505,7 +487,7 @@ class TeamDraftSerializer(serializers.ModelSerializer):
         team a player short, rather than letting a host discover it on the
         final pick.
         """
-        from .drafting import picks_per_team
+        from .services.drafting import picks_per_team
 
         pool_size = len(obj.pick_order)
         return [count + 1 for count in picks_per_team(obj.team_count, pool_size)]

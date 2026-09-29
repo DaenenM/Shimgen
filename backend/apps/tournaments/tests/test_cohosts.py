@@ -11,6 +11,7 @@ import pytest
 from apps.accounts.models import Friendship
 from apps.tournaments.models import Role, Tournament
 from apps.tournaments.tests.factories import TournamentFactory
+from apps.tournaments.tests.helpers import post_result
 
 
 @pytest.fixture
@@ -141,9 +142,7 @@ def test_a_cohost_can_report_results(api_client, auth_client, user, other_user):
     match = tournament.matches.filter(a__isnull=False, b__isnull=False).first()
 
     api_client.force_authenticate(user=other_user)
-    response = api_client.post(
-        f"/api/v1/matches/{match.id}/report/", {"score_a": 1, "score_b": 0}, format="json"
-    )
+    response = post_result(api_client, match.id, {"score_a": 1, "score_b": 0})
 
     assert response.status_code == 200
 

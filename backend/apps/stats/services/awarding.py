@@ -22,9 +22,9 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from apps.tournaments.standings import champion_entrant_id
+from apps.tournaments.services.standings import champion_entrant_id
 
-from .models import StatsColumn, StatsEntry, StatsRow
+from ..models import StatsColumn, StatsEntry, StatsRow
 
 __all__ = [
     "AUTOMATIC_COLUMNS",

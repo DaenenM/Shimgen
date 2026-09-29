@@ -27,8 +27,6 @@ Third place needs no separate playoff either way: whoever loses the losers final
 finishes third.
 """
 
-import math
-
 from ..models import Match
 from .best_of import best_of_for
 from .seeding import bracket_positions, next_power_of_two
@@ -316,9 +314,3 @@ def _resolve_byes(first_round):
             advance_winner(match, match.a, bye=True)
         elif match.b_id and not match.a_id:
             advance_winner(match, match.b, bye=True)
-
-
-def rounds_for(entrant_count: int) -> int:
-    """Total rounds a double-elimination bracket needs, useful for UI layout."""
-    winners = max(1, math.ceil(math.log2(max(entrant_count, 2))))
-    return winners + 2 * winners - 1

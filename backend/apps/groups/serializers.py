@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from apps.accounts.serializers import PublicUserSerializer
 
-from .models import Game, GameMode, Player, SavedTeam
+from .models import Player, SavedTeam
 
 
 class PlayerSerializer(serializers.ModelSerializer):
@@ -56,8 +56,8 @@ class PlayerSerializer(serializers.ModelSerializer):
         """
         Whether this roster entry is someone the owner is actually friends with.
 
-        Narrower than `linked`, and deliberately so: a co-host who claimed a
-        bracket is linked to an account without being a friend. Only a friend's
+        Narrower than `linked`, and deliberately so: a co-host can be linked to
+        an account without being a friend. Only a friend's
         entry follows their name, so only a friend's entry should say it does.
 
         Reads a set the view prefetches once — computing it per row would be a
@@ -109,21 +109,6 @@ class PlayerBulkSerializer(serializers.Serializer):
             created.append(Player(owner=user, display_name=name))
 
         return Player.objects.bulk_create(created)
-
-
-class GameModeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = GameMode
-        fields = ("id", "game", "name", "is_team_based")
-
-
-class GameSerializer(serializers.ModelSerializer):
-    modes = GameModeSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Game
-        fields = ("id", "name", "slug", "modes")
-        read_only_fields = ("id", "slug")
 
 
 class SavedTeamSerializer(serializers.ModelSerializer):

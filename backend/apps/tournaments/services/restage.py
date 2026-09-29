@@ -15,7 +15,7 @@ import re
 
 from django.db import transaction
 
-from .models import Entrant, Participation, Tournament
+from ..models import Entrant, Participation, Tournament
 
 __all__ = ["next_restage_title", "restage_tournament"]
 
@@ -151,7 +151,7 @@ def _copy_roles(original, clone) -> None:
     copied here — and `get_or_create` keeps a host who was also listed from
     being demoted.
     """
-    from .models import Role
+    from ..models import Role
 
     for role in original.roles.filter(role=Role.Kind.COHOST):
         Role.objects.get_or_create(
@@ -169,11 +169,11 @@ def _relink_stats(original, clone, user) -> None:
     perfectly good bracket; it just is not counted, and the host can link it
     from the bracket page.
     """
-    # Imported here rather than at module scope: views.py imports this module,
-    # so a top-level import either way round is a cycle.
+    # Imported here rather than at module scope: stats_link and restage are
+    # both loaded by the views, so a top-level import risks a cycle.
     from rest_framework.exceptions import ValidationError
 
-    from apps.tournaments.views import _link_stats
+    from apps.tournaments.services.stats_link import link_stats
 
     link = getattr(original, "stats_link", None)
     if link is None:
@@ -185,6 +185,6 @@ def _relink_stats(original, clone, user) -> None:
     column_id = link.column_id
 
     try:
-        _link_stats(clone, None, table_id, column_id, user)
+        link_stats(clone, None, table_id, column_id, user)
     except ValidationError:
         return

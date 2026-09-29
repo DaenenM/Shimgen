@@ -157,28 +157,6 @@ def _sorted(rows: list[Standing], head_to_head: dict) -> list[Standing]:
     return rows
 
 
-def placements(tournament) -> dict[int, int]:
-    """
-    Map entrant id -> finishing position, sharing a position on an exact tie.
-
-    Used for the stat tracker's placement distribution.
-    """
-    table = compute_standings(tournament)
-    result: dict[int, int] = {}
-
-    previous_key = None
-    position = 0
-
-    for index, row in enumerate(table, start=1):
-        key = (row.points, row.buchholz, row.wins)
-        if key != previous_key:
-            position = index
-            previous_key = key
-        result[row.entrant_id] = position
-
-    return result
-
-
 def elimination_placements(tournament) -> dict[int, int]:
     """
     Finishing positions for a knockout bracket.

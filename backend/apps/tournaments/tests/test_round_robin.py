@@ -6,7 +6,7 @@ import pytest
 
 from apps.tournaments.brackets.advance import report_result
 from apps.tournaments.brackets.round_robin import generate_round_robin, round_robin_rounds
-from apps.tournaments.standings import compute_standings
+from apps.tournaments.services.standings import compute_standings
 
 from .factories import TournamentFactory, make_entrants
 

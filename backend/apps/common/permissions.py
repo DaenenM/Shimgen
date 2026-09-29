@@ -19,41 +19,6 @@ class IsOwner(permissions.BasePermission):
         return owner_id is not None and owner_id == request.user.id
 
 
-class IsOwnerOrReadOnly(permissions.BasePermission):
-    """Anyone who can see it may read; only the owner may change it."""
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return getattr(obj, "owner_id", None) == request.user.id
-
-
-class IsGroupMember(permissions.BasePermission):
-    """
-    Ownership or admin gates writes.
-
-    A member can see the crew's rosters and history. Changing the group itself
-    stays with the owner and admins, so one member cannot rename or delete a
-    group everyone else uses.
-    """
-
-    def has_object_permission(self, request, view, obj):
-        group = None
-        if group is None:
-            return False
-
-        if request.method in permissions.SAFE_METHODS:
-            return (
-                group.owner_id == request.user.id
-                or group.memberships.filter(user=request.user).exists()
-            )
-
-        return (
-            group.owner_id == request.user.id
-            or group.memberships.filter(user=request.user, role__in=["owner", "admin"]).exists()
-        )
-
-
 class IsTournamentHost(permissions.BasePermission):
     """
     Full control of a tournament: the host, or the group's owner.
@@ -117,12 +82,11 @@ class CanReportResults(permissions.BasePermission):
 
 def is_unclaimed(tournament) -> bool:
     """
-    True for a quick-start bracket that nobody has claimed yet.
+    True for a quick-start bracket built while signed out, so it has no owner.
 
-    Such a tournament has no owner and no group, so there is nothing to protect:
-    the only people who know its id are whoever built it and whoever they gave
-    the link to. Claiming it (or creating it while signed in) sets `created_by`
-    and the normal ownership rules take over from there.
+    Such a tournament has nothing to protect: the only people who know its id
+    are whoever built it and whoever they gave the link to. A bracket created
+    while signed in has `created_by` set, and the normal ownership rules apply.
     """
     return tournament.created_by_id is None
 

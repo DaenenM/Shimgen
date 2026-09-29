@@ -103,9 +103,7 @@ def test_somebody_elses_roster_entry_cannot_be_added(auth_client, user, other_us
 
 
 def test_a_logo_is_stored_as_given(auth_client, user):
-    response = auth_client.post(
-        list_url(), {"name": "Crested", "logo": TINY_PNG}, format="json"
-    )
+    response = auth_client.post(list_url(), {"name": "Crested", "logo": TINY_PNG}, format="json")
 
     assert response.status_code == 201
     assert response.json()["logo"] == TINY_PNG

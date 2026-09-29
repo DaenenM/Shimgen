@@ -12,7 +12,7 @@ import pytest
 from apps.tournaments.brackets.advance import clear_result, report_result
 from apps.tournaments.brackets.double_elimination import generate_double_elimination
 from apps.tournaments.models import Match
-from apps.tournaments.standings import elimination_placements
+from apps.tournaments.services.standings import elimination_placements
 
 from .factories import TournamentFactory, make_entrants
 

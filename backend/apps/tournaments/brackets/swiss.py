@@ -22,7 +22,7 @@ import math
 from django.db import models
 
 from ..models import Match
-from ..standings import compute_standings
+from ..services.standings import compute_standings
 from .best_of import best_of_for
 
 __all__ = ["generate_swiss", "pair_next_round", "swiss_round_count"]

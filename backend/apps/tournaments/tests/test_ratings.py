@@ -5,7 +5,7 @@ import pytest
 from apps.groups.models import Game, GameMode, Player
 from apps.tournaments.brackets.advance import report_result
 from apps.tournaments.models import Entrant, Rating
-from apps.tournaments.ratings import (
+from apps.tournaments.services.ratings import (
     DEFAULT_ELO,
     apply_match_result,
     expected_score,

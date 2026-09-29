@@ -31,27 +31,6 @@ class BoardPermission(permissions.BasePermission):
         return board.may_edit(request.user)
 
 
-class IsBoardOwner(permissions.BasePermission):
-    """
-    Structural changes and access control: the owner alone.
-
-    An editor who could hand out access could hand it to anyone, which makes the
-    owner's control over the board nominal.
-    """
-
-    message = "Only the board's owner can change this."
-
-    def has_object_permission(self, request, view, obj):
-        board = _board_of(obj)
-        if board is None:
-            return False
-
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-        return board.role_for(request.user) == "owner"
-
-
 def _board_of(obj):
     """Find the board an object belongs to, wherever it sits in the tree."""
     for path in (

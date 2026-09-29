@@ -18,8 +18,8 @@ import pytest
 
 from apps.accounts.models import Friendship, sync_roster_entry
 from apps.groups.models import Player
-from apps.stats.awarding import ensure_automatic_columns
 from apps.stats.models import BoardLink, StatsBoard
+from apps.stats.services.awarding import ensure_automatic_columns
 from apps.tournaments.models import Participation, Tournament
 
 

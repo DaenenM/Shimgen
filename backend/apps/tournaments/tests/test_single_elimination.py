@@ -381,7 +381,7 @@ def test_nobody_is_first_before_the_tournament_is_won():
     what happens if "reached round 1" is treated as a finishing position — reads
     as though everybody won.
     """
-    from apps.tournaments.standings import elimination_placements
+    from apps.tournaments.services.standings import elimination_placements
 
     tournament, _ = build(5)
 
@@ -395,7 +395,7 @@ def test_a_first_round_bye_does_not_crown_a_champion():
     A bye is decided but was never played. Treating the last decided match as
     the final would hand the title to whoever drew the walkover.
     """
-    from apps.tournaments.standings import champion_entrant_id
+    from apps.tournaments.services.standings import champion_entrant_id
 
     tournament, _ = build(5)
 
@@ -403,7 +403,7 @@ def test_a_first_round_bye_does_not_crown_a_champion():
 
 
 def test_the_champion_takes_first_once_the_final_is_won():
-    from apps.tournaments.standings import elimination_placements
+    from apps.tournaments.services.standings import elimination_placements
 
     tournament, entrants = build(4)
     first, second = main_matches(tournament).filter(round_no=1).order_by("position")
@@ -424,7 +424,7 @@ def test_an_entrant_still_in_outranks_one_already_knocked_out():
     has already advanced into — so a finalist would tie with the entrant they
     beat in round one.
     """
-    from apps.tournaments.standings import elimination_placements
+    from apps.tournaments.services.standings import elimination_placements
 
     tournament, _ = build(4)
     first, _second = main_matches(tournament).filter(round_no=1).order_by("position")
@@ -444,7 +444,7 @@ def test_the_third_place_match_ranks_its_players_third_and_fourth():
     everyone knocked out earlier. Treating the playoff as an ordinary bracket
     ranked them below the first-round losers instead.
     """
-    from apps.tournaments.standings import elimination_placements
+    from apps.tournaments.services.standings import elimination_placements
 
     tournament, _ = build(8, third_place_match=True)
 

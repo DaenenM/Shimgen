@@ -14,7 +14,7 @@ from apps.tournaments.brackets.swiss import (
     pair_next_round,
     swiss_round_count,
 )
-from apps.tournaments.standings import compute_standings
+from apps.tournaments.services.standings import compute_standings
 
 from .factories import TournamentFactory, make_entrants
 

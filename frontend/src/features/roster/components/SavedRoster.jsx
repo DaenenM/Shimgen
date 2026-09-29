@@ -1,18 +1,19 @@
 import { useMemo } from 'react'
 
-import { Archive, Check, Plus, Save, Trash2, User, Users, X } from '@/components/icons'
+import { Save, Users } from '@/components/icons'
 import { Toggle } from '@/components/ui/Toggle'
 
 import { useAutoSaveRoster } from '../hooks/useAutoSaveRoster'
 import { useRoster } from '../hooks/useRoster'
+import { SavedRosterRow } from './SavedRosterRow'
 
 // Saved roster rail: click a name to add/remove it from whatever is being built.
 // Used by RosterRail.jsx, TeamGeneratorPage.jsx.
 // Owns its own sizing (scrolls past 26rem) so callers only pass selection state.
 // `target` (optional `{ label, color }`) shows which team/spot a click adds to.
-// `colorOf` (optional `name => css colour | null`) tints an added player in their
-// team's colour instead of the default green.
-export function SavedRoster({ selected, onAdd, onRemove, target = null, colorOf = null }) {
+// `teams` (optional `[{ label, color, members }]`) groups the list by team under
+// coloured headings, each player tinted in their team's colour; the rest follow.
+export function SavedRoster({ selected, onAdd, onRemove, target = null, teams = null }) {
   const { players, forget, archive, isLoading } = useRoster()
   const [autoSave, setAutoSave] = useAutoSaveRoster()
 
@@ -32,6 +33,32 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null, colorOf 
   }, [players])
 
   const chosen = new Set(selected.map((n) => n.toLowerCase()))
+
+  // Without teams: one ungrouped list. With teams: a group per team that has
+  // saved players on it (in the team's own member order), then everyone else.
+  const groups = useMemo(() => {
+    if (!teams) return [{ key: 'all', players: ordered }]
+
+    const byName = new Map(ordered.map((p) => [p.display_name.toLowerCase(), p]))
+    const used = new Set()
+
+    const teamGroups = teams
+      .map((team, index) => {
+        const members = team.members
+          .map((name) => byName.get(name.toLowerCase()))
+          .filter((p) => p && !used.has(p) && used.add(p))
+        return { key: `team-${index}`, label: team.label, color: team.color, players: members }
+      })
+      .filter((group) => group.players.length > 0)
+
+    const rest = ordered.filter((p) => !used.has(p))
+    if (teamGroups.length === 0) return [{ key: 'all', players: rest }]
+
+    return [
+      ...teamGroups,
+      ...(rest.length ? [{ key: 'rest', label: 'Not on a team', players: rest }] : []),
+    ]
+  }, [ordered, teams])
 
   const shell = 'glass-panel flex w-full min-w-0 flex-col self-start' // min-w-0 lets long names truncate
 
@@ -83,88 +110,43 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null, colorOf 
             Nobody saved yet. The names you add will show up here next time.
           </p>
         ) : (
-          <ul className="max-h-[min(26rem,calc(100vh-14rem))] space-y-0.5 overflow-y-auto pr-1 pl-3">
-            {ordered.map((player) => {
-              const added = chosen.has(player.display_name.toLowerCase())
-              const teamColor = added ? colorOf?.(player.display_name) : null
-
-              return (
-                <li key={player.id ?? player.display_name} className="group flex items-center">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      added ? onRemove(player.display_name) : onAdd(player.display_name)
-                    }
-                    // Toggles rather than disables, so a mis-click can be undone the same way.
-                    aria-pressed={added}
-                    title={added ? `Remove ${player.display_name}` : `Add ${player.display_name}`}
-                    className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1.5 text-left text-sm transition-colors duration-150 ${
-                      added
-                        ? `${teamColor ? 'text-(--team)' : 'text-success'} hover:bg-error/10 hover:text-error`
-                        : 'hover:bg-primary/10 hover:text-primary'
-                    }`}
-                    // Set as a variable, not `color`, so the red hover can still override it.
-                    style={teamColor ? { '--team': teamColor } : undefined}
+          <ul className="max-h-[min(26rem,calc(100vh-14rem))] overflow-y-auto pr-1 pl-3">
+            {groups.map((group) => (
+              <li key={group.key} className="space-y-0.5 not-first:mt-2">
+                {group.label && (
+                  <p
+                    className="flex items-center gap-1.5 px-1 pt-1 pb-0.5 text-[0.6875rem] font-semibold tracking-wide uppercase"
+                    style={{ color: group.color }}
                   >
-                    {added ? (
-                      // Tick at rest, cross on hover, same slot to avoid reflow.
-                      <span className="relative grid h-3.5 w-3.5 shrink-0 place-items-center">
-                        <Check className="absolute h-3.5 w-3.5 transition-opacity duration-150 group-hover:opacity-0" />
-                        <X className="absolute h-3.5 w-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
-                      </span>
-                    ) : (
-                      <Plus className="h-3.5 w-3.5 shrink-0 opacity-40" />
+                    {group.color && (
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: group.color }}
+                        aria-hidden="true"
+                      />
                     )}
-                    <span className="truncate font-medium">{player.display_name}</span>
+                    <span className={`truncate ${group.color ? '' : 'text-base-content/45'}`}>
+                      {group.label}
+                    </span>
+                  </p>
+                )}
 
-                    {/* Friends only, not merely linked (a co-host who claimed a bracket isn't a friend). */}
-                    {player.is_self ? (
-                      <User
-                        // Amber matches the roster page's own linked-account icon.
-                        className="text-accent ml-auto h-3.5 w-3.5 shrink-0"
-                        aria-label="You"
-                        role="img"
-                      >
-                        <title>You — adding this attaches your account</title>
-                      </User>
-                    ) : (
-                      player.is_friend && (
-                        <Users
-                          className="text-primary ml-auto h-3.5 w-3.5 shrink-0"
-                          aria-label="Friend"
-                          role="img"
-                        >
-                          <title>Friend — this name follows their account</title>
-                        </Users>
-                      )
-                    )}
-                  </button>
-
-                  {/* Friend or self: archive, not delete — deleting would cascade away their rating history. */}
-                  {player.is_friend || player.is_self ? (
-                    <button
-                      type="button"
-                      onClick={() => archive(player)}
-                      aria-label={`Archive ${player.display_name}`}
-                      title="Archive — hides them and keeps their history"
-                      className="text-base-content/30 hover:text-primary hover:bg-primary/10 mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
-                    >
-                      <Archive className="h-3.5 w-3.5" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => forget(player)}
-                      aria-label={`Delete ${player.display_name} from saved roster`}
-                      title="Delete from saved roster"
-                      className="text-base-content/30 hover:text-error hover:bg-error/10 mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-md opacity-0 transition-all duration-150 group-hover:opacity-100 focus-visible:opacity-100"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </li>
-              )
-            })}
+                <ul className="space-y-0.5">
+                  {group.players.map((player) => (
+                    <SavedRosterRow
+                      key={player.id ?? player.display_name}
+                      player={player}
+                      added={chosen.has(player.display_name.toLowerCase())}
+                      teamColor={group.color}
+                      onAdd={onAdd}
+                      onRemove={onRemove}
+                      onArchive={archive}
+                      onForget={forget}
+                    />
+                  ))}
+                </ul>
+              </li>
+            ))}
           </ul>
         )}
       </div>

@@ -12,7 +12,7 @@ import random
 
 import pytest
 
-from apps.tournaments.drafting import (
+from apps.tournaments.services.drafting import (
     DraftError,
     assign_captains,
     build_pick_order,

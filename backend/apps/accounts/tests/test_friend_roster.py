@@ -104,8 +104,8 @@ def test_a_pending_request_seeds_nothing(auth_client, user, other_user):
 
 @pytest.mark.django_db
 def test_the_roster_says_which_entries_are_friends(auth_client, user, other_user):
-    # `linked` only means "has an account" — a co-host who claimed a bracket is
-    # linked without being a friend, and only a friend's entry follows a rename.
+    # `linked` only means "has an account" — a co-host can be linked without
+    # being a friend, and only a friend's entry follows a rename.
     friendship = Friendship.objects.create(from_user=other_user, to_user=user)
     accept(auth_client, friendship)
 

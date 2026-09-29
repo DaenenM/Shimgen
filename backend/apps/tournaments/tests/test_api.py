@@ -10,6 +10,7 @@ import pytest
 from django.urls import reverse
 
 from apps.tournaments.models import Tournament
+from apps.tournaments.tests.helpers import match_in, post_clear, post_result
 
 pytestmark = pytest.mark.django_db
 
@@ -37,47 +38,6 @@ def test_anonymous_can_build_a_bracket(api_client):
     assert len(body["entrants"]) == 4
     assert len(body["matches"]) == 3  # 4 entrants -> 3 matches
     assert body["public_slug"]
-
-
-def test_anonymous_bracket_gets_a_claim_token(api_client):
-    api_client.post(
-        create_url(),
-        {"format": "single", "entrant_labels": ["A", "B"]},
-        format="json",
-    )
-
-    tournament = Tournament.objects.get()
-    assert tournament.claim_token != ""
-    assert tournament.created_by_id is None
-
-
-def test_claiming_attaches_the_bracket_to_an_account(api_client, auth_client, user):
-    api_client.post(create_url(), {"format": "single", "entrant_labels": ["A", "B"]}, format="json")
-    tournament = Tournament.objects.get()
-
-    response = auth_client.post(
-        reverse("v1:tournaments:tournament-claim", args=[tournament.pk]),
-        {"token": tournament.claim_token},
-        format="json",
-    )
-
-    assert response.status_code == 200
-    tournament.refresh_from_db()
-    assert tournament.created_by_id == user.id
-    assert tournament.claim_token == ""
-
-
-def test_claiming_with_a_wrong_token_is_refused(api_client, auth_client):
-    api_client.post(create_url(), {"format": "single", "entrant_labels": ["A", "B"]}, format="json")
-    tournament = Tournament.objects.get()
-
-    response = auth_client.post(
-        reverse("v1:tournaments:tournament-claim", args=[tournament.pk]),
-        {"token": "wrong"},
-        format="json",
-    )
-
-    assert response.status_code == 403
 
 
 # ── Spectator link ────────────────────────────────────────────────────────────
@@ -132,14 +92,10 @@ def test_host_can_report_a_result(auth_client):
     ).json()
     match = created["matches"][0]
 
-    response = auth_client.post(
-        reverse("v1:tournaments:match-report", args=[match["id"]]),
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
+    response = post_result(auth_client, match["id"], {"score_a": 1, "score_b": 0})
 
     assert response.status_code == 200
-    assert response.json()["winner"] == match["a"]
+    assert match_in(response, match["id"])["winner"] == match["a"]
 
 
 def test_a_stranger_cannot_report_a_result(auth_client, api_client, other_user):
@@ -149,13 +105,11 @@ def test_a_stranger_cannot_report_a_result(auth_client, api_client, other_user):
     match = created["matches"][0]
 
     api_client.force_authenticate(user=other_user)
-    response = api_client.post(
-        reverse("v1:tournaments:match-report", args=[match["id"]]),
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
+    response = post_result(api_client, match["id"], {"score_a": 1, "score_b": 0})
 
-    assert response.status_code == 403
+    # 404, not 403: someone else's tournament is outside the stranger's queryset,
+    # so the API doesn't even confirm it exists.
+    assert response.status_code == 404
 
 
 def test_an_invalid_score_returns_the_error_envelope(auth_client):
@@ -170,11 +124,8 @@ def test_an_invalid_score_returns_the_error_envelope(auth_client):
     ).json()
     match = created["matches"][0]
 
-    response = auth_client.post(
-        reverse("v1:tournaments:match-report", args=[match["id"]]),
-        {"score_a": 3, "score_b": 0},  # Bo3 ends at 2
-        format="json",
-    )
+    # Bo3 ends at 2, so 3 is impossible.
+    response = post_result(auth_client, match["id"], {"score_a": 3, "score_b": 0})
 
     assert response.status_code == 400
     assert set(response.json()["error"]) == {"code", "message", "details"}
@@ -188,172 +139,11 @@ def test_clearing_a_result_undoes_it(auth_client):
     ).json()
     match = next(m for m in created["matches"] if m["a"] and m["b"])
 
-    auth_client.post(
-        reverse("v1:tournaments:match-report", args=[match["id"]]),
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
-    response = auth_client.post(
-        reverse("v1:tournaments:match-clear", args=[match["id"]]), format="json"
-    )
+    post_result(auth_client, match["id"], {"score_a": 1, "score_b": 0})
+    response = post_clear(auth_client, match["id"])
 
     assert response.status_code == 200
-    assert response.json()["winner"] is None
-
-
-# ── Late joins ────────────────────────────────────────────────────────────────
-
-
-def test_late_entrant_is_refused_on_an_active_bracket(auth_client):
-    """
-    Structurally impossible without a rebuild, so it must be refused clearly
-    rather than silently regenerating and wiping results (plan §8).
-    """
-    created = auth_client.post(
-        create_url(),
-        {"format": "single", "entrant_labels": ["A", "B", "C", "D"]},
-        format="json",
-    ).json()
-
-    auth_client.post(reverse("v1:tournaments:tournament-start", args=[created["id"]]))
-
-    response = auth_client.post(
-        reverse("v1:tournaments:tournament-entrants", args=[created["id"]]),
-        {"label": "Latecomer"},
-        format="json",
-    )
-
-    assert response.status_code == 400
-    assert "fixed" in response.json()["error"]["message"]
-
-
-def test_late_entrant_is_accepted_in_swiss(auth_client):
-    """Swiss handles late joins naturally — they enter on 0 points."""
-    created = auth_client.post(
-        create_url(),
-        {"format": "swiss", "entrant_labels": ["A", "B", "C", "D"]},
-        format="json",
-    ).json()
-
-    auth_client.post(reverse("v1:tournaments:tournament-start", args=[created["id"]]))
-
-    response = auth_client.post(
-        reverse("v1:tournaments:tournament-entrants", args=[created["id"]]),
-        {"label": "Latecomer"},
-        format="json",
-    )
-
-    assert response.status_code == 201
-
-
-def test_late_entrant_is_accepted_while_still_in_draft(auth_client):
-    created = auth_client.post(
-        create_url(),
-        {"format": "single", "entrant_labels": ["A", "B", "C", "D"]},
-        format="json",
-    ).json()
-
-    response = auth_client.post(
-        reverse("v1:tournaments:tournament-entrants", args=[created["id"]]),
-        {"label": "Fifth"},
-        format="json",
-    )
-
-    assert response.status_code == 201
-
-
-# ── Substitutions ─────────────────────────────────────────────────────────────
-
-
-def test_substitution_keeps_the_bracket_intact(auth_client):
-    """Someone rage-quits: the slot persists, the person in it changes."""
-    created = auth_client.post(
-        create_url(),
-        {"format": "single", "entrant_labels": ["A", "B", "C", "D"]},
-        format="json",
-    ).json()
-    entrant = created["entrants"][0]
-    match_count = len(created["matches"])
-
-    response = auth_client.post(
-        reverse(
-            "v1:tournaments:tournament-substitute",
-            args=[created["id"], entrant["id"]],
-        ),
-        {"label": "Replacement"},
-        format="json",
-    )
-
-    assert response.status_code == 200
-    assert response.json()["label"] == "Replacement"
-
-    detail = auth_client.get(
-        reverse("v1:tournaments:tournament-detail", args=[created["id"]])
-    ).json()
-    assert len(detail["matches"]) == match_count
-
-
-# ── Team generator ────────────────────────────────────────────────────────────
-
-
-def test_team_generator_works_without_an_account(api_client):
-    response = api_client.post(
-        reverse("v1:tournaments:team-generate"),
-        {"names": ["A", "B", "C", "D"], "team_count": 2},
-        format="json",
-    )
-
-    assert response.status_code == 200
-    teams = response.json()["teams"]
-    assert len(teams) == 2
-    assert sum(len(t) for t in teams) == 4
-
-
-def test_two_teams_suggests_a_series_rather_than_a_bracket():
-    """A bracket for two teams is just ceremony (plan §3)."""
-    from rest_framework.test import APIClient
-
-    response = APIClient().post(
-        reverse("v1:tournaments:team-generate"),
-        {"names": ["A", "B", "C", "D"], "team_count": 2},
-        format="json",
-    )
-
-    assert response.json()["suggest_series"] is True
-
-
-def test_team_generator_respects_apart_constraints(api_client):
-    response = api_client.post(
-        reverse("v1:tournaments:team-generate"),
-        {
-            "names": ["A", "B", "C", "D"],
-            "team_count": 2,
-            "constraints": [{"kind": "apart", "player_ids": [-1, -2]}],
-        },
-        format="json",
-    )
-
-    teams = response.json()["teams"]
-    locations = {p["id"]: i for i, team in enumerate(teams) for p in team}
-    assert locations[-1] != locations[-2]
-
-
-def test_impossible_constraints_return_a_useful_message(api_client):
-    response = api_client.post(
-        reverse("v1:tournaments:team-generate"),
-        {
-            "names": ["A", "B", "C", "D"],
-            "team_count": 2,
-            "constraints": [
-                {"kind": "together", "player_ids": [-1, -2]},
-                {"kind": "apart", "player_ids": [-1, -2]},
-            ],
-        },
-        format="json",
-    )
-
-    assert response.status_code == 400
-    assert "together and apart" in response.json()["error"]["message"]
+    assert match_in(response, match["id"])["winner"] is None
 
 
 # ── Formats end to end ────────────────────────────────────────────────────────
@@ -393,7 +183,7 @@ def test_anonymous_can_read_back_the_bracket_it_just_created(api_client):
 
 
 def test_a_signed_in_user_can_also_open_an_unclaimed_bracket(api_client, auth_client):
-    """Building one signed out then signing in to claim it must still work."""
+    """A bracket built signed out can still be opened after signing in."""
     created = api_client.post(
         create_url(), {"format": "single", "entrant_labels": ["A", "B"]}, format="json"
     ).json()
@@ -439,14 +229,10 @@ def test_anonymous_can_report_on_the_bracket_it_created(api_client):
     ).json()
     match = next(m for m in created["matches"] if m["a"] and m["b"])
 
-    response = api_client.post(
-        reverse("v1:tournaments:match-report", args=[match["id"]]),
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
+    response = post_result(api_client, match["id"], {"score_a": 1, "score_b": 0})
 
     assert response.status_code == 200
-    assert response.json()["winner"] == match["a"]
+    assert match_in(response, match["id"])["winner"] == match["a"]
 
 
 def test_an_unclaimed_bracket_reports_can_report_true(api_client):
@@ -457,33 +243,6 @@ def test_an_unclaimed_bracket_reports_can_report_true(api_client):
 
     assert created["can_report"] is True
     assert created["is_host"] is True
-
-
-def test_claiming_locks_out_everyone_else(api_client, auth_client):
-    """Once an account owns it, the anonymous free-for-all ends."""
-    created = api_client.post(
-        create_url(),
-        {"format": "single", "entrant_labels": ["A", "B", "C", "D"]},
-        format="json",
-    ).json()
-    tournament = Tournament.objects.get(pk=created["id"])
-
-    auth_client.post(
-        reverse("v1:tournaments:tournament-claim", args=[tournament.pk]),
-        {"token": tournament.claim_token},
-        format="json",
-    )
-
-    match = next(m for m in created["matches"] if m["a"] and m["b"])
-    response = api_client.post(
-        reverse("v1:tournaments:match-report", args=[match["id"]]),
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
-
-    # 401 rather than 403: the caller is anonymous, so DRF asks them to
-    # authenticate instead of telling them they are forbidden.
-    assert response.status_code == 401
 
 
 # ── Team entrants ─────────────────────────────────────────────────────────────
@@ -642,9 +401,7 @@ def test_a_finished_tournament_names_its_winner_in_the_list(auth_client, user):
     match = tournament.matches.filter(a__isnull=False, b__isnull=False).first()
     winner = match.a.label
 
-    auth_client.post(
-        f"/api/v1/matches/{match.id}/report/", {"score_a": 1, "score_b": 0}, format="json"
-    )
+    post_result(auth_client, match.id, {"score_a": 1, "score_b": 0})
 
     row = next(
         r
@@ -892,7 +649,7 @@ def test_clearing_through_the_match_route_also_reopens_it(api_client):
     ).json()
     final = max(detail["matches"], key=lambda m: m["round_no"])
 
-    api_client.post(reverse("v1:tournaments:match-clear", args=[final["id"]]), format="json")
+    post_clear(api_client, final["id"])
 
     after = api_client.get(reverse("v1:tournaments:tournament-detail", args=[bracket["id"]])).json()
     assert after["state"] == "active"

@@ -77,8 +77,6 @@ class Tournament(TimeStampedModel):
     # The spectator link (plan §4, NEW 2). Unguessable, so an unlisted URL is
     # the access control; see apps.common.slugs.random_slug.
     public_slug = models.SlugField(max_length=16, unique=True, blank=True, db_index=True)
-    # Lets a logged-out host reclaim a quick-start bracket after signing up.
-    claim_token = models.CharField(max_length=32, blank=True, db_index=True)
 
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

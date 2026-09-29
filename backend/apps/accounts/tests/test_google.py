@@ -12,8 +12,11 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 
-from apps.accounts.google import GoogleAuthError, get_or_create_user, verify_token
 from apps.accounts.models import User
+from apps.accounts.services.google import GoogleAuthError, get_or_create_user, verify_token
+
+# Where the Google token check is looked up at runtime, for patching.
+VERIFY_TOKEN = "apps.accounts.services.google.google_id_token.verify_oauth2_token"
 
 pytestmark = pytest.mark.django_db
 
@@ -55,7 +58,7 @@ def test_a_token_google_rejects_is_refused(settings):
     settings.GOOGLE_CLIENT_ID = "test-client-id"
 
     with patch(
-        "apps.accounts.google.google_id_token.verify_oauth2_token",
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token",
         side_effect=ValueError("Token has wrong audience"),
     ):
         with pytest.raises(GoogleAuthError, match="could not be verified"):
@@ -70,7 +73,7 @@ def test_an_unverified_email_is_refused(settings):
     settings.GOOGLE_CLIENT_ID = "test-client-id"
 
     with patch(
-        "apps.accounts.google.google_id_token.verify_oauth2_token",
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token",
         return_value={**CLAIMS, "email_verified": False},
     ):
         with pytest.raises(GoogleAuthError, match="verified email"):
@@ -81,7 +84,7 @@ def test_a_wrong_issuer_is_refused(settings):
     settings.GOOGLE_CLIENT_ID = "test-client-id"
 
     with patch(
-        "apps.accounts.google.google_id_token.verify_oauth2_token",
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token",
         return_value={**CLAIMS, "iss": "https://evil.example.com"},
     ):
         with pytest.raises(GoogleAuthError, match="could not be verified"):
@@ -97,7 +100,7 @@ def test_the_audience_is_actually_checked(settings):
     settings.GOOGLE_CLIENT_ID = "our-client-id"
 
     with patch(
-        "apps.accounts.google.google_id_token.verify_oauth2_token",
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token",
         return_value=CLAIMS,
     ) as verify:
         verify_token("token")
@@ -197,7 +200,9 @@ def test_the_endpoint_returns_our_own_token_pair(api_client, settings):
     """
     settings.GOOGLE_CLIENT_ID = "test-client-id"
 
-    with patch("apps.accounts.google.google_id_token.verify_oauth2_token", return_value=CLAIMS):
+    with patch(
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token", return_value=CLAIMS
+    ):
         response = api_client.post(google_url(), {"credential": "token"}, format="json")
 
     assert response.status_code == 201
@@ -210,7 +215,9 @@ def test_the_endpoint_returns_our_own_token_pair(api_client, settings):
 def test_the_returned_token_actually_authenticates(api_client, settings):
     settings.GOOGLE_CLIENT_ID = "test-client-id"
 
-    with patch("apps.accounts.google.google_id_token.verify_oauth2_token", return_value=CLAIMS):
+    with patch(
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token", return_value=CLAIMS
+    ):
         access = api_client.post(google_url(), {"credential": "token"}, format="json").json()[
             "access"
         ]
@@ -225,7 +232,9 @@ def test_the_returned_token_actually_authenticates(api_client, settings):
 def test_a_returning_user_reports_created_false(api_client, settings):
     settings.GOOGLE_CLIENT_ID = "test-client-id"
 
-    with patch("apps.accounts.google.google_id_token.verify_oauth2_token", return_value=CLAIMS):
+    with patch(
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token", return_value=CLAIMS
+    ):
         api_client.post(google_url(), {"credential": "token"}, format="json")
         response = api_client.post(google_url(), {"credential": "token"}, format="json")
 
@@ -237,7 +246,7 @@ def test_a_rejected_token_returns_the_error_envelope(api_client, settings):
     settings.GOOGLE_CLIENT_ID = "test-client-id"
 
     with patch(
-        "apps.accounts.google.google_id_token.verify_oauth2_token",
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token",
         side_effect=ValueError("bad token"),
     ):
         response = api_client.post(google_url(), {"credential": "bad"}, format="json")
@@ -250,7 +259,9 @@ def test_a_disabled_account_cannot_sign_in_through_google(api_client, settings):
     settings.GOOGLE_CLIENT_ID = "test-client-id"
     User.objects.create_user(email=CLAIMS["email"], password="x", is_active=False)
 
-    with patch("apps.accounts.google.google_id_token.verify_oauth2_token", return_value=CLAIMS):
+    with patch(
+        "apps.accounts.services.google.google_id_token.verify_oauth2_token", return_value=CLAIMS
+    ):
         response = api_client.post(google_url(), {"credential": "token"}, format="json")
 
     assert response.status_code == 403

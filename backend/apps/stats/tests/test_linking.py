@@ -9,12 +9,13 @@ Saturday-night arrangement while the players persist.
 import pytest
 
 from apps.groups.models import Player
-from apps.stats.awarding import apply_tournament_result, winning_players
 from apps.stats.models import BoardAccess, BoardLink, StatsBoard, StatsRow
+from apps.stats.services.awarding import apply_tournament_result, winning_players
 from apps.tournaments.brackets.advance import report_result
 from apps.tournaments.brackets.single_elimination import generate_single_elimination
 from apps.tournaments.models import Entrant, Tournament
 from apps.tournaments.tests.factories import TournamentFactory
+from apps.tournaments.tests.helpers import post_result
 
 
 @pytest.fixture
@@ -203,10 +204,8 @@ def test_finishing_a_linked_tournament_awards_through_the_api(auth_client, user,
     match = tournament.matches.filter(a__isnull=False, b__isnull=False).first()
     a_wins = match.a.label == "Team 1"
 
-    response = auth_client.post(
-        f"/api/v1/matches/{match.id}/report/",
-        {"score_a": 1 if a_wins else 0, "score_b": 0 if a_wins else 1},
-        format="json",
+    response = post_result(
+        auth_client, match.id, {"score_a": 1 if a_wins else 0, "score_b": 0 if a_wins else 1}
     )
     assert response.status_code == 200
 

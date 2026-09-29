@@ -13,9 +13,10 @@ switch leaves tonight's wins sitting on a board the tournament no longer feeds.
 
 import pytest
 
-from apps.stats.awarding import ensure_automatic_columns
 from apps.stats.models import BoardLink, StatsBoard, StatsColumn
+from apps.stats.services.awarding import ensure_automatic_columns
 from apps.tournaments.models import Tournament
+from apps.tournaments.tests.helpers import post_result
 
 
 @pytest.fixture
@@ -80,11 +81,7 @@ def test_switching_boards_takes_the_numbers_off_the_first_one(auth_client, table
     # Play it out, so the first board has actually been credited.
     tournament = Tournament.objects.get(pk=tournament_id)
     match = tournament.matches.first()
-    auth_client.post(
-        f"/api/v1/matches/{match.id}/report/",
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
+    post_result(auth_client, match.id, {"score_a": 1, "score_b": 0})
 
     won = StatsColumn.Role.TOURNAMENTS_WON
     awarded = [entry.count for entry in table.columns.get(role=won).entries.all() if entry.count]
@@ -116,11 +113,7 @@ def test_the_new_board_is_caught_up_on_what_was_already_played(auth_client, tabl
 
     tournament = Tournament.objects.get(pk=tournament_id)
     match = tournament.matches.first()
-    auth_client.post(
-        f"/api/v1/matches/{match.id}/report/",
-        {"score_a": 1, "score_b": 0},
-        format="json",
-    )
+    post_result(auth_client, match.id, {"score_a": 1, "score_b": 0})
 
     auth_client.post(
         f"/api/v1/tournaments/{tournament_id}/stats-board/",

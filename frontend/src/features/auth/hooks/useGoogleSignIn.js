@@ -1,10 +1,6 @@
-/**
- * Google Identity Services, loaded on demand.
- *
- * The GIS script is only injected when the server says Google sign-in is
- * configured, so a deployment without a client ID never loads a third-party
- * script — and never shows a button that cannot work.
- */
+// Loads Google Identity Services on demand and renders its button.
+// Used by GoogleSignInButton.jsx.
+// Script only loads when the server reports Google sign-in as configured.
 
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -14,18 +10,17 @@ import { queryKeys } from '@/lib/queryClient'
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client'
 
-/** Ask the server which sign-in methods this deployment supports. */
+// Asks the server which sign-in methods this deployment supports.
 function useAuthConfig() {
   return useQuery({
     queryKey: queryKeys.auth.config,
     queryFn: auth.config,
-    // Configuration changes on deploy, not during a session.
-    staleTime: Infinity,
+    staleTime: Infinity, // config only changes on deploy
     retry: false,
   })
 }
 
-/** Inject the GIS script once per page, shared by every caller. */
+// Injects the GIS script once per page, shared by every caller.
 function loadGis() {
   if (window.google?.accounts?.id) return Promise.resolve()
 
@@ -48,21 +43,13 @@ function loadGis() {
   })
 }
 
-/**
- * Render Google's button into `containerRef` and hand the credential back.
- *
- * Google's own button element is used rather than a custom one: their branding
- * terms require it, and it handles the popup, the account chooser and every
- * locale for free.
- */
+// Renders Google's own button into `containerRef` (required by their branding terms) and hands
+// the credential back via onCredential.
 export function useGoogleButton({ containerRef, onCredential, onError, text = 'continue_with' }) {
   const { data: config } = useAuthConfig()
   const [ready, setReady] = useState(false)
 
-  // Held in a ref so re-rendering the parent does not re-initialise GIS, which
-  // would tear down and redraw the button on every keystroke in the form.
-  // Assigned in an effect rather than during render: a ref write during render
-  // is not guaranteed to survive a discarded render pass.
+  // Ref avoids re-initializing GIS (and redrawing the button) on every parent re-render.
   const callbackRef = useRef(onCredential)
   useEffect(() => {
     callbackRef.current = onCredential
@@ -82,10 +69,7 @@ export function useGoogleButton({ containerRef, onCredential, onError, text = 'c
         window.google.accounts.id.initialize({
           client_id: config.google.client_id,
           callback: (response) => callbackRef.current(response.credential),
-          // Google's one-tap prompt is deliberately off: it appears unbidden
-          // over the page, and on a sign-in form the explicit button is
-          // clearer about what is about to happen.
-          auto_select: false,
+          auto_select: false, // one-tap prompt deliberately off
           cancel_on_tap_outside: true,
         })
 

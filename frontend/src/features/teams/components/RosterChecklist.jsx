@@ -1,14 +1,7 @@
 import { Check, Plus, User, Users, X } from '@/components/icons'
 
-/**
- * The roster as a checklist: click a name to put them on the team or take
- * them off.
- *
- * The same row structure as the saved roster rail: one name per line, a tick
- * that becomes a cross on hover, and the glyphs that say which rows are you
- * and which are friends. A wrapped field of pills made a long roster
- * unreadable and hid that distinction entirely.
- */
+// Roster as a checklist: click a name to add/remove from the team.
+// Used by TeamEditor.jsx. Same row style as the saved roster rail (tick/cross, self/friend icons).
 export function RosterChecklist({ players, selected, onToggle }) {
   if (players.length === 0) {
     return (
@@ -37,8 +30,7 @@ export function RosterChecklist({ players, selected, onToggle }) {
               }`}
             >
               {picked ? (
-                // Tick at rest, cross on hover, both in one slot so the
-                // row does not reflow as they swap.
+                // Tick at rest, cross on hover; both in one slot to avoid reflow.
                 <span className="relative grid h-3.5 w-3.5 shrink-0 place-items-center">
                   <Check className="absolute h-3.5 w-3.5 transition-opacity duration-150 group-hover:opacity-0" />
                   <X className="absolute h-3.5 w-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />

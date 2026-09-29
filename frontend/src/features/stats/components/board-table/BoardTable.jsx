@@ -8,14 +8,8 @@ import { BoardRow } from './BoardRow'
 import { ColumnHeader } from './ColumnHeader'
 import { SortMarker } from './SortMarker'
 
-/**
- * One section of a board — "Solo", "Teams".
- *
- * Sorted by the leading column to begin with, so the board reads as a standing:
- * the person in front is at the top, which is the whole reason anyone looks at
- * it. Any header re-sorts by that column, and clicking the same one again
- * flips the direction.
- */
+// One table/section of a board (e.g. "Solo", "Teams"). Used by TableCard.jsx.
+// Sorted by the leading column by default; click a header to sort by it, click again to flip.
 export function BoardTable({
   table,
   canEdit,
@@ -32,58 +26,30 @@ export function BoardTable({
 }) {
   const { columns, rows } = table
 
-  // Phones always count in numbers: seven tridents in a 90px column wrap into
-  // an unreadable smear, which is exactly what a real Pummel Party tally looks
-  // like on a phone.
+  // Phones count in numbers: emoji marks wrap into an unreadable smear at that width.
   const isSmall = useIsSmallScreen()
 
-  // Drag the table sideways by its background. The tally cells and sort headers
-  // are buttons, so the hook leaves them alone — a mis-aimed tap on `+1` is
-  // still a tap on `+1`, however much the hand moves afterwards.
+  // Drags the table sideways by its background; tally/sort buttons are unaffected.
   const scroller = useDragScroll()
 
-  /**
-   * How a cell draws itself.
-   *
-   * A single tally column is the "Brett: 🔱🔱🔱🔱" board — the emoji row is the
-   * whole point, and it reads at a glance. Two or more columns is a table, and
-   * two rows of glyphs side by side stop being readable: at that width the eye
-   * cannot compare six tridents against four. So a table with more than one
-   * column counts in numbers, whatever each column was set to — and so does any
-   * column on a screen too narrow to lay marks out.
-   */
+  // Multiple columns, or a small screen, can't lay out emoji marks readably — use numbers.
   const displayFor = (column) =>
     column.display === 'number' || columns.length > 1 || isSmall ? 'number' : 'emoji'
 
-  // `null` means "the leading column, descending" — the default standing. Held
-  // per table, so sorting one section does not reorder the others.
+  // null means "leading column, descending" (the default standing). Per-table state.
   const [sort, setSort] = useState(null)
 
-  /**
-   * What the board leads with before anyone clicks a header.
-   *
-   * Trophies first when the table has them. A tournament board's columns come
-   * out in role order — played, won, lost, tournaments won — so the leftmost
-   * column is "games played", and leading with it ranks whoever turned up most
-   * rather than whoever won. Tournaments won is the standing everyone actually
-   * came to see.
-   *
-   * Falls back to the first column for a hand-counted board, which has no
-   * trophy column and whose first column is the thing it was made to count.
-   */
+  // Tournament boards lead with tournaments-won rather than games-played (the first column).
+  // Hand-counted boards have no trophy column, so they fall back to the first column.
   const trophyColumn = columns.find((column) => column.role === 'tournaments_won')
 
-  // The key is an id, not a column object: the name column is sortable too and
-  // has no column row behind it, so looking one up would come back undefined
-  // and silently sort everything by the same value.
+  // Key is an id, not a column object, since the name column has no column row behind it.
   const sortKey = sort ? sort.key : (trophyColumn?.id ?? columns[0]?.id ?? NAME_KEY)
   const descending = sort ? sort.descending : true
 
   function toggle(key) {
     setSort((current) =>
-      // Same column: flip. A different one starts descending for tallies —
-      // "most wins first" is what a click on a number column means — and
-      // ascending for names, where A-Z is the natural first reading.
+      // Same column flips direction; a new one defaults to descending for tallies, ascending for names.
       current && current.key === key
         ? { key, descending: !current.descending }
         : { key, descending: key !== NAME_KEY },
@@ -97,7 +63,7 @@ export function BoardTable({
     const left = value(a)
     const right = value(b)
 
-    // Ties keep their existing order rather than shuffling on every render.
+    // Ties keep existing order instead of shuffling on every render.
     if (left === right) return rows.indexOf(a) - rows.indexOf(b)
 
     const ahead = left > right ? 1 : -1
@@ -112,21 +78,8 @@ export function BoardTable({
     )
   }
 
-  // A narrow table has no business scrolling sideways.
-  //
-  // `min-w-[28rem]` is what four automatic columns need to stay readable, but
-  // applied to a phone it forced 448px into a 343px viewport: the table
-  // scrolled sideways, the name column sat pinned at 160px, and the single
-  // value column was handed the ~290px left over — a number 24px wide adrift in
-  // the middle of it.
-  //
-  // Screen size alone decides it. Folding the column count in as well was a
-  // mistake: a one-column board on a desktop then took the narrow path, which
-  // squeezes the value cell to `w-px` — and a column of eight trophies, given
-  // no width, wrapped to one glyph per line. The emoji tally is exactly what
-  // the roomy layout exists for, so any wide screen gets it whatever the board
-  // holds. `displayFor` already switches to numbers on a phone, so the marks
-  // that needed the width are not being drawn on the narrow path anyway.
+  // Screen size alone decides wide vs. narrow layout (not column count too — a
+  // one-column desktop board taking the narrow path squeezed trophy columns unreadably).
   const wide = !isSmall
 
   return (
@@ -135,8 +88,7 @@ export function BoardTable({
         <thead>
           <tr className="border-base-content/10 border-b">
             <th
-              // Fluid rather than fixed on a narrow board, so the name takes
-              // the room it needs and the tally keeps the rest.
+              // Fluid width on narrow boards so the name takes only the room it needs.
               className={`px-3 py-2 text-left ${wide ? 'w-40' : 'w-auto'}`}
               aria-sort={ariaSort(NAME_KEY, sortKey, descending)}
             >
@@ -186,13 +138,8 @@ export function BoardTable({
               key={row.id}
               row={row}
               table={table}
-              // The board exists to say who is in front, so the front row is
-              // marked — but only when the sort still means "in front". Sort by
-              // name, or ascending, and the top row is just the first one
-              // alphabetically or the worst score, which is not a lead.
-              //
-              // Only first. Tinting the top three flattens the gap between the
-              // winner and the pack, which is the one thing a standing is for.
+              // Marks the top row, but only when the sort actually means "in the lead"
+              // (not sorted by name or ascending). Only the first row, not top few.
               leading={index === 0 && sortKey !== NAME_KEY && descending && sorted.length > 1}
               wide={wide}
               displayFor={displayFor}

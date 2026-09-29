@@ -16,23 +16,19 @@ const LINKS = [
   { to: paths.stats, label: 'Stats', icon: BarChart3, hint: 'Boards and leaderboards' },
 ]
 
-/** The sheet the phone bar's menu button opens, and the scrim behind it. */
+// Sheet opened by the phone bar's menu button, plus its scrim. Used by MobileNav.jsx.
 export function MobileMenu({ panelRef, onClose }) {
   return (
     <>
       <div
-        // A light blur rather than a heavy dim: the sheet above it is glass,
-        // and a near-black scrim behind glass defeats the material — there is
-        // nothing left to see through it.
+        // Light blur, not a heavy dim — the sheet above is glass and needs something to show through.
         className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm"
         aria-hidden="true"
       />
 
       <div
         ref={panelRef}
-        // Hung from under the bar rather than filling the screen: a sheet that
-        // stops short of the bottom still reads as a menu over the page, where
-        // a full-height one reads as having navigated away.
+        // Stops short of the bottom so it reads as a menu, not a full navigation.
         className="glass-raised fixed inset-x-2 top-[calc(3rem+env(safe-area-inset-top)+0.5rem)] z-50 max-h-[calc(100dvh-4.5rem)] overflow-y-auto rounded-2xl"
       >
         <nav className="p-2" aria-label="Primary">

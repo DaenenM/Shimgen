@@ -2,22 +2,9 @@ import { BarChart3, Link2, Shuffle, Trophy, Users, Zap } from '@/components/icon
 
 import { FeatureCard } from './FeatureCard'
 
-/**
- * What the product does, one card per promise.
- *
- * The cards come in after the pitch above them, continuing the same
- * stagger rather than starting a second one — so the page reads as one
- * thing settling top to bottom.
- *
- * One step each rather than shared delays. Pairing them put four cards
- * on the screen at the same instant, which broke the cascade into two
- * clumps; a step apiece keeps it reading as one movement travelling down
- * the grid.
- *
- * The delay is a prop rather than a `:nth-child` rule because the visual
- * order is the source order here, and a stylesheet rule would silently
- * mis-time them the moment a card is added or reordered.
- */
+// Feature cards grid. Used by HomePage.jsx.
+// Each card gets its own rise-delay step (not paired) to keep the cascade
+// reading as one continuous movement down the grid.
 export function FeatureGrid() {
   return (
     <section className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

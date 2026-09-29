@@ -1,14 +1,6 @@
-/**
- * A spinner for one region of a page that is still waiting on the server.
- *
- * Distinct from `PageLoader`, which replaces a whole screen and is right only
- * when there is genuinely no page yet — a route still downloading, an auth
- * check that has not resolved. This one is for a page that has already painted
- * its header and actions and is waiting on the part that needs data.
- *
- * Sized to hold roughly the space the content will take, so the footer does not
- * jump up and then back down as rows arrive.
- */
+// Spinner for one region of an already-rendered page (vs. PageLoader, which
+// replaces the whole screen). Sized to roughly hold the space content will
+// take, to avoid layout jump.
 export function SectionLoader({ label = 'Loading…', className = '' }) {
   return (
     <div

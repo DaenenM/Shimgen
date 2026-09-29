@@ -11,43 +11,25 @@ import { MobileNav } from './mobile-nav/MobileNav'
 import { Navbar } from './navbar/Navbar'
 import { NavigationProgress } from './NavigationProgress'
 
-/**
- * The chrome every page sits inside.
- *
- * The boundary and Suspense wrap only the Outlet, so a page that throws or is
- * still loading leaves the navigation intact and the user able to move away
- * from it.
- */
+// App chrome wrapping every route's Outlet. The error boundary and Suspense
+// wrap only the Outlet, so navigation stays usable if a page throws or loads slowly.
 export function RootLayout() {
-  // Both live here rather than in each page: the layout renders on every route,
-  // so one call each covers seventeen pages without any of them remembering to.
+  // Runs once here instead of per-page, since this layout renders on every route.
   useDocumentTitle()
   useScrollToTop()
 
-  // True while a navigation waits on a page chunk that has not arrived yet.
-  // The current page stays up meanwhile, so this bar is the only sign that
-  // the click registered.
+  // True while waiting on a lazy page chunk; current page stays visible until it lands.
   const navigating = useNavigation().state === 'loading'
 
   return (
     <div className="bg-base-200 flex min-h-screen flex-col">
       <NavigationProgress active={navigating} />
-      {/* Two navigations, one per breakpoint: the Navbar hides itself under
-          `lg`, and MobileNav hides itself at `lg` and above. */}
+      {/* Navbar hides below `lg`; MobileNav hides at `lg` and above. */}
       <Navbar />
       <MobileNav />
 
-      {/*
-        The phone header is `position: fixed`, so it is outside the flow and
-        would cover whatever the page starts with. Clearing it here rather than
-        in each page is what makes that reliable: a page that forgot — and
-        eleven of them had, back when this was a bottom bar — loses its title
-        behind the chrome.
-
-        `env(safe-area-inset-top)` is added on top for the notch, which eats a
-        further ~47px on an iPhone. At `lg` the Navbar is sticky rather than
-        fixed, so it occupies real space and needs no allowance.
-      */}
+      {/* Clears the fixed phone header (plus safe-area inset for the notch).
+          Not needed at `lg`+, where the Navbar is sticky instead of fixed. */}
       <main className="flex-1 pt-[calc(3rem+env(safe-area-inset-top))] lg:pt-0">
         <RouteErrorBoundary>
           <Suspense fallback={<PageLoader />}>

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 
 import { paths } from '@/routes/paths'
 
+// Log in / sign up buttons in Navbar.jsx, shown when signed out.
 export function SignedOutActions() {
   return (
     <>

@@ -4,23 +4,12 @@ import { User, Users } from '@/components/icons'
 
 import { Popover } from './Popover'
 
-/**
- * Swap a hand-typed row for a friend's real account.
- *
- * The case this exists for: you tallied "Brett" for a season before Brett had
- * an account, and now he has one. Re-typing loses the eight wins already on the
- * row, so the row is kept and its `player` link is pointed at the real person —
- * the tallies stay exactly where they are.
- *
- * Anyone already on this table is left out of the list. Two rows pointing at
- * one account would split that person's record in half, which is the opposite
- * of what the swap is for.
- */
+// Swaps a hand-typed row's account link to a friend's real account, keeping tallies. Used by BoardRow.jsx.
+// Friends already on this table are excluded — would otherwise split one account across two rows.
 export function SwapRow({ row, friends, taken, onSwap }) {
   const [open, setOpen] = useState(false)
 
-  // Compared by account, not by name — the names differing is the whole reason
-  // somebody is doing this.
+  // Compared by account id, not name, since differing names is the point of the swap.
   const alreadyHere = new Set(taken.map((other) => other.player_user_id ?? null).filter(Boolean))
 
   const options = friends.filter((friend) => friend.user?.id && !alreadyHere.has(friend.user.id))

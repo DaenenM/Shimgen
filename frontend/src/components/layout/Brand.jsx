@@ -3,12 +3,8 @@ import { Link } from 'react-router-dom'
 import { Trophy } from '@/components/icons'
 import { paths } from '@/routes/paths'
 
-/**
- * The wordmark, shared by both navigations so the two cannot drift apart.
- *
- * `compact` is the phone bar's size: it has 3rem of height to work with where
- * the desktop bar has 4.25.
- */
+// Wordmark shared by Navbar.jsx and MobileNav.jsx.
+// `compact` is the phone bar's smaller size (3rem vs 4.25rem height).
 export function Brand({ compact = false, onClick }) {
   return (
     <Link

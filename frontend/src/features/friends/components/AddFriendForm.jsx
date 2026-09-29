@@ -9,17 +9,12 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useDismiss } from '@/hooks/useDismiss'
 import { queryKeys } from '@/lib/queryClient'
 
-/**
- * The @handle input with its live suggestions.
- *
- * `connectedIds` are left out of the suggestions — see `useFriends`.
- */
+// @handle input with live suggestions. Used by FriendsPage.jsx.
+// `connectedIds` are excluded from suggestions (see useFriends).
 export function AddFriendForm({ request, connectedIds }) {
   const [identifier, setIdentifier] = useState('')
 
-  // What the suggestion list is querying, kept separate from the input so
-  // typing stays instant while the request waits for a pause. Binding the query
-  // straight to the field would fire one per keystroke.
+  // Debounced separately from the input so typing stays instant.
   const [term, setTerm] = useState('')
   const [open, setOpen] = useState(false)
   const box = useRef(null)
@@ -27,24 +22,19 @@ export function AddFriendForm({ request, connectedIds }) {
   const search = useDebouncedCallback(setTerm, 250)
   useDismiss(box, open, () => setOpen(false))
 
-  // Two characters is the server's own floor, so asking sooner is a guaranteed
-  // empty round trip.
+  // Matches the server's own minimum length; asking sooner is a guaranteed empty result.
   const showSuggestions = open && term.length >= 2
 
   const { data: found, isFetching } = useQuery({
     queryKey: queryKeys.auth.search(term),
     queryFn: () => auth.searchUsers(term),
     enabled: showSuggestions,
-    // A handle does not change while somebody is typing one.
     staleTime: 60_000,
   })
 
-  // `/auth/users/` is a paginated list view, so it answers with an envelope —
-  // unlike the friends endpoints, which are actions returning a bare array.
+  // `/auth/users/` returns a paginated envelope, unlike the friends endpoints (bare arrays).
   const suggestions = unwrapList(found).filter((person) => !connectedIds.has(person.id))
 
-  // Takes the handle so a suggestion can be sent on click, rather than going
-  // through the input and waiting a render for it to catch up.
   function send(handle) {
     request.mutate(handle, {
       onSuccess: () => {
@@ -59,9 +49,7 @@ export function AddFriendForm({ request, connectedIds }) {
     <form
       className="rise-in rise-delay-2 relative mb-6 flex gap-2"
       ref={box}
-      // Nothing here is a credential. Saying so on the form as well as the
-      // field matters: a manager that ignores the input's own hint will still
-      // respect the form having no login fields to fill.
+      // Discourages password managers from treating this as a login form.
       autoComplete="off"
       data-lpignore="true"
       data-form-type="search"
@@ -70,21 +58,12 @@ export function AddFriendForm({ request, connectedIds }) {
         if (identifier.trim()) send(identifier)
       }}
     >
-      {/* Handle only, not email. A handle is the thing somebody can read out
-          across a room or paste into a group chat without giving away an
-          address — and it is why usernames are unique while display names
-          are not. The `@` is rendered rather than typed; the server strips
-          one anyway, for people who type it the way they see it written. */}
+      {/* Handle, not email: something safe to say out loud or paste in a group chat. */}
       <div className="glass-inset focus-within:border-primary/50 flex h-11 flex-1 items-center px-3 transition-colors">
         <span className="text-base-content/40 shrink-0 text-sm">@</span>
         <input
-          // `type="search"` rather than text, and a name that reads as
-          // nothing like a credential. Chrome and Firefox deliberately ignore
-          // `autocomplete="off"` on fields their heuristics classify as a
-          // login — a lone text input inside a form, labelled "username",
-          // is the textbook shape — so the fix is to stop looking like one
-          // rather than to ask more firmly. A search field is never offered
-          // saved credentials, and it is what this genuinely is.
+          // type="search" avoids Chrome/Firefox login-manager heuristics that
+          // autocomplete="off" alone doesn't stop.
           type="search"
           name="friend-handle"
           id="friend-handle"
@@ -92,8 +71,7 @@ export function AddFriendForm({ request, connectedIds }) {
           placeholder="username"
           value={identifier}
           onChange={(e) => {
-            // A pasted handle often arrives with the @ already on it, and the
-            // field renders its own.
+            // Strip a leading @ since the field already renders one.
             const next = e.target.value.replace(/^@/, '')
             setIdentifier(next)
             setOpen(true)
@@ -120,9 +98,7 @@ export function AddFriendForm({ request, connectedIds }) {
         Add
       </button>
 
-      {/* Anchored to the form rather than to the field, so it spans the input
-          and the Add button together: a narrower panel under one flex child
-          reads as detached from the row that opened it. */}
+      {/* Anchored to the form, not the field, so it spans input + Add button. */}
       {showSuggestions && (
         <ul
           id="friend-suggestions"
@@ -132,8 +108,6 @@ export function AddFriendForm({ request, connectedIds }) {
           {isFetching && suggestions.length === 0 ? (
             <li className="text-base-content/50 px-2.5 py-2 text-sm">Searching...</li>
           ) : suggestions.length === 0 ? (
-            // Said plainly rather than left blank: an empty panel reads as
-            // still loading, and the handle may simply not exist.
             <li className="text-base-content/50 px-2.5 py-2 text-sm">
               No one found for @{identifier.trim()}
             </li>
@@ -153,9 +127,6 @@ export function AddFriendForm({ request, connectedIds }) {
                   <Avatar name={person.name || person.username} />
 
                   <span className="min-w-0 flex-1">
-                    {/* Display name leads because that is what people
-                        recognise; the handle sits under it because that is
-                        what actually addresses the request. */}
                     <span className="block truncate text-sm font-medium">{person.name}</span>
                     <span className="text-base-content/50 block truncate text-xs">
                       @{person.username}

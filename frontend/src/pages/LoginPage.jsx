@@ -5,6 +5,7 @@ import { LoginForm } from '@/features/auth/components/LoginForm'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useLoginForm } from '@/features/auth/hooks/useLoginForm'
 
+// Login page. Route: /login
 export function LoginPage() {
   const { isAuthenticated } = useAuth()
   const login = useLoginForm()

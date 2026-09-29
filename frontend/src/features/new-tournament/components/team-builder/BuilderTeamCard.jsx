@@ -4,15 +4,13 @@ import { TeamCardShell } from '@/features/teams/components/TeamCardShell'
 import { useTeamDropTarget } from '@/features/teams/hooks/useTeamDropTarget'
 import { teamTone } from '@/features/teams/utils/tone'
 
+// One team card in the manual team builder. Used by TeamBuilder.jsx.
 export function BuilderTeamCard({ team, index, active, onFocus, onUpdate, onRemove }) {
-  // The chosen card is outlined in its own colour at rest; a card being dragged
-  // over is outlined in the interactive blue, which wins while a drag is live.
+  // Active card outlined in its own colour; drag-over outline (interactive blue) takes priority.
   const drop = useTeamDropTarget(index, active ? teamTone(index).edge : 'transparent')
 
   return (
-    // Clicking anywhere on a card makes it the target — for the names box
-    // above and for the saved roster alike — so filling team three is: click
-    // the card, then type or click the names.
+    // Clicking the card sets it as the target for the names box and saved roster.
     <TeamCardShell
       as="li"
       innerRef={drop.ref}

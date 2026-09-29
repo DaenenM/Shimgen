@@ -13,18 +13,9 @@ import { paths } from '@/routes/paths'
 
 const LIST_FORMATS = new Set(['rr', 'swiss'])
 
-/**
- * The public bracket (plan §4, NEW 2).
- *
- * No account, no controls — the organiser signs up and nine friends just click
- * a link. Reusing BracketView with `canReport={false}` rather than writing a
- * separate read-only renderer means the spectator view cannot drift out of step
- * with the real one.
- *
- * Styled like the rest of the site. It had been left on the old DaisyUI cards
- * and buttons while every other page moved to the glass surfaces, which made
- * the one page strangers actually land on look like a different product.
- */
+// Public read-only bracket (plan §4, NEW 2). Route: /t/:publicSlug/:name?
+// No account, no controls. Reuses BracketView with canReport={false} so
+// this view can't drift out of sync with the host's.
 export function SpectatorPage() {
   const { publicSlug } = useParams()
   const { tournament, standings, isLoading } = useSpectatorBracket(publicSlug)
@@ -46,13 +37,10 @@ export function SpectatorPage() {
 
   return (
     <PageShell width="wide" className="glass-backdrop">
-      {/* The title block only. The bracket beside it is replaced whenever a
-          result lands, and animating that would make the page twitch at
-          somebody watching a friend's tournament — the last place a flourish
-          belongs. */}
+      {/* Only the title block animates — the bracket updates live and shouldn't twitch. */}
       <SpectatorHeader tournament={tournament} className="rise-in mb-6" />
 
-      {/* Same shape as the host's view: standings left, bracket centre. */}
+      {/* Same layout as the host's view: standings left, bracket centre. */}
       <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
         <SpectatorSidebar
           standings={standings}

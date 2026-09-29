@@ -1,23 +1,18 @@
 import { Archive, ArchiveRestore, Trash2, User, Users } from '@/components/icons'
 
-/** One saved player, active or archived, with the actions that fit its state. */
+// One saved player row, active or archived, with actions for its state.
+// Used by ArchivedPlayers.jsx, RosterPage.jsx.
 export function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) {
-  // No words for either kind of linked row: the icon beside the name says it,
-  // and spelling the same fact out underneath was saying it twice. Being
-  // archived is the one state the row cannot show any other way.
   const status = archived ? 'Archived' : null
 
   const played = player.last_used_at
     ? `last played ${new Date(player.last_used_at).toLocaleDateString()}`
     : null
 
-  // Joined rather than concatenated with a hard separator, so whichever half is
-  // missing does not leave a dangling dot.
   const meta = [status, played].filter(Boolean).join(' · ')
 
   return (
-    // An archived row is dimmed and dashed, so the two lists cannot be confused
-    // when both are on screen at once.
+    // Archived rows are dimmed/dashed so the two lists stay visually distinct.
     <li
       className={
         archived
@@ -32,16 +27,10 @@ export function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) 
           >
             <span className="truncate">{player.display_name}</span>
 
-            {/* The meta line below already says "Follows their name", so here
-                the glyph is reinforcement rather than the only signal. */}
             {player.is_friend ? (
               <Users className="text-primary h-3.5 w-3.5 shrink-0" aria-label="Friend" role="img" />
             ) : (
-              // An account attached without being a friend — somebody who
-              // claimed a bracket, say. Amber rather than the friend blue:
-              // `--color-accent` is the hue the backdrop mesh already warms the
-              // page with, so a second kind of link reads as related to the
-              // first without being mistaken for it.
+              // Linked-but-not-friend (e.g. claimed a bracket) uses accent color, not friend blue.
               player.linked && (
                 <User
                   className="text-accent h-3.5 w-3.5 shrink-0"
@@ -51,14 +40,6 @@ export function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) 
               )
             )}
           </p>
-          {/* A plain roster entry says nothing here. "Name only" described the
-              absence of a link, which is the ordinary case — most of a roster
-              is names somebody typed — so it was a label on nothing.
-
-              Computed above the markup rather than nested further: with the
-              fallback gone the ternary would have ended in an empty string,
-              and the separator below would then have rendered a stray
-              " · last played" with nothing in front of it. */}
           {meta && <p className="text-base-content/50 text-xs">{meta}</p>}
         </div>
 
@@ -84,11 +65,7 @@ export function PlayerRow({ player, archived, onArchive, onRestore, onRemove }) 
             </button>
           )}
 
-          {/* Deleting is offered only for a plain typed name. A row backed by
-              an account — a friend, or you — takes a real person's rating
-              history with it, so archiving is the whole of what is on offer and
-              the delete control is not rendered at all rather than rendered
-              and refused. The server enforces the same rule. */}
+          {/* Delete only offered for a plain typed name; a friend/self row would cascade-delete rating history. */}
           {!player.is_friend && !player.is_self && (
             <button
               className="text-error hover:bg-error/10 inline-flex h-8 items-center rounded-lg px-2.5 text-xs font-medium transition-colors duration-150"

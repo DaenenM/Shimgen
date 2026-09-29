@@ -7,13 +7,8 @@ import { AuthField } from './AuthField'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { SubmitButton } from './SubmitButton'
 
-/**
- * Create an account by email and password, or with Google.
- *
- * name/id on the inputs are load-bearing for autofill, not decoration: mobile
- * Safari and Chrome fall back to field-name heuristics, and a password manager
- * needs a stable identity to save a new credential against.
- */
+// Sign-up form (email/password or Google). Used by RegisterPage.jsx.
+// name/id on inputs matter for autofill/password-manager matching, not just autoComplete.
 export function RegisterForm({ registration }) {
   const { form, update, formError, setFormError, fieldError, busy, onSubmit, onGoogle } =
     registration

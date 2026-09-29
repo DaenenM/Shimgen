@@ -1,4 +1,5 @@
-/** The solid submit button the account forms share, with a spinner while busy. */
+// Shared submit button with busy spinner for account forms.
+// Used by LoginForm.jsx, RegisterForm.jsx, ProfileForm.jsx.
 export function SubmitButton({ busy, children, className = '' }) {
   return (
     <button

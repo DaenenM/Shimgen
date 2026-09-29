@@ -1,20 +1,6 @@
-/**
- * The icons this app uses, imported one module at a time.
- *
- * lucide-react's package entry is a barrel re-exporting 4,132 icons. Naming
- * three of them in an import still drags the whole barrel in, which the dev
- * server then prebundles into a single 1.18 MB, 48,000-line file — the largest
- * thing it serves, parsed before any page showing an icon can paint. Excluding
- * it from prebundling is worse still: the browser then makes ~1,800 module
- * requests instead.
- *
- * Importing each icon from its own module sidesteps both. The production build
- * tree-shakes either way, so this is a development speed fix, not a bundle-size
- * one.
- *
- * Add an icon here when you need it, then import it from '@/components/icons'
- * rather than from 'lucide-react' directly.
- */
+// Icon re-exports, imported one module at a time to avoid dragging in
+// lucide-react's whole barrel export during dev. Used app-wide — import from
+// '@/components/icons', not 'lucide-react' directly. Add new icons here.
 export { default as AlertTriangle } from 'lucide-react/dist/esm/icons/alert-triangle.mjs'
 export { default as Archive } from 'lucide-react/dist/esm/icons/archive.mjs'
 export { default as ArchiveRestore } from 'lucide-react/dist/esm/icons/archive-restore.mjs'

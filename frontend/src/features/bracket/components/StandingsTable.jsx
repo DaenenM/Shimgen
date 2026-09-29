@@ -1,21 +1,8 @@
 import { useDragScroll } from '@/hooks/useDragScroll'
 
-/**
- * The podium.
- *
- * Gold is `--color-accent` rather than a colour of its own: hue 80 is already
- * the app's victory colour — the winner pill on a tournament card, the trophy
- * on the bracket — and a second, slightly different gold beside it would read
- * as a mistake.
- *
- * Silver and bronze are built to match, on the same `light-dark()` pattern the
- * format pills and round tones use, so all three invert with the theme instead
- * of being pastel on white and muddy on black.
- *
- * Silver is deliberately almost colourless — hue 260 at 0.02 chroma. Any more
- * and it reads as blue, which collides with `--color-primary`; any less and it
- * is indistinguishable from the neutral rows around it.
- */
+// Podium colours. Gold reuses `--color-accent` (the app's existing victory colour)
+// rather than a second gold. Silver/bronze use the same light-dark() pattern so
+// all three invert with the theme.
 const PODIUM = {
   1: {
     text: 'var(--color-accent)',
@@ -34,17 +21,11 @@ const PODIUM = {
   },
 }
 
-/**
- * Standings.
- *
- * The API returns one of two shapes depending on format: points-based rows for
- * round robin and Swiss, or a placement per entrant for a knockout — where
- * ranking by points would be meaningless, since a bracket ranks by how far you
- * got. This renders whichever arrived.
- */
+// Standings table. Renders whichever shape the API returned: points-based rows
+// (round robin, Swiss) or a placement per entrant (knockout, ranked by how far you got).
+// Used by StandingsSection.jsx and SpectatorSidebar.jsx.
 export function StandingsTable({ rows }) {
-  // Called before the early return: hooks cannot be conditional, and an empty
-  // table still has to run the same ones a full one does.
+  // Before the early return: hooks can't be conditional.
   const scroller = useDragScroll()
 
   if (!rows || rows.length === 0) {
@@ -59,10 +40,7 @@ export function StandingsTable({ rows }) {
 
   return (
     <div ref={scroller} className="overflow-x-auto">
-      {/* Padding is applied with child selectors rather than a class on every
-          one of the dozen cells — DaisyUI's `table` was supplying it before,
-          and repeating `px-3 py-2` twelve times is how the next column added
-          ends up misaligned. */}
+      {/* Padding via child selectors instead of repeating a class on every cell. */}
       <table className="w-full text-sm [&_td]:px-2.5 [&_td]:py-2 sm:[&_td]:px-3 [&_th]:px-2.5 [&_th]:py-2 sm:[&_th]:px-3">
         <thead>
           <tr className="border-base-content/10 text-base-content/60 border-b text-xs font-semibold tracking-wide uppercase">
@@ -83,14 +61,8 @@ export function StandingsTable({ rows }) {
         </thead>
         <tbody>
           {rows.map((row, index) => {
-            // First place, however this table is ranked. On a knockout that is
-            // the champion; on points it is whoever leads. Either way it is the
-            // line the table was opened to find, so it gets the victory colour
-            // and nothing else does.
-            // A knockout ranks by how far you got, and several entrants
-            // genuinely share a placement — four quarter-finalists are all
-            // 5th. So the medal comes from the placement itself, not from
-            // where the row happens to sit in the list.
+            // Medal comes from placement itself, not row position — several entrants
+            // can share a placement (four quarter-finalists are all 5th).
             const rank = isPlacement ? row.placement : index + 1
             const medal = PODIUM[rank]
 
@@ -101,9 +73,7 @@ export function StandingsTable({ rows }) {
                 style={medal ? { backgroundColor: medal.wash } : undefined}
               >
                 <td className="tabular relative">
-                  {/* A lit edge rather than a heavier fill: three tinted rows
-                      stacked would otherwise swamp the table, and the edge is
-                      what keeps the podium readable at a glance. */}
+                  {/* Lit edge instead of heavier fill, so three tinted rows don't swamp the table. */}
                   {medal && (
                     <span
                       className="absolute inset-y-0 left-0 w-0.5"
@@ -131,8 +101,7 @@ export function StandingsTable({ rows }) {
                   </td>
                 ) : (
                   <>
-                    {/* Played is a volume, not a verdict, so it stays neutral —
-                        colouring it would rank turning up alongside winning. */}
+                    {/* Played is a volume, not a verdict, so it stays neutral. */}
                     <td className="tabular text-base-content/70 text-right">{row.played}</td>
                     <td className="tabular text-success text-right">{row.wins}</td>
                     <td className="tabular text-base-content/70 text-right">{row.draws}</td>
@@ -150,7 +119,7 @@ export function StandingsTable({ rows }) {
 }
 
 function ordinal(n) {
-  // 11th, 12th and 13th are the exceptions the naive rule gets wrong.
+  // 11th-13th are exceptions to the naive last-digit rule.
   const tens = n % 100
   if (tens >= 11 && tens <= 13) return `${n}th`
 

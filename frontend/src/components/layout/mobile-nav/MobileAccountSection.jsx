@@ -15,15 +15,13 @@ const SIGNED_OUT = [
   { to: paths.register, label: 'Create an account' },
 ]
 
-/** The account half of the phone sheet. */
+// Account half of the phone menu sheet. Used by MobileMenu.jsx.
 export function MobileAccountSection({ onNavigate }) {
   const { isAuthenticated, user, logout } = useAuth()
   const links = isAuthenticated ? SIGNED_IN : SIGNED_OUT
 
   return (
     <div className="border-base-content/10 border-t p-2">
-      {/* Named rather than assumed: "Account" is the word the header uses, so
-          the section under it says the same thing. */}
       <p className="text-base-content/45 px-3 pt-1 pb-1.5 text-xs font-semibold tracking-wide uppercase">
         {isAuthenticated ? (user?.name ?? 'Account') : 'Account'}
       </p>

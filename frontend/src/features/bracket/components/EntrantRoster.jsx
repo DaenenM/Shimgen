@@ -1,18 +1,9 @@
 import { Users } from '@/components/icons'
 import { teamTone } from '@/features/teams/utils/tone'
 
-/**
- * Who is on which team, as a card grid at the foot of the bracket.
- *
- * An entrant's label is a per-event nickname by design (plan §3), so "Blue
- * Shells" says nothing about who is in it. Halfway through a night people
- * genuinely forget, and scrolling back to the team generator is not an answer
- * once the bracket exists.
- *
- * Laid out like the generator's output on purpose — the same crew in the same
- * shape, so the bracket page confirms what the randomiser produced rather than
- * presenting it differently.
- */
+// Card grid showing who's on each team, at the foot of the bracket. Used by
+// TournamentDetailPage.jsx and SpectatorPage.jsx — entrant labels are per-event
+// nicknames (plan §3), so this is how people remember who's actually on "Blue Shells".
 export function EntrantRoster({ entrants }) {
   if (!entrants?.length) return null
 
@@ -45,8 +36,7 @@ export function EntrantRoster({ entrants }) {
               className={`glass-panel overflow-hidden ${entrant.eliminated ? 'opacity-50' : ''}`}
               style={{ borderTopColor: tone.edge }}
             >
-              {/* The team's hue as light falling through the top of the panel,
-                  exactly as the generator draws it. */}
+              {/* Team colour as a gradient wash, matching the team generator. */}
               <div
                 className="pointer-events-none absolute inset-x-0 top-0 h-16 sm:h-24"
                 style={{ background: `linear-gradient(to bottom, ${tone.wash}, transparent)` }}
@@ -78,8 +68,7 @@ export function EntrantRoster({ entrants }) {
                     {members.map((player) => (
                       <li key={player.id} className="flex items-center gap-2 text-xs sm:text-sm">
                         {player.display_name}
-                        {/* A linked player's results follow their own account
-                            across every host's events (plan §3). */}
+                        {/* Linked players' results follow their account across events (plan §3). */}
                         {player.linked && (
                           <span
                             className="bg-primary h-1.5 w-1.5 rounded-full"

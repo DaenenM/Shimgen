@@ -6,7 +6,7 @@ const BEST_OF = [1, 3, 5, 7].map((n) => ({
   label: n === 1 ? 'Single game' : `Best of ${n}`,
 }))
 
-/** Series length, and the extras that only one format has. */
+// Series length plus per-format extras (3rd place, bracket reset). Used by SettingsPanel.jsx.
 export function MatchOptions({
   format,
   bestOf,
@@ -29,9 +29,7 @@ export function MatchOptions({
         />
       </div>
 
-      {/* Names only, here and on the select above — the explanations
-          underneath made each setting take three or four lines. The one that
-          needs a gloss keeps it as hover text. */}
+      {/* Names only; the one that needs explanation keeps it as hover text (title attr). */}
       {format === 'single' && (
         <Toggle label="Play for 3rd place" checked={thirdPlace} onChange={onThirdPlaceChange} />
       )}

@@ -6,7 +6,7 @@ import { RowName } from './RowName'
 import { SwapRow } from './SwapRow'
 import { TallyCell } from './TallyCell'
 
-/** One competitor's line on a board. */
+// One competitor's row on a board table. Used by BoardTable.jsx.
 export function BoardRow({
   row,
   table,
@@ -35,22 +35,11 @@ export function BoardRow({
         {leading && (
           <span className="bg-accent absolute inset-y-0 left-0 w-0.5" aria-hidden="true" />
         )}
-        {/* `block truncate` inside the `max-w-0` cell above is what makes a
-            long name give way instead of widening a narrow table. On desktop
-            the name column is a fixed `w-40`, so it keeps the plain inline
-            treatment it always had — applying both there collapsed the column
-            and let the tally sprawl across it. */}
+        {/* `truncate` only applies in the narrow (`max-w-0`) layout, not the fixed-width desktop one. */}
         <span className="flex min-w-0 items-center gap-1.5">
-          {/* Every row can be renamed, linked or not. The label is this board's
-              own name for somebody — a crew calling Brett "Bretty" on their
-              Pummel Party table is the point, not a mistake — and it overrides
-              the account name only here. The account link and the tallies are
-              untouched. */}
+          {/* Row label overrides the account name here only; the link and tallies are untouched. */}
           {editing && onRenameRow ? (
-            // Keyed on the name so a swap re-seeds the box: the draft is state,
-            // and state survives a prop change — without this the field kept
-            // the old name after swapping in a friend, which is exactly when
-            // you want to see theirs.
+            // Keyed on name so swapping in a friend re-seeds the draft with theirs.
             <RowName
               key={row.display_name}
               name={row.display_name}
@@ -89,9 +78,7 @@ export function BoardRow({
             count={row.counts?.[column.id] ?? 0}
             emoji={column.emoji}
             display={displayFor(column)}
-            // Automatic columns are computed from the bracket, so they have no
-            // +/- : editing one by hand would be overwritten the next time a
-            // result was reported, which is worse than not offering it.
+            // Automatic columns are bracket-computed; no +/- since a hand edit would be overwritten.
             canEdit={canEdit && column.role === 'manual'}
             busy={busyKey === `${row.id}:${column.id}`}
             onAward={(delta) => onAward(row.id, column.id, delta)}

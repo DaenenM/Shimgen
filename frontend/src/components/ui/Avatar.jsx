@@ -1,14 +1,5 @@
-/**
- * A person's single-initial avatar.
- *
- * A single initial rather than a generated avatar image: no network request,
- * no layout shift, and it still gives a row a recognisable anchor. One letter
- * rather than two — at 32px a two-letter pair is set small enough to read as a
- * smudge, where one glyph fills the square and stays legible.
- *
- * Shared so a person looks the same in the account menu, search results and
- * the friends list.
- */
+// Single-initial avatar badge. Shared UI primitive used wherever a person
+// needs a visual anchor (account menu, search results, friends list).
 export function Avatar({ name, className = '' }) {
   const initial = (name || '?').trim().slice(0, 1).toUpperCase() || '?'
 

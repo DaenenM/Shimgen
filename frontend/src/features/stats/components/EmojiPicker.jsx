@@ -1,13 +1,7 @@
 import { useState } from 'react'
 
-/**
- * Pick the mark a column stamps.
- *
- * A short list of the things people actually tally with, plus a free field —
- * a full emoji keyboard would be a lot of chrome for a choice made once per
- * column, and the native picker is one keyboard shortcut away for anything
- * exotic.
- */
+// Emoji picker for a column's mark: quick suggestions plus a free-text field.
+// Used by AddColumn.jsx and AddTable.jsx.
 const SUGGESTIONS = [
   '\u{1F531}', // trident
   '⚜️', // fleur-de-lis

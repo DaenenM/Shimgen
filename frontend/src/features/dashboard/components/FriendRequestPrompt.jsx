@@ -3,10 +3,7 @@ import { Link } from 'react-router-dom'
 import { UserPlus } from '@/components/icons'
 import { paths } from '@/routes/paths'
 
-/**
- * A pending friend request is the one thing on the dashboard that needs an
- * answer, so it gets a prompt rather than sitting silently in a counter.
- */
+// Pending-friend-request banner. Used by DashboardPage.jsx.
 export function FriendRequestPrompt({ count, className = '' }) {
   if (count === 0) return null
 

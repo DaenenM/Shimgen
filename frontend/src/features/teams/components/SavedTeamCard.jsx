@@ -1,7 +1,7 @@
 import { Pencil, Trash2 } from '@/components/icons'
 import { TeamCrest } from '@/components/ui/TeamCrest'
 
-/** A saved team at rest: crest, name, members, and edit/delete. */
+// A saved team card: crest, name, members, edit/delete. Used by SavedTeamList.jsx.
 export function SavedTeamCard({ team, disabled, onEdit, onDelete }) {
   return (
     <li className="glass-inset group flex items-center gap-3 p-3">

@@ -1,18 +1,8 @@
 import { useState } from 'react'
 
-/**
- * A competitor's name, editable in place.
- *
- * Same gesture as the table and board names: commits on blur as well as Enter,
- * because renaming and then clicking straight back into the board is the
- * natural thing to do, and losing the edit for want of a keypress is the kind
- * of thing you only notice afterwards. Escape puts it back.
- *
- * Writes `label`, which is the row's own name. For a row linked to an account
- * that label takes precedence over the account's — so naming a friend something
- * else here is allowed, and that row then stops following their renames. Their
- * tallies and their link are untouched either way.
- */
+// A competitor's name, editable in place. Used by BoardRow.jsx.
+// Commits on blur too (same as InlineName). Writes the row's own label, which
+// overrides a linked account's name and detaches it from that account's renames.
 export function RowName({ name, onRename }) {
   const [draft, setDraft] = useState(name)
 

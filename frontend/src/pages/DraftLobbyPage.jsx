@@ -11,36 +11,21 @@ import { DraftTeamCard } from '@/features/draft/components/DraftTeamCard'
 import { useDraftLobby } from '@/features/draft/hooks/useDraftLobby'
 import { paths } from '@/routes/paths'
 
-/**
- * The captain draft: a pool of players, and captains taking turns to pick.
- *
- * This page exists because a drafted tournament has no bracket yet — entrants
- * are created only once every player has a team, so there is nothing for the
- * bracket page to render until the draft ends. Step 6 of the flow: the last
- * pick makes this page redundant and it hands over to the bracket.
- *
- * One device, passed around the room. Whoever is captain taps their own pick,
- * or the host taps for them — which is how a group at one table actually
- * drafts, and it needs no accounts at all, so an anonymous quick-start host can
- * use captains mode like anyone else.
- */
+// Captain draft lobby. Route: /tournaments/:id/draft/:name?
+// Entrants aren't created until the draft ends, so there's no bracket to
+// show until then. One device passed around the room; no account needed.
 export function DraftLobbyPage() {
   const { id } = useParams()
   const { tournament, draft, isLoading, pick, undo, complete, error } = useDraftLobby(id)
 
   if (isLoading) return <SkeletonPage width="max-w-4xl" />
 
-  // Only the irreversible step waits on the network. Picking and undoing are
-  // applied to the cache immediately, so disabling them while a request is in
-  // flight would reintroduce the pause this page is meant not to have — and a
-  // fast run of picks is exactly the normal case.
+  // Only the irreversible "complete" step waits on the network.
   const busy = complete.isPending
   const ready = draft.pool.length === 0
   const current = draft.teams.find((team) => team.is_picking)
 
-  // Not a spectator link: this route is gated like any other view of the
-  // tournament, so it opens only for the host, a captain, or somebody in the
-  // pool. It saves them hunting through their tournament list.
+  // Gated like any other tournament view — not a public spectator link.
   const lobbyUrl = `${window.location.origin}${paths.draft(id, tournament?.title)}`
 
   return (
@@ -87,8 +72,7 @@ export function DraftLobbyPage() {
 
           <div className="mt-5">
             <DraftFinish
-              // Building the bracket is a host action on the server, so the
-              // control is a host control here.
+              // Building the bracket is a host-only action.
               isHost={Boolean(tournament?.is_host)}
               ready={ready}
               picksRemaining={draft.picks_remaining}

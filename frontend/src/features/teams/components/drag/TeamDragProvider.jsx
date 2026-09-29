@@ -21,31 +21,16 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { DragState, isMember, keyOf } from '../../context/dragState'
 import { LiftedMember } from './LiftedMember'
 
-/*
- * Dragging players between teams — one implementation for every page that
- * shows teams, so the new-tournament form and the team generator cannot drift
- * into two different feels.
- *
- * The pages keep their own team shapes (names on the form, player records in
- * the generator); this works on `groups`, a list of lists of string keys, one
- * list per team. A key must be unique across all the groups.
- *
- *   <TeamDragProvider groups={…} onChange={…} labelOf={…}>
- *     …each team card:
- *       const drop = useTeamDropTarget(index)   (from hooks/useTeamDropTarget)
- *       <DraggableMembers index={index} keys={…} labelOf={…} />
- *   </TeamDragProvider>
- */
+// Shared drag-and-drop implementation for moving players between teams.
+// Used by GeneratedTeams.jsx (team generator) and TeamBuilder.jsx (new-tournament).
+// Operates on `groups`: a list of lists of string keys, one list per team, keys unique across groups.
+//
+//   <TeamDragProvider groups={…} onChange={…} labelOf={…}>
+//     …each team card: const drop = useTeamDropTarget(index); <DraggableMembers index={index} keys={…} labelOf={…} />
+//   </TeamDragProvider>
 
-/**
- * Which droppable the pointer is over.
- *
- * The pointer itself rather than the dragged row's overlap: rows are small, so
- * "most overlap" flickers between neighbours while "under the cursor" is what
- * the person is actually aiming at. A row wins over the team card behind it,
- * so dropping onto a name inserts beside it. The keyboard has no pointer, so
- * it falls back to nearest-centre.
- */
+// Picks the droppable under the pointer (not most-overlap, since rows are small).
+// A row wins over its team card so dropping on a name inserts beside it. Keyboard falls back to nearest-centre.
 function collisions(args) {
   if (!args.pointerCoordinates) return closestCenter(args)
 
@@ -55,23 +40,16 @@ function collisions(args) {
   return [hits.find((hit) => isMember(hit.id)) ?? hits[0]]
 }
 
-/**
- * The drag context for a set of teams, with the lifted name in the air.
- *
- * `onDropped(index)` is told which team a player ended up in, for a page that
- * wants to follow the move (the form makes that team its target).
- */
+// Drag context for a set of teams; renders the lifted name in a DragOverlay.
+// onDropped(index) reports which team a player ended up in (e.g. to set the form's active team).
 export function TeamDragProvider({ groups, onChange, labelOf, onDropped, children }) {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
-  // The key being dragged, and the team the pointer is over — the second
-  // drives the drop-target highlight, including for a team that is empty.
+  // Key being dragged, and the team the pointer is over (drives drop-target highlight).
   const [dragging, setDragging] = useState(null)
   const [overGroup, setOverGroup] = useState(null)
 
-  // Drag events fire between renders, so they read the latest groups through a
-  // ref rather than whatever their closure captured. `snapshot` is the layout
-  // at pick-up, restored if the drag is cancelled.
+  // Ref avoids stale closures in drag event handlers. `snapshot` restores layout on cancel.
   const latest = useRef(groups)
   const snapshot = useRef(null)
   useEffect(() => {
@@ -79,11 +57,9 @@ export function TeamDragProvider({ groups, onChange, labelOf, onDropped, childre
   }, [groups])
 
   const sensors = useSensors(
-    // A few pixels of travel before a drag starts, so clicking a row's × or
-    // the card itself still reads as a click.
+    // Small travel threshold so a plain click still registers as a click.
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
-    // Press and hold on touch. An immediate drag would hijack every swipe that
-    // happened to start on a row, and the list has to scroll.
+    // Press-and-hold on touch so scrolling isn't hijacked as a drag.
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
@@ -101,14 +77,8 @@ export function TeamDragProvider({ groups, onChange, labelOf, onDropped, childre
     setOverGroup(groupOf(active.id))
   }
 
-  /**
-   * Move the row into another team the moment it crosses over.
-   *
-   * Done live rather than on drop so the destination opens a gap for it and
-   * the source closes up behind it while the name is still in the air — the
-   * drop then only has to settle it, which is what makes the move feel direct.
-   * Reordering within one team is left to the sortable transforms until drop.
-   */
+  // Moves the row into the new team live (on crossing over), not on drop, so the move feels
+  // direct. Reordering within one team is left to sortable transforms until drop.
   function onDragOver({ active, over }) {
     const to = groupOf(over?.id)
     setOverGroup(to)
@@ -174,8 +144,7 @@ export function TeamDragProvider({ groups, onChange, labelOf, onDropped, childre
       <DndContext
         sensors={sensors}
         collisionDetection={collisions}
-        // Rows change team mid-drag, so the cards' sizes change with them;
-        // measuring continuously keeps the drop targets where they now are.
+        // Continuous measuring since card sizes change mid-drag as rows move between teams.
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -184,11 +153,8 @@ export function TeamDragProvider({ groups, onChange, labelOf, onDropped, childre
       >
         {children}
 
-        {/* Portalled to <body>. The overlay is `position: fixed`, and the teams
-            sit inside glass panels, whose `backdrop-filter` makes each one the
-            containing block for fixed descendants — so rendered in place, the
-            lifted name was positioned relative to the panel and drifted away
-            from the cursor by the panel's offset on the page. */}
+        {/* Portalled to <body>: glass panels' backdrop-filter makes them containing
+            blocks for fixed descendants, which would offset the overlay from the cursor. */}
         {createPortal(
           <DragOverlay
             dropAnimation={

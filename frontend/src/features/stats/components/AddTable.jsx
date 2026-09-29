@@ -4,13 +4,12 @@ import { Plus } from '@/components/icons'
 
 import { EmojiPicker } from './EmojiPicker'
 
-/** A second section on the board — "Teams" alongside "Solo". */
+// Adds a new table to a board (e.g. "Teams" alongside "Solo"). Used by BoardPage.jsx.
 export function AddTable({ onAdd, pending }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('⚜️')
-  // Two genuinely different kinds of table, and the choice decides what the
-  // table can do afterwards, so it is made here rather than buried in settings.
+  // Whether this table is hand-tallied or fed by linked tournaments.
   const [tracks, setTracks] = useState(false)
 
   if (!open) {
@@ -67,8 +66,7 @@ export function AddTable({ onAdd, pending }) {
           ))}
         </div>
 
-        {/* A tracking table's columns come with their own marks, so there is
-            nothing to choose here. */}
+        {/* Tracking tables get preset columns with their own marks. */}
         {!tracks && (
           <div>
             <span className="label-text mb-1.5 block text-sm">Mark for its first column</span>

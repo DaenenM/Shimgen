@@ -1,11 +1,7 @@
 import { Minus, Plus } from '@/components/icons'
 
-/**
- * A number nudged up and down between `min` and `max`.
- *
- * `onChange` receives an updater, so two quick taps each see the value the
- * previous one produced.
- */
+// Number stepper between min/max. `onChange` receives an updater function, so
+// rapid taps don't overwrite each other. Used by CaptainSettings.jsx and TeamCountStepper.jsx.
 export function Stepper({ value, min, max, onChange, lessLabel, moreLabel }) {
   return (
     <div className="glass-raised flex shrink-0 items-center overflow-hidden">

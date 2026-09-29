@@ -2,7 +2,7 @@ import { Eye } from '@/components/icons'
 
 import { FORMAT_LABELS } from '../../utils/layout'
 
-/** The public bracket's title block: what it is, how big, and whether it is live. */
+// Public bracket's title block. Used by SpectatorPage.jsx.
 export function SpectatorHeader({ tournament, className = '' }) {
   const live = tournament.state === 'active'
 

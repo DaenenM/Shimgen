@@ -1,16 +1,12 @@
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
-/**
- * Confirms deleting a tournament. Deleting takes every match and result with
- * it, which is worth a real pause.
- */
+// Confirms deleting a tournament (takes every match/result with it). Used by TournamentsPage.jsx.
 export function DeleteTournamentDialog({ tournament, pending, onConfirm, onCancel }) {
   return (
     <ConfirmDialog
       open={Boolean(tournament)}
       title={`Delete ${tournament?.title || 'this tournament'}?`}
-      // The board consequence is named only when there is a board, so the
-      // warning stays true and does not become noise hosts click past.
+      // Board consequence only mentioned when there's a linked board.
       message={
         tournament?.feeds_stats_board
           ? 'Every match and result in it goes too — and the wins, losses and trophies it added to its stats board are taken back off. This cannot be undone. To keep the stats, archive it instead.'

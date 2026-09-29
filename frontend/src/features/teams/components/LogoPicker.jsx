@@ -1,15 +1,10 @@
 import { useRef } from 'react'
 
-/** Roughly 190KB of image once base64 has added its third. */
+// Roughly 190KB of image once base64 has added its third.
 const LOGO_MAX_BYTES = 256 * 1024
 
-/**
- * "Add a logo" / "Remove", reading the chosen file straight into a data URL.
- *
- * No upload endpoint and no storage configuration: the image travels with the
- * team as text. Checked against the same ceiling the server enforces, so an
- * oversized file is refused here rather than after a round trip.
- */
+// "Add a logo" / "Remove" control, reads the file into a data URL. Used by TeamEditor.jsx.
+// No upload endpoint — the image travels with the team as base64 text.
 export function LogoPicker({ logo, onChange, onError }) {
   const fileInput = useRef(null)
 
@@ -19,8 +14,7 @@ export function LogoPicker({ logo, onChange, onError }) {
 
     onError(null)
 
-    // The base64 encoding adds about a third, so the file itself has to be
-    // comfortably under the stored ceiling.
+    // Base64 adds about a third, so check against a lower threshold than the stored ceiling.
     if (file.size > LOGO_MAX_BYTES * 0.74) {
       onError('That image is too large — pick one under about 190KB.')
       return

@@ -12,6 +12,8 @@ const STATE_DOT = {
   complete: 'bg-base-content/40',
 }
 
+// One tournament row. Used by TournamentList.jsx, ArchivedTournaments.jsx and
+// RecentTournaments.jsx (dashboard).
 export function TournamentCard({
   tournament,
   archived = false,
@@ -21,39 +23,27 @@ export function TournamentCard({
   onRunBack,
   onDelete,
   pending = false,
-  // A glance rather than a workbench — the dashboard shows the same row but
-  // keeps pinning, archiving and deleting on the tournaments page, which is one
-  // tap away. Without this the row would render three controls wired to
-  // handlers the caller never passed.
+  // Dashboard passes this — pinning/archiving/deleting live on the tournaments page instead.
   readOnly = false,
   // The signed-in account, so the row can tell whose tournament this is.
   viewer = null,
 }) {
   const name = tournament.title || 'Untitled tournament'
 
-  // Matches how the bracket page decides the same thing. An unclaimed
-  // quick-start bracket has no owner at all, and whoever is holding it is
-  // effectively its host — the same bargain the server strikes.
+  // An unclaimed quick-start bracket has no owner, so whoever holds it counts as host.
   const isOwner = Boolean(
     tournament.created_by == null || (viewer?.id && tournament.created_by?.id === viewer.id),
   )
 
-  // A drafting tournament has no bracket yet, so the bracket page would show an
-  // empty one — the lobby is where it actually continues, for a captain about
-  // to pick and for anyone watching alike.
+  // A drafting tournament has no bracket yet, so it links to the draft lobby instead.
   const isDrafting = tournament.state === 'drafting'
   const target = isDrafting
     ? paths.draft(tournament.id, name)
     : paths.tournament(tournament.id, name)
 
   return (
-    // `glass-inset` rather than `glass-panel`: these are dense list rows, and
-    // a full panel's blur plus drop shadow, stacked twenty deep, reads as
-    // twenty floating cards instead of one list.
-    // A draft in progress is the one row somebody has to act on, so it is lit
-    // rather than tinted: a green ground and a matching edge, against rows that
-    // are all the same neutral glass. Everything else keeps the quiet treatment
-    // — colour every state and none of them stands out.
+    // glass-inset, not glass-panel — dense list rows shouldn't stack as 20 floating cards.
+    // A drafting row is lit (green) since it's the one that needs action; other states stay neutral.
     <li
       className={`group relative min-w-0 transition-colors duration-200 ${
         isDrafting
@@ -85,14 +75,7 @@ export function TournamentCard({
           <TournamentPills tournament={tournament} />
         </Link>
 
-        {/* Owner only. Archiving, deleting and running back are all gated on
-            IsTournamentHost server-side, so for anybody else these were three
-            buttons that could only ever return 403 — which is exactly what they
-            did for a player looking at a tournament somebody else hosts.
-
-            The list shows tournaments you play in as well as ones you run, so
-            this is the common case, not an edge one. Pinning goes with them:
-            `favourite` is host-gated too. */}
+        {/* Owner only — archive/delete/run-back/favourite are all host-gated server-side. */}
         {!readOnly && isOwner && (
           <TournamentActions
             tournament={tournament}

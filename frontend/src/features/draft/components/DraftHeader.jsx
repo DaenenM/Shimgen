@@ -1,6 +1,6 @@
 import { CopyLinkButton } from '@/components/ui/CopyLinkButton'
 
-/** The lobby's title, whose turn it is, and the link to share it. */
+// Draft lobby title, turn indicator, and share link. Used by DraftLobbyPage.jsx.
 export function DraftHeader({ tournament, draft, current, ready, lobbyUrl, className = '' }) {
   return (
     <div className={`flex flex-wrap items-start justify-between gap-3 ${className}`}>
@@ -9,9 +9,7 @@ export function DraftHeader({ tournament, draft, current, ready, lobbyUrl, class
           {tournament?.title || 'Team draft'}
         </h1>
 
-        {/* The turn indicator is the most important thing on the page: with
-            one device being passed around, whoever is holding it needs to
-            know at a glance whether it is their turn. */}
+        {/* Most important element on the page — a passed-around device needs an at-a-glance turn check. */}
         <p className="text-base-content/60 mt-1 text-sm">
           {ready ? (
             <>Every player has a team. Review the sides below, then build the bracket.</>
@@ -24,9 +22,7 @@ export function DraftHeader({ tournament, draft, current, ready, lobbyUrl, class
         </p>
       </div>
 
-      {/* A friend added to the pool has no way of knowing until their own
-          browser asks again, so handing them the link beats telling them to
-          go and look. */}
+      {/* Link so others can join directly rather than needing to be told where to look. */}
       <CopyLinkButton
         url={lobbyUrl}
         label="Share lobby"

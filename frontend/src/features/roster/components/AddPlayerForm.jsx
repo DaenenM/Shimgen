@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { Plus } from '@/components/icons'
 
-/** The one-name-at-a-time input at the top of the roster. */
+// Single-name input at the top of the roster. Used by RosterPage.jsx.
 export function AddPlayerForm({ onAdd }) {
   const [draft, setDraft] = useState('')
 

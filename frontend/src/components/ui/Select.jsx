@@ -14,32 +14,13 @@ const SIZES = {
 const GAP = 6
 const MARGIN = 8
 
-/**
- * Every dropdown on the site.
- *
- * The browser's own <select> could not be styled to match the glass — its
- * list is drawn by the OS — so the site had grown two looks for one control.
- * This is the one the team generator's rules introduced, made general.
- *
- * `options` is a list of `{ value, label, disabled?, hint?, dot?, action? }`:
- * `hint` is quiet text at the end of an option (why it is disabled, say), `dot`
- * is a CSS colour shown as a swatch before the label, in the list and on the
- * trigger — a team's colour — and `action` marks an entry that does something
- * rather than choosing a value ("+ New board…"). Actions are set apart by a
- * rule above and the interactive blue, so they are not read as one more item.
- *
- * The list is portalled to <body> and positioned against the trigger. Rendered
- * in place it was trapped by every glass panel around it: `backdrop-filter`
- * makes each one a stacking context and a scroll container clips, so a list
- * opening near the foot of a panel slid under the next thing on the page. It
- * flips above the trigger when there is not room below.
- *
- * Keyboard: Enter, Space or the arrows open it; the arrows, Home and End move
- * through the enabled options; Enter or Space picks; Escape or Tab closes.
- *
- * `onOpenChange(label, open)` still reports open and close, for a parent that
- * wants to react to it.
- */
+// The dropdown used everywhere on the site — a custom listbox since the
+// native <select> can't be styled to match the glass UI.
+// `options`: { value, label, disabled?, hint?, dot?, action? }. `dot` shows a
+// colour swatch (e.g. a team colour); `action` marks a "+ New…" style entry.
+// The list is portalled to <body> and positioned against the trigger, since
+// rendering in place got clipped by ancestor `backdrop-filter`/scroll panels.
+// Keyboard: arrows/Enter/Space open and move; Escape/Tab close.
 export function Select({
   value,
   onChange,
@@ -75,12 +56,8 @@ export function Select({
 
   useDismiss([trigger, list], open, () => setOpen(false))
 
-  /**
-   * Place the list under the trigger — or over it, when the viewport runs out.
-   *
-   * Recomputed on any scroll or resize while open, capture-phase so a scroll
-   * inside a panel counts as well as the page's own.
-   */
+  // Positions the list below the trigger, or above if there's no room.
+  // Recomputed on scroll/resize (capture phase, so scrolling inside a panel counts too).
   useLayoutEffect(() => {
     if (!open) return
 
@@ -215,12 +192,6 @@ export function Select({
             id={`${id}-list`}
             role="listbox"
             aria-label={label}
-            // No vertical padding: the first and last options run to the edge,
-            // and `overflow-auto` clips them to the list's own corners, so a
-            // highlighted top or bottom option follows the curve instead of
-            // stopping short of it with a sliver of empty glass above or below.
-            // `rounded-xl` rather than the glass default: at an option's height
-            // a 1rem corner cut visibly into the highlight.
             className="glass-raised menu-in fixed z-[60] w-max max-w-[min(20rem,calc(100vw-1rem))] overflow-auto rounded-xl"
             style={position}
           >

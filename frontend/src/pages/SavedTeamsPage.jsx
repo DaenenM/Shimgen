@@ -10,21 +10,13 @@ import { SavedTeamList } from '@/features/teams/components/SavedTeamList'
 import { TeamEditor } from '@/features/teams/components/TeamEditor'
 import { useSavedTeams } from '@/features/teams/hooks/useSavedTeams'
 
-/**
- * Squads kept between game nights.
- *
- * The roster answers "who plays"; this answers "who plays *together*". A crew
- * running the same four teams every Saturday picks the team in the new
- * tournament form and its members come with it, rather than rebuilding the
- * same sides each week.
- */
+// Saved teams. Route: /saved-teams
+// Roster answers "who plays"; this answers "who plays together".
 export function SavedTeamsPage() {
   const { teams, isLoading, create, update, remove } = useSavedTeams()
   const { players, remember } = useRoster()
 
-  // The team being edited, or 'new' while one is being created. One at a time:
-  // a page of simultaneously open editors is a page where it is unclear which
-  // set of changes a save applies to.
+  // The team being edited, or 'new' while one is being created. Only one at a time.
   const [editing, setEditing] = useState(null)
   const [confirming, setConfirming] = useState(null)
 

@@ -9,27 +9,15 @@ import { StatTile } from '@/features/dashboard/components/StatTile'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { paths } from '@/routes/paths'
 
-/**
- * The signed-in landing page.
- *
- * Answers "what happened, and what do I do next" — recent events plus the two
- * actions that start a game night. Deliberately not a wall of statistics: this
- * is a page people pass through on the way to running something.
- */
+// Signed-in landing page. Route: /dashboard
+// Recent tournaments plus the two actions that start a game night.
 export function DashboardPage() {
   const { user } = useAuth()
   const { recent, counts, isLoading } = useDashboard()
 
   return (
     <PageShell className="glass-backdrop">
-      {/* The frame animates, never the list below it.
-
-          The recent-tournaments list is swapped in when its query resolves and
-          again on every invalidation, so `rise-in` there would fire when the
-          data lands rather than on arrival — and replay itself each time
-          somebody changed a tournament on another page. The header, counters
-          and prompt are mounted immediately and stay put, which is exactly what
-          a greeting should be attached to. */}
+      {/* Frame animates, not the list — the list re-renders on every invalidation. */}
       <div className="rise-in rise-delay-1">
         <PageHeader
           title={`Welcome back, ${user?.display_name || user?.username}`}

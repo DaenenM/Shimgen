@@ -5,34 +5,11 @@ const SIZES = {
   md: { track: 'h-9', option: 'px-4' },
 }
 
-/**
- * A row of mutually exclusive options — "Keep apart / Keep together", "Solo /
- * Teams / Captains".
- *
- * Styled as the sibling of `Select`, because it is the same decision with the
- * options laid out instead of folded away: the same glass-inset track as the
- * dropdown's trigger, and the chosen option marked the way the dropdown marks
- * its selected row — a primary tint with primary text, not a solid fill.
- *
- * The highlight is one element that slides to the chosen option rather than
- * each button repainting, so a change reads as the marker moving across. It is
- * measured from the chosen button, so options of different widths need no
- * fixed grid, and re-measured when the track resizes. It appears without
- * sliding on first paint — there is nowhere for it to have come from.
- *
- * Keyboard: it is a radiogroup. Tab lands on the chosen option, the arrow keys
- * move and choose, Home and End jump to the ends.
- *
- * `options` is a list of `[value, label]` pairs. `block` stretches the track
- * to its container and shares the width equally, for a switcher that heads a
- * panel rather than sitting inline with other controls.
- *
- * A block track can also take `[value, label, shortLabel]`: the short one is
- * shown while the track is under 24rem, which on a phone is where three full
- * labels stop fitting and ran into each other. It keys off the track's own
- * width rather than the screen's, and only for `block` — an inline track sizes
- * to its content, so it cannot be a container without collapsing to nothing.
- */
+// Row of mutually exclusive options ("Solo / Teams / Captains"), styled to
+// match Select. A sliding highlight marks the chosen option; keyboard works as
+// a radiogroup (arrows move/choose, Home/End jump to ends).
+// `options`: [value, label] pairs, or [value, label, shortLabel] for `block`
+// mode, where shortLabel shows once the track is under 24rem (phone widths).
 export function SegmentedControl({
   options,
   value,
@@ -67,8 +44,7 @@ export function SegmentedControl({
     return () => observer.disconnect()
   }, [index, options.length])
 
-  // Only after the first placement, so the marker does not sweep in from the
-  // left edge when the page loads.
+  // Skip the animation on first placement, so it doesn't sweep in on load.
   useLayoutEffect(() => {
     if (marker && !animate) {
       const frame = requestAnimationFrame(() => setAnimate(true))

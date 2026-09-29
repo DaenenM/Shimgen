@@ -1,13 +1,7 @@
 import { Select } from '@/components/ui/Select'
 
-/**
- * Pick one name from a list of names — `Select`, fed plain strings.
- *
- * Used by the team generator's rules, where it picks the two players a rule is
- * about. `taken` greys out names chosen elsewhere without removing them: a list
- * that reshuffles as you pick moves the option under the cursor, and when this
- * is used once per team every pick would rearrange every other dropdown.
- */
+// Picks one name from a list — `Select` fed plain strings. Used by RulesPanel.jsx (team generator).
+// `taken` greys out names picked elsewhere without removing/reordering them.
 export function PlayerSelect({
   value,
   onChange,

@@ -1,6 +1,6 @@
 import { RotateCcw, Users } from '@/components/icons'
 
-/** The players still to be picked, and the undo for the last pick. */
+// Remaining pickable players, plus undo for the last pick. Used by DraftLobbyPage.jsx.
 export function DraftPool({ draft, disabled, onPick, onUndo }) {
   return (
     <div className="glass-panel p-4">
@@ -30,9 +30,7 @@ export function DraftPool({ draft, disabled, onPick, onUndo }) {
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {draft.pool.map((name) => (
-            // A pick is one tap on the name itself — no select-then-confirm. The
-            // draft is the one moment where everyone is watching the screen, and
-            // a second step per pick is felt by the whole room.
+            // One tap picks — no select-then-confirm, since everyone in the room is watching.
             <button
               key={name}
               type="button"

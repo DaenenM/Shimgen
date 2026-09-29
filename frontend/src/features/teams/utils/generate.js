@@ -1,22 +1,8 @@
-/**
- * Team generation, in the browser.
- *
- * Splitting a list of names into teams needs nothing the server has: no stored
- * state, no other user's data, no durability. It was a round trip per re-roll,
- * and re-rolling is the whole interaction — you press it until the split looks
- * right. Doing it locally makes that instant and works offline.
- *
- * This mirrors backend/apps/tournaments/teams.py: same randomise-and-retry
- * approach, same rules, same "is this last week's split again" check. The
- * server version stays for the API and for rating-balanced splits, which need
- * Elo the browser does not hold.
- *
- * Only the rules the generator page can actually express are implemented —
- * `apart` and `together`. Rating balance and locked seats are server-side.
- */
+// Team generation, run entirely in the browser for instant, offline re-rolling.
+// Used by useTeamGenerator.js. Mirrors backend/apps/tournaments/teams.py's randomise-and-retry
+// approach, but only supports `apart`/`together` rules -- rating balance and locked seats stay server-side.
 
-// Enough attempts for any realistic game night; past this the constraints are
-// almost certainly contradictory rather than merely tight.
+// Past this many attempts the constraints are likely contradictory, not just tight.
 const MAX_ATTEMPTS = 5000
 
 class TeamGenerationError extends Error {
@@ -26,13 +12,8 @@ class TeamGenerationError extends Error {
   }
 }
 
-/**
- * Split `players` into `teamCount` teams.
- *
- * `players` is a list of `{ id, name }`. Returns a list of lists of the same.
- * `avoid` is a previous arrangement (lists of ids) not to reproduce, so a
- * re-roll does not hand back the split just rejected.
- */
+// Splits `players` ({ id, name }[]) into `teamCount` teams. `avoid` is a previous
+// arrangement (lists of ids) to not reproduce on a re-roll.
 export function generateTeams(players, teamCount, { constraints = [], avoid = null } = {}) {
   if (teamCount < 1) throw new TeamGenerationError('At least one team is required.')
   if (players.length < teamCount) {
@@ -54,11 +35,7 @@ export function generateTeams(players, teamCount, { constraints = [], avoid = nu
   )
 }
 
-/**
- * Catch contradictions before burning 5000 attempts on them.
- *
- * Failing fast gives a useful message instead of a generic "no arrangement".
- */
+// Catches contradictions up front, so the error message is specific rather than a generic "no arrangement".
 function rejectImpossible(constraints, players, teamCount) {
   const key = (rule) => [...rule.player_ids].sort().join('|')
 
@@ -121,12 +98,7 @@ function attempt(players, teamCount, constraints) {
   return satisfies(teams, constraints) ? teams : null
 }
 
-/**
- * Merge overlapping TOGETHER rules into connected groups.
- *
- * "A with B" and "B with C" means all three share a team, which is only
- * correct if the rules are unioned rather than applied pairwise.
- */
+// Merges overlapping TOGETHER rules into connected groups ("A+B" and "B+C" means all three share a team).
 function togetherGroups(constraints) {
   const groups = []
 
@@ -167,12 +139,7 @@ function satisfies(teams, constraints) {
   return true
 }
 
-/**
- * True if `teams` is the arrangement we were told to avoid, ignoring order.
- *
- * Compared as sets so "team 1 and team 2 swapped places" counts as the same
- * arrangement — which it is, to the people playing.
- */
+// True if `teams` matches the arrangement to avoid, ignoring team order (compared as sets).
 function sameArrangement(teams, previous) {
   const asKey = (lists) =>
     lists

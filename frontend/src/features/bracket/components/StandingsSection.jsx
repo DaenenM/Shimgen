@@ -2,6 +2,7 @@ import { Trophy } from '@/components/icons'
 
 import { StandingsTable } from './StandingsTable'
 
+// Standings block with heading. Used by TournamentDetailPage.jsx.
 export function StandingsSection({ rows }) {
   return (
     <section>
@@ -12,8 +13,7 @@ export function StandingsSection({ rows }) {
       <p className="text-base-content/60 mb-3 text-sm sm:mb-4">How everyone is placed so far.</p>
 
       <div className="glass-panel overflow-hidden">
-        {/* No inner padding: the table pads its own cells, and doing both left
-            the numbers floating in the middle of the card. */}
+        {/* No inner padding — the table pads its own cells. */}
         <div className="py-1">
           <StandingsTable rows={rows} />
         </div>

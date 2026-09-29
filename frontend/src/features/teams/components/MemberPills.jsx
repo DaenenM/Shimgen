@@ -1,13 +1,7 @@
 import { X } from '@/components/icons'
 
-/**
- * Who is on the team right now.
- *
- * The roster checklist only shows the roster, so a name typed in that is not
- * saved there had no representation at all — it was on the team with nothing
- * to click to take it back off. These pills are the one place every member
- * appears, whichever kind they are.
- */
+// Removable pills for every team member, including typed names not yet in the
+// roster (RosterChecklist only shows saved players). Used by TeamEditor.jsx.
 export function MemberPills({ pills, onRemove }) {
   if (pills.length === 0) return null
 

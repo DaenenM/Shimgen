@@ -5,15 +5,8 @@ import { queryKeys } from '@/lib/queryClient'
 
 import { useTournamentSocket } from './useTournamentSocket'
 
-/**
- * A public bracket and its standings, kept live.
- *
- * Live over a socket rather than polling. The spectator page is the one most
- * likely to be left open on a second screen while somebody else reports
- * results, so a score that lags half a minute behind the room is exactly the
- * wrong failure — and it is the page with the most viewers, so a request every
- * thirty seconds per viewer was the most wasteful place to poll.
- */
+// Public bracket + standings, kept live over a socket rather than polling.
+// Used by SpectatorPage.jsx.
 export function useSpectatorBracket(publicSlug) {
   const queryClient = useQueryClient()
 
@@ -28,10 +21,7 @@ export function useSpectatorBracket(publicSlug) {
     enabled: Boolean(tournament),
   })
 
-  // Keyed by id rather than the slug the URL carries: the socket groups are per
-  // tournament id, and the spectator payload includes it. `enabled` keeps the
-  // hook from opening a connection before the first fetch answers. The detail
-  // key is a prefix of the standings key, so one invalidation refreshes both.
+  // Socket groups are per tournament id (from the payload), not the URL slug.
   useTournamentSocket(
     tournament?.id,
     () => queryClient.invalidateQueries({ queryKey: queryKeys.spectate.detail(publicSlug) }),

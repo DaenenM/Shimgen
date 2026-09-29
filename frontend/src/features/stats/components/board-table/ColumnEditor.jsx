@@ -4,17 +4,8 @@ import { Pencil, Trash2 } from '@/components/icons'
 
 import { Popover } from './Popover'
 
-/**
- * Rename a column and change its mark, in place.
- *
- * Deliberately not a modal: the header is where a column's name is read, so it
- * is where changing it belongs — and a dialog for two short fields is more
- * chrome than the edit deserves.
- *
- * `role` is not offered. What a column counts is structural, and the serializer
- * refuses it for the reason its own comment gives: changing it would silently
- * rewrite what the numbers already in it meant.
- */
+// Popover to rename a column and change its mark, in place. Used by ColumnHeader.jsx.
+// `role` isn't editable here: the API rejects it since it would rewrite what existing counts meant.
 export function ColumnEditor({ column, onSave, onRemove }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(column.name)

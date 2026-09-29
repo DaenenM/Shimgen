@@ -6,6 +6,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useRegisterForm } from '@/features/auth/hooks/useRegisterForm'
 import { paths } from '@/routes/paths'
 
+// Registration page. Route: /register
 export function RegisterPage() {
   const { isAuthenticated } = useAuth()
   const registration = useRegisterForm()

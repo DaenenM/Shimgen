@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 
+// One link group in the footer. Used by Footer.jsx.
 export function FooterColumn({ title, links }) {
   return (
     <div>
@@ -10,8 +11,7 @@ export function FooterColumn({ title, links }) {
           <li key={to}>
             <Link
               to={to}
-              // Colour only, matching the nav: a footer of boxes that light up
-              // draws more attention than the links deserve.
+              // Colour only, matching the nav — no hover box.
               className="hover:text-primary inline-flex items-center gap-2 text-sm transition-colors duration-150"
             >
               {Icon && <Icon className="h-4 w-4 opacity-50" />}

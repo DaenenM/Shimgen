@@ -3,17 +3,15 @@ import { RosterPicker } from '@/features/roster/components/RosterPicker'
 
 import { TeamBuilder } from './team-builder/TeamBuilder'
 
-// The third entry is the phone label, where three full ones do not fit.
+// Third array entry is the phone label (short form, since three full labels don't fit).
 const MODES = [
   ['solo', 'Solo players', 'Solo'],
   ['teams', 'Teams'],
-  // Captains is still a list of solo players — the teams are what the draft
-  // produces, not what the host types. It shares the solo entry box for
-  // exactly that reason.
+  // Captains mode still enters solo players; the draft produces the teams, so it shares the solo entry box.
   ['captains', 'Team captains', 'Captains'],
 ]
 
-/** Who is playing: the title, the entry mode, and the players or teams. */
+// Who is playing: title, entry mode, and players/teams. Used by QuickStartPage.jsx.
 export function EntrantsPanel({ form, className = '' }) {
   const { mode } = form
 
@@ -45,9 +43,7 @@ export function EntrantsPanel({ form, className = '' }) {
             className="mb-4"
           />
 
-          {/* The teams grow the page rather than scrolling inside a capped box:
-              squeezed into one on a phone, the cards stacked on top of each
-              other, and an expand toggle was one more thing to find. */}
+          {/* Teams grow the page rather than scrolling in a capped box, to avoid cramming cards on phone. */}
           <div className={`flex flex-col ${mode === 'teams' ? '' : 'max-h-[calc(100vh-21rem)]'}`}>
             {mode === 'teams' ? (
               <TeamBuilder

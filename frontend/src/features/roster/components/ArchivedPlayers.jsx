@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { PlayerRow } from './PlayerRow'
 
-/** The archive, folded away under a switch below the active roster. */
+// Collapsible archived-players list below the active roster. Used by RosterPage.jsx.
 export function ArchivedPlayers({ players, onRestore, onRemove }) {
   const [open, setOpen] = useState(false)
 
@@ -10,8 +10,7 @@ export function ArchivedPlayers({ players, onRestore, onRemove }) {
 
   return (
     <div className="border-base-content/10 mt-8 border-t pt-6">
-      {/* A switch rather than a button: this is a view that is on or off, and
-          the count says how many names are behind it. */}
+      {/* Switch, not a button: this view is simply on or off. */}
       <label className="flex cursor-pointer items-center gap-3">
         <input
           type="checkbox"

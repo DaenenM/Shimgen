@@ -1,41 +1,27 @@
 import { MatchSide } from './MatchSide'
 
-/**
- * One match in a bracket.
- *
- * Everything is reported by clicking a name, whatever the series length. A Bo1
- * resolves on the first click. A longer series adds a win each time, so a Bo5
- * ending 3-1 is four clicks in the order the games were actually played —
- * which is how a host uses this, one game at a time, rather than entering a
- * final score after the fact.
- */
+// One match card in a bracket. Used by BracketRound.jsx and RoundList.jsx.
+// Reported entirely by clicking a name: a Bo1 resolves on the first click, a
+// Bo5 is 4 clicks in the order the games were played.
 export function MatchCard({ match, canReport, onReport, onClear, tone }) {
   const decided = Boolean(match.winner)
   const ready = Boolean(match.a && match.b)
   const isSeries = match.best_of > 1
 
   function pick(side) {
-    // Bo1 has no count to walk through, so clicking the winner is an undo —
-    // the same gesture that corrects a mis-click everywhere else.
+    // Bo1: clicking the current winner undoes it (same gesture as a mis-click fix elsewhere).
     if (!isSeries && decided && match.winner === (side === 'a' ? match.a : match.b)) {
       onClear()
       return
     }
 
-    // Everything else is "this side won a game". The page turns that into a
-    // score against the freshest cached match rather than the one this card
-    // rendered with: two quick clicks on a series would otherwise both read the
-    // score from before the first, and the second game would not count.
     onReport(side)
   }
 
-  /** What a click will do, for a series where it is not simply "wins". */
+  // Hover/title text for a click, for series where it isn't simply "wins".
   function hintFor(side) {
     const label = side === 'a' ? match.a_label : match.b_label
 
-    // A decided match reads the same whatever the series length: one side is
-    // being handed the win. Saying "wins a game" there would describe an
-    // increment that no longer happens.
     if (decided && match.winner !== (side === 'a' ? match.a : match.b)) {
       return `Give the win to ${label} instead`
     }
@@ -50,19 +36,11 @@ export function MatchCard({ match, canReport, onReport, onClear, tone }) {
   }
 
   return (
-    // `glass-inset` (8px blur) rather than `glass-panel` (20px): a full
-    // bracket puts thirty of these in one scroll view, and the cheaper blur is
-    // what keeps that from costing frame rate on a phone. A ready match gets a
-    // lit primary edge so the next thing to click is findable at a glance.
+    // glass-inset (cheaper blur than glass-panel) — a full bracket has 30+ of these on screen.
     <div
       className="glass-inset overflow-hidden transition-all duration-200"
       style={
-        // Every card carries its round's colour; a ready one is lit brightest,
-        // so the next thing to click announces itself *and* says how far into
-        // the night it is. A still-waiting card keeps a quieter edge of the
-        // same hue rather than going grey — otherwise the final, the one card
-        // the whole page builds toward, is the dullest thing on it until its
-        // feeders land.
+        // Every card carries its round's colour; a ready match is lit brightest.
         tone
           ? ready
             ? {
@@ -92,12 +70,7 @@ export function MatchCard({ match, canReport, onReport, onClear, tone }) {
         />
       </div>
 
-      {/* The footer names the series and how it stands. With clicking as the
-          only input, saying "first to 2" is what makes an incrementing score
-          legible — otherwise 1-1 on a Bo3 gives no clue how close it is.
-
-          No reset control here: clicking a name already cycles it back, and a
-          separate button for the same gesture was clutter on every card. */}
+      {/* "First to N" makes the score legible since clicking is the only input. */}
       {isSeries && (
         <div className="border-base-content/8 bg-base-content/[0.03] flex items-center justify-between border-t px-3 py-1">
           <span className="text-base-content/50 text-xs tracking-wide uppercase">

@@ -7,10 +7,8 @@ const KINDS = [
   ['together', 'Keep together'],
 ]
 
-/**
- * Who to keep apart or together: a builder for a new rule, and the rules
- * already made below it.
- */
+// Rule builder (keep apart/together) plus the list of existing rules.
+// Used by TeamSetupPanel.jsx.
 export function RulesPanel({ names, draft, onDraftChange, rules, onAdd, onRemove }) {
   const noNames = names.length === 0
 
@@ -18,8 +16,7 @@ export function RulesPanel({ names, draft, onDraftChange, rules, onAdd, onRemove
     <div className="glass-inset p-3">
       <span className="mb-2 block text-sm font-medium">Rules</span>
 
-      {/* Builder: its own subtle panel, separating "make a rule" from the rules
-          already made below it. */}
+      {/* Builder panel, separate from the rules list below it. */}
       <div className="border-base-content/5 bg-base-content/4 space-y-2.5 rounded-xl border p-2.5">
         <SegmentedControl
           label="Kind of rule"
@@ -29,9 +26,7 @@ export function RulesPanel({ names, draft, onDraftChange, rules, onAdd, onRemove
           size="sm"
         />
 
-        {/* Two selects, a joining word and a button do not fit on one row at
-            phone widths — the names truncated to "Pla…", which is the one thing
-            the control has to show. Stacked below `sm`, one row from there up. */}
+        {/* Stacked below `sm`, one row above — two selects + button don't fit on phone. */}
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <PlayerSelect
             label="First player in the rule"
@@ -65,9 +60,7 @@ export function RulesPanel({ names, draft, onDraftChange, rules, onAdd, onRemove
         </div>
       </div>
 
-      {/* Existing rules: a plain list below the builder. A dot carries the
-          apart/together colour instead of a full text badge repeated on every
-          row — the builder above already spells out what each kind means. */}
+      {/* Existing rules. A colour dot marks apart/together instead of a repeated text badge. */}
       {rules.length > 0 && (
         <ul className="mt-2 space-y-0.5">
           {rules.map((rule) => (

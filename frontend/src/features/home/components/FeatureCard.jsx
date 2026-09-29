@@ -1,10 +1,5 @@
-/**
- * One selling point.
- *
- * The icon sits in its own tinted tile rather than loose above the heading: at
- * six cards the loose icons read as a scattered column of blue marks, where the
- * tiles give each card a consistent anchor.
- */
+// One feature card. Used by FeatureGrid.jsx (HomePage.jsx).
+// Icon sits in a tinted tile rather than loose, for a consistent anchor.
 export function FeatureCard({ icon: Icon, title, body, delay = '' }) {
   return (
     <div

@@ -3,13 +3,9 @@ import { useSyncExternalStore } from 'react'
 import { AlertTriangle, X } from '@/components/icons'
 import { dismissToast, getToasts, subscribeToasts } from '@/lib/toast'
 
-/**
- * Where failures without a home of their own are shown.
- *
- * Mounted once at the app root. Bottom-centre so it clears the bracket's
- * controls on a phone, and `aria-live` so a screen reader announces a failed
- * save rather than leaving it to be noticed visually.
- */
+// Toast host for failures with no natural place on screen. Mounted once in
+// App.jsx. Bottom-centre to clear bracket controls on phones; aria-live so
+// screen readers announce failures.
 export function Toaster() {
   const toasts = useSyncExternalStore(subscribeToasts, getToasts, getToasts)
 

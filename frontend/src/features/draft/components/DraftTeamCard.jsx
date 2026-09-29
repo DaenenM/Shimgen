@@ -1,4 +1,4 @@
-/** One captain's team: who they have picked so far, and the slots still open. */
+// One captain's team: picks so far and open slots. Used by DraftLobbyPage.jsx.
 export function DraftTeamCard({ team, expectedSize = 0 }) {
   const empty = Math.max(0, expectedSize - team.members.length)
 
@@ -25,9 +25,7 @@ export function DraftTeamCard({ team, expectedSize = 0 }) {
           <li
             key={member}
             className="flex items-center gap-2 text-sm"
-            // The captain is first in `members` and is not a pick — marking them
-            // keeps the list honest about who chose whom.
-            title={position === 0 ? 'Captain' : undefined}
+            title={position === 0 ? 'Captain' : undefined} // captain is members[0], not a pick
           >
             {position === 0 ? (
               <span className="text-primary text-xs font-bold">C</span>
@@ -38,8 +36,7 @@ export function DraftTeamCard({ team, expectedSize = 0 }) {
           </li>
         ))}
 
-        {/* Empty slots, so a team that is a player short is visible before the
-            final pick rather than after it. */}
+        {/* Shows a short-handed team before the final pick, not after. */}
         {Array.from({ length: empty }).map((_, slot) => (
           <li
             key={`empty-${slot}`}

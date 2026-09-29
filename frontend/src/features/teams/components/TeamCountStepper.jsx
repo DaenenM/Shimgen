@@ -2,15 +2,8 @@ import { Stepper } from '@/components/ui/Stepper'
 
 import { splitEvenly } from '../utils/generate'
 
-/**
- * "Number of teams", with one short line saying how the players divide.
- *
- * Listing every team — "Splits 11 players into 3 / 3 / 3 / 2" — grew with the
- * team count and wrapped beside the stepper. `splitEvenly` never makes teams
- * more than one apart, so the whole split fits in a range: "2–3 each", or
- * "3 each" when it comes out even. Short at any team count, so it stays on
- * one line.
- */
+// "Number of teams" stepper with a short split summary. Used by TeamSetupPanel.jsx.
+// Shows a range ("2-3 each") since splitEvenly never makes teams more than one apart.
 export function TeamCountStepper({ count, playerCount, onChange }) {
   return (
     <div className="glass-inset flex items-center justify-between gap-3 p-3">

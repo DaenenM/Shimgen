@@ -15,31 +15,23 @@ const BLANK_TEAMS = [
   { label: '', members: [] },
 ]
 
-/**
- * Everything the new-tournament form holds, what it adds up to, and creating
- * the tournament from it.
- */
+// New-tournament form state, derived values, and the create mutation. Used by QuickStartPage.jsx.
 export function useNewTournamentForm() {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
   const { touchLocal } = useRoster()
 
-  // The team generator can hand teams straight over, so arriving with squads
-  // opens the form already in team mode with them filled in.
+  // Arriving with squads from the team generator opens the form in team mode, pre-filled.
   const incoming = location.state?.squads ?? null
 
   const [mode, setMode] = useState(incoming ? 'teams' : 'solo')
-  // The players box is the source of truth for solo and captains mode, and it
-  // is text: the picker is a textarea, so the list only exists as parsed output
-  // of it.
+  // Source of truth for solo/captains mode; the list is just this text parsed.
   const [rosterText, setRosterText] = useState((location.state?.names ?? []).join('\n'))
   const [teams, setTeams] = useState(incoming ?? BLANK_TEAMS)
-  // Which team a roster click fills. Teams mode has several targets, so one has
-  // to be current — otherwise clicking a name would have nowhere to go.
+  // Which team a roster click fills, in teams mode.
   const [activeTeam, setActiveTeam] = useState(0)
-  // Captains mode: how many sides, and who leads them. Captains are drawn
-  // *from* the players box, which is why this mode reuses the solo entry UI.
+  // Captains are drawn from the players box, so captains mode reuses the solo entry UI.
   const [captains, setCaptains] = useState({ count: 2, mode: 'random', chosen: [] })
 
   const [title, setTitle] = useState('')
@@ -58,15 +50,12 @@ export function useNewTournamentForm() {
     [rosterText],
   )
 
-  // One entrant count for every mode: a team is one entrant regardless of how
-  // many people are in it, so the bracket maths is identical. In captains mode
-  // the entrants are the teams the draft will produce — the players typed in
-  // are the pool those teams get drawn from, not entrants themselves.
+  // A team is one entrant regardless of size. In captains mode the entrants are the
+  // draft's future teams, not the pool of typed players.
   const entrantCount =
     mode === 'teams' ? teams.length : mode === 'captains' ? captains.count : names.length
 
-  // Everyone already placed, so the roster can show them as taken. In teams
-  // mode that spans every team — nobody plays for two sides at once.
+  // Everyone already placed, so the roster can show them as taken.
   const placed = mode === 'teams' ? teams.flatMap((t) => t.members) : names
 
   const blocker = whyNotReady({ mode, teams, names, captains, entrantCount })
@@ -91,13 +80,10 @@ export function useNewTournamentForm() {
     onSuccess: (tournament) => {
       touchLocal(placed)
 
-      // The tournaments list is now out of date. Without this it keeps serving
-      // the cached copy — which does not contain the bracket just created — so
-      // the new tournament appeared to be missing until a hard refresh.
+      // Invalidate so the tournaments list picks up the newly created one.
       queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
 
-      // A drafted tournament has no bracket yet, so the bracket page would show
-      // an empty one. The lobby is where it actually continues.
+      // Captains mode has no bracket yet -- go to the draft lobby instead.
       navigate(
         mode === 'captains'
           ? paths.draft(tournament.id, tournament.title)
@@ -106,17 +92,9 @@ export function useNewTournamentForm() {
     },
   })
 
-  /**
-   * Drop a saved team into the form, players and all.
-   *
-   * Fills the first empty side rather than appending: teams mode starts with
-   * two blank teams, so appending would leave those blanks stranded above the
-   * ones just added. Only once both are used does this grow the list.
-   *
-   * The members come across as names, which is what `entrant_teams` carries —
-   * the server re-matches those names against the roster when it creates the
-   * entrants.
-   */
+  // Drop a saved team into the form. Fills the first empty slot rather than appending,
+  // so the two starting blank teams get used before the list grows. Members come across
+  // as names (what entrant_teams carries) -- the server re-matches them on creation.
   function addSavedTeam(team) {
     const filled = { label: team.name, members: team.members.map((m) => m.display_name) }
 
@@ -127,15 +105,9 @@ export function useNewTournamentForm() {
     })
   }
 
-  /**
-   * Change who is entering, carrying the people across.
-   *
-   * Leaving teams mode puts every player from the teams into the players box —
-   * solo and captains both want people, not sides, so the team names have no
-   * place there. Added to whatever the box already holds, skipping anyone
-   * already in it, so switching back and forth never doubles a name. The teams
-   * themselves are kept, so switching back finds them as they were.
-   */
+  // Change entry mode, carrying players across. Leaving teams mode moves every team
+  // member into the players box (skipping duplicates); the teams themselves are kept,
+  // so switching back to teams mode finds them unchanged.
   function changeMode(next) {
     if (mode === 'teams' && next !== 'teams') {
       const seen = new Set(names.map((n) => n.toLowerCase()))
@@ -151,7 +123,7 @@ export function useNewTournamentForm() {
     setMode(next)
   }
 
-  /** Put a roster name into the players box, or into the team being filled. */
+  // Put a roster name into the players box, or into the active team.
   function addFromRoster(name) {
     if (mode !== 'teams') {
       setRosterText((current) =>
@@ -167,7 +139,7 @@ export function useNewTournamentForm() {
     )
   }
 
-  /** Take a roster name back out again, so a click in the saved roster undoes itself. */
+  // Take a roster name back out, so a click in the saved roster undoes itself.
   function removeFromRoster(name) {
     if (mode !== 'teams') {
       const key = name.toLowerCase()
@@ -205,8 +177,7 @@ export function useNewTournamentForm() {
     statsBoard,
     setStatsBoard,
     placed,
-    // Byes are correct and standard, but a fresh double-elimination bracket
-    // with several of them looks broken until play starts.
+    // Byes are correct/standard but can look broken to a host before play starts.
     warning: byeWarning(format, entrantCount),
     blocker,
     create,
@@ -216,16 +187,10 @@ export function useNewTournamentForm() {
   }
 }
 
-/**
- * Why the form cannot be submitted yet, in words — or null when it can.
- *
- * Said under the button rather than discovered after pressing it: the server
- * would refuse each of these, and finding out from an error is worse.
- */
+// Why the form can't submit yet (shown under the button), or null when it can --
+// these are all cases the server would otherwise reject.
 function whyNotReady({ mode, teams, names, captains, entrantCount }) {
-  // A draft needs a captain per team plus somebody left to pick. Exactly one
-  // player per team is a valid split but an empty draft — every captain leads
-  // a team of one and nobody ever picks — so the pool has to be non-empty.
+  // Need more players than captains, or the draft has nobody left to pick.
   if (mode === 'captains' && names.length <= captains.count) {
     return `Add more than ${captains.count} players — the captains come out of this list, so there has to be somebody left to draft.`
   }
@@ -239,8 +204,7 @@ function whyNotReady({ mode, teams, names, captains, entrantCount }) {
   if (entrantCount < 2) {
     return `Add at least two ${mode === 'teams' ? 'teams' : 'players'}.`
   }
-  // An empty team is a bracket slot with nobody in it, which the bracket
-  // cannot resolve.
+  // An empty team is a bracket slot the bracket can't resolve.
   if (mode === 'teams' && teams.some((t) => t.members.length === 0)) {
     return 'Every team needs at least one player.'
   }

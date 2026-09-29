@@ -6,47 +6,17 @@ import { Toggle } from '@/components/ui/Toggle'
 import { useAutoSaveRoster } from '../hooks/useAutoSaveRoster'
 import { useRoster } from '../hooks/useRoster'
 
-/**
- * The saved roster rail: every saved name, one click to put them in or take
- * them out of whatever is being built.
- *
- * The same rail on the team generator and the new-tournament form, and it
- * decides everything about how it looks and sizes itself — the pages only say
- * what is selected and where a click goes. Width, height, surface and title
- * used to be props, and each page set them differently: one capped the rail to
- * its neighbour's measured height, one to a fixed 26rem; one pinned the rail,
- * one pinned the column; one retitled it per team. The two rails drifted into
- * two different-feeling controls. Now there are no such props to disagree on.
- *
- * The list scrolls inside the rail past 26rem, or sooner on a short screen, so
- * a long roster never pushes the page. Pinning is the page column's job —
- * the new-tournament form stacks saved teams under this rail, and a sticky
- * child would ride up over its sibling.
- *
- * `target`, when a click lands in one of several places — a team in the
- * tournament form — is `{ label, color }` and is shown under the title, in the
- * team's colour, so it is clear where a name is about to go.
- */
+// Saved roster rail: click a name to add/remove it from whatever is being built.
+// Used by RosterRail.jsx, TeamGeneratorPage.jsx.
+// Owns its own sizing (scrolls past 26rem) so callers only pass selection state.
+// `target` (optional `{ label, color }`) shows which team/spot a click adds to.
 export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
   const { players, forget, archive, isLoading } = useRoster()
   const [autoSave, setAutoSave] = useAutoSaveRoster()
 
-  /**
-   * You first, then friends alphabetically, then everybody else as they came.
-   *
-   * Your own name is the one most likely to be wanted and the one nobody should
-   * have to hunt for, so it is pinned rather than sorted among the rest.
-   *
-   * A partition rather than one comparator, because the two halves are ordered
-   * by different rules. The server sends the roster most-recently-played first,
-   * which is deliberate — the names from last Saturday are the ones you want
-   * nearest the top — and that ordering is kept for everyone who is not a
-   * friend rather than being flattened into one alphabetical list.
-   *
-   * Sorted here rather than in `useRoster` or the queryset: six other
-   * components read the same hook, and the picker, the team builder and the
-   * board all want the recency order untouched.
-   */
+  // Order: you first (pinned), then friends alphabetically, then everyone else
+  // in the server's most-recently-played order. Sorted here, not in useRoster,
+  // since other consumers of that hook want the recency order untouched.
   const ordered = useMemo(() => {
     const me = players.filter((player) => player.is_self)
     const friends = players.filter((player) => player.is_friend && !player.is_self)
@@ -61,9 +31,7 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
 
   const chosen = new Set(selected.map((n) => n.toLowerCase()))
 
-  // `min-w-0` so a long name truncates against the column rather than setting
-  // its width.
-  const shell = 'glass-panel flex w-full min-w-0 flex-col self-start'
+  const shell = 'glass-panel flex w-full min-w-0 flex-col self-start' // min-w-0 lets long names truncate
 
   if (isLoading) {
     return (
@@ -98,9 +66,7 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
               </span>
             )}
           </div>
-          {/* Icon only: the rail is narrow, and the save glyph on the knob says
-              what the switch is for. The name is still there for hover and
-              for screen readers. */}
+          {/* Icon-only for the narrow rail; label still present for hover/screen readers. */}
           <Toggle
             label={autoSave ? 'Saving new names to your roster' : 'Not saving new names'}
             checked={autoSave}
@@ -126,10 +92,7 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
                     onClick={() =>
                       added ? onRemove(player.display_name) : onAdd(player.display_name)
                     }
-                    // Toggles rather than disabling: clicking an added name
-                    // now removes it, which is what lets a mis-click here be
-                    // undone the same way it was added, instead of forcing a
-                    // trip to the players box to remove it there.
+                    // Toggles rather than disables, so a mis-click can be undone the same way.
                     aria-pressed={added}
                     title={added ? `Remove ${player.display_name}` : `Add ${player.display_name}`}
                     className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1.5 text-left text-sm transition-colors duration-150 ${
@@ -139,9 +102,7 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
                     }`}
                   >
                     {added ? (
-                      // Tick at rest, cross on hover — both in one slot so the
-                      // row does not reflow as they swap. The tick says "in";
-                      // the cross says what the click about to happen does.
+                      // Tick at rest, cross on hover, same slot to avoid reflow.
                       <span className="relative grid h-3.5 w-3.5 shrink-0 place-items-center">
                         <Check className="absolute h-3.5 w-3.5 transition-opacity duration-150 group-hover:opacity-0" />
                         <X className="absolute h-3.5 w-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
@@ -151,20 +112,10 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
                     )}
                     <span className="truncate font-medium">{player.display_name}</span>
 
-                    {/* Friends only, not merely linked: a co-host who claimed a
-                        bracket has an account attached without being someone
-                        you play with. This is what says the row keeps itself up
-                        to date with their name.
-
-                        The glyph replaces a "Friend" pill, so the meaning it
-                        used to carry in words now lives in the title and the
-                        accessible label — an icon on its own tells a screen
-                        reader nothing. */}
+                    {/* Friends only, not merely linked (a co-host who claimed a bracket isn't a friend). */}
                     {player.is_self ? (
                       <User
-                        // Amber, matching the roster page's own linked-account
-                        // icon: the same glyph should not mean one thing in one
-                        // list and something else in another.
+                        // Amber matches the roster page's own linked-account icon.
                         className="text-accent ml-auto h-3.5 w-3.5 shrink-0"
                         aria-label="You"
                         role="img"
@@ -184,14 +135,7 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
                     )}
                   </button>
 
-                  {/* A friend, or you: archived rather than deleted.
-
-                      Deleting takes their rating history with it, and that
-                      history belongs to a person who is not the one clicking.
-                      Archiving hides the row and keeps every number on it — so
-                      the control stays useful and stops being destructive. The
-                      server refuses the delete either way; this is the half
-                      that explains why rather than waiting to be refused. */}
+                  {/* Friend or self: archive, not delete — deleting would cascade away their rating history. */}
                   {player.is_friend || player.is_self ? (
                     <button
                       type="button"

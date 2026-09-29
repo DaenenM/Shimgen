@@ -1,36 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-/**
- * A small menu hung off a trigger button.
- *
- * Rendered in a portal on `document.body`, positioned from the trigger's own
- * rectangle.
- *
- * Neither absolute nor fixed works in place here, for two different reasons.
- * Absolute is clipped by the table's `overflow-x-auto` scroller. Fixed escapes
- * the scroller but not the card: `.glass-panel` sets `backdrop-filter`, and a
- * non-none backdrop-filter makes an element a containing block for fixed
- * descendants *and* opens a stacking context — so the panel was positioned
- * against the card and stacked inside it, which is why it appeared behind the
- * page rather than over it.
- *
- * A portal sidesteps both: the panel is a child of body, above every card, and
- * clipped by nothing.
- *
- * Flipped by measurement rather than by row index: whether there is room below
- * is a question about the viewport, and inferring it from "is this one of the
- * last two rows" is right only until the page is scrolled.
- *
- * Dismisses on any press outside it, on Escape, and on scroll — a panel pinned
- * to viewport coordinates would otherwise drift away from the row it belongs
- * to.
- *
- * The last measurement is left behind on close rather than cleared: the panel
- * renders only while open, so a stale coordinate is never drawn, and the next
- * open measures again before paint. Clearing it would be a setState in the
- * effect body for no visible benefit.
- */
+// Small menu hung off a trigger button, rendered in a portal on document.body.
+// Used by ColumnEditor.jsx and SwapRow.jsx.
+// Portal avoids clipping: absolute is clipped by the table scroller, and fixed still
+// stacks inside `.glass-panel` because its backdrop-filter creates a containing block.
+// Position is measured (not inferred from row index) so it stays correct after scrolling.
 export function Popover({ open, onOpenChange, label, title, icon, children }) {
   const trigger = useRef(null)
   const panel = useRef(null)
@@ -49,8 +24,7 @@ export function Popover({ open, onOpenChange, label, title, icon, children }) {
       const below = window.innerHeight - box.bottom
 
       setPlace({
-        // Kept on screen horizontally too: a trigger near the right edge would
-        // otherwise hang the panel off it.
+        // Clamped so a trigger near the right edge doesn't hang the panel off screen.
         left: Math.min(Math.max(8, box.left), window.innerWidth - WIDTH - 8),
         ...(below < ESTIMATED && box.top > ESTIMATED
           ? { bottom: window.innerHeight - box.top + 6 }
@@ -72,7 +46,7 @@ export function Popover({ open, onOpenChange, label, title, icon, children }) {
 
     document.addEventListener('mousedown', dismiss)
     document.addEventListener('keydown', onKeyDown)
-    // Capture, so a scroll inside the table's own scroller counts as well.
+    // Capture phase so scrolling inside the table's own scroller also dismisses.
     window.addEventListener('scroll', close, true)
     window.addEventListener('resize', locate)
 

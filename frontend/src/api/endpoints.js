@@ -1,9 +1,5 @@
-/**
- * Every API call in one place.
- *
- * Components import these rather than calling `api` directly, so a change to a
- * URL or payload shape touches one file and nothing renders a request inline.
- */
+// Every API call in one place, grouped by resource. Components call these
+// rather than `api` directly, so a URL or payload change touches one file.
 
 import { api } from './client'
 
@@ -53,16 +49,11 @@ export const tournaments = {
   start: (id) => api.post(`/tournaments/${id}/start/`).then((r) => r.data),
   standings: (id) => api.get(`/tournaments/${id}/standings/`).then((r) => r.data),
   nextRound: (id) => api.post(`/tournaments/${id}/next-round/`).then((r) => r.data),
-  // A run of results in one request. Returns the whole bracket, so the flush
-  // doubles as the reconcile — no separate refetch needed after it.
+  // A run of results in one request. Returns the whole bracket.
   batchReport: (id, operations) =>
     api.post(`/tournaments/${id}/batch-report/`, { operations }).then((r) => r.data),
-  // Point a tournament at a stats board after the fact, or move it to another.
-  // An empty slug unlinks. A table id names one table on a board directly,
-  // which is what a board with several tables needs — the server cannot know
-  // which of "Solo wins" and "Team wins" tonight belongs to. Returns the whole
-  // tournament, like the other mutations here, so the caller can write it
-  // straight into the cache.
+  // Points a tournament at a stats board, or a specific table on one; empty
+  // slug unlinks. Returns the whole tournament.
   linkStatsBoard: (id, slug, tableId) =>
     api
       .post(`/tournaments/${id}/stats-board/`, {
@@ -70,13 +61,8 @@ export const tournaments = {
         ...(tableId ? { stats_table: tableId } : {}),
       })
       .then((r) => r.data),
-  // Run it back: a fresh draft with the same entrants, feeding the same table,
-  // named as the next in the series.
-  //
-  // `reshuffle` pairs round one afresh. The default mirrors the server's, which
-  // keeps the original seeding — the tournaments list always asks for `true`,
-  // since running a night back means playing it again rather than replaying the
-  // same fixtures, but the flag stays because the endpoint still honours both.
+  // Fresh draft with the same entrants, as the next tournament in the series.
+  // `reshuffle` repairs round one; default keeps original seeding.
   restage: (id, { reshuffle = false } = {}) =>
     api.post(`/tournaments/${id}/restage/`, { reshuffle }).then((r) => r.data),
   addCohost: (id, userId) =>
@@ -87,17 +73,14 @@ export const tournaments = {
   archive: (id) => api.post(`/tournaments/${id}/archive/`).then((r) => r.data),
   restore: (id) => api.post(`/tournaments/${id}/restore/`).then((r) => r.data),
 
-  // ── Captain drafts ────────────────────────────────────────────────────────
-  // A draft sits between "created" and "has a bracket": the tournament exists
-  // with no entrants until the pool is empty. Each of these returns the draft
-  // state, so the caller writes the response straight into the cache rather
-  // than refetching — the same bargain `batchReport` makes.
+  // ── Captain drafts ─────────────────────────────────────────────────────
+  // A draft sits between "created" and "has a bracket". Each call below
+  // returns the draft state so the caller can cache it directly.
   draft: (id) => api.get(`/tournaments/${id}/draft/`).then((r) => r.data),
   draftPick: (id, label) =>
     api.post(`/tournaments/${id}/draft/pick/`, { label }).then((r) => r.data),
   draftUndo: (id) => api.post(`/tournaments/${id}/draft/undo/`).then((r) => r.data),
-  // Returns the finished tournament, not the draft — this is the call that
-  // creates the entrants and builds the bracket.
+  // Creates the entrants, builds the bracket, and returns the finished tournament.
   draftComplete: (id) => api.post(`/tournaments/${id}/draft/complete/`).then((r) => r.data),
 }
 
@@ -113,8 +96,7 @@ export const boards = {
   update: (slug, payload) => api.patch(`/boards/${slug}/`, payload).then((r) => r.data),
   remove: (slug) => api.delete(`/boards/${slug}/`).then((r) => r.data),
 
-  // A signed delta rather than a total: two people tallying at once should add
-  // two marks, not race to write the same number.
+  // A signed delta, not a total, so concurrent tallies add rather than race.
   award: (slug, row, column, delta = 1) =>
     api.post(`/boards/${slug}/award/`, { row, column, delta }).then((r) => r.data),
 

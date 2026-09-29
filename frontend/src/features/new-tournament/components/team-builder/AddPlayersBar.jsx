@@ -4,20 +4,10 @@ import { Plus } from '@/components/icons'
 import { Select } from '@/components/ui/Select'
 import { teamTone } from '@/features/teams/utils/tone'
 
-/**
- * One names box for every team, and where its names go.
- *
- * A box per card put eight identical inputs on the page and spent a row of
- * every card on a control only one of them was ever using. Here there is one,
- * and the target is chosen either from the dropdown or by clicking a card —
- * both set the same `activeTeam`, so the two can never disagree, and it is the
- * same target the saved roster column fills.
- *
- * Enter adds what is typed; Shift+Enter starts a new line for anyone building
- * a list by hand, and a pasted list (lines or commas) goes in whole. Anyone
- * already on a team is skipped and named, rather than the whole batch being
- * refused — a list of five where one is a duplicate should add the other four.
- */
+// One shared names box for all teams, plus the target-team picker. Used by TeamBuilder.jsx.
+// Target is set by dropdown or by clicking a card (both set the same `activeTeam`).
+// Enter submits, Shift+Enter newlines, pasted lists (lines/commas) go in whole.
+// Names already on a team are skipped and named in an error, not blocking the rest of the batch.
 export function AddPlayersBar({ teams, target, assigned, onTarget, onAdd }) {
   const [draft, setDraft] = useState('')
   const [focused, setFocused] = useState(false)
@@ -58,16 +48,8 @@ export function AddPlayersBar({ teams, target, assigned, onTarget, onAdd }) {
 
   return (
     <div className="flex shrink-0 flex-col gap-2">
-      {/* One row: what to add, where it goes, and the button that does it.
-          All three are 40px at rest — the textarea's 9px padding plus a 20px
-          line and its border come to exactly that, matching the dropdown's
-          `lg` size and the button. The side controls are held at that height and
-          top-aligned, so when a pasted list grows the box downward they stay
-          level with its first line instead of drifting to its middle.
-
-          Under 24rem of column (a phone) the row wraps: the names box takes a
-          line of its own and the team picker stretches under it. Kept on one
-          line, the fixed-width picker left the box too narrow to type in. */}
+      {/* All controls are 40px tall at rest to align with the textarea's first line.
+          Wraps under ~24rem (phone): names box gets its own line, picker stretches below. */}
       <div className="flex flex-wrap items-start gap-2 @sm:flex-nowrap">
         <textarea
           className="glass-inset focus:border-primary/50 placeholder:text-base-content/35 min-h-0 w-full min-w-0 resize-none px-3 py-[9px] text-sm transition-all duration-150 focus:outline-none @sm:w-auto @sm:flex-1"
@@ -92,9 +74,7 @@ export function AddPlayersBar({ teams, target, assigned, onTarget, onAdd }) {
         />
 
         <div className="flex h-10 min-w-0 flex-1 items-center gap-2 text-xs @sm:flex-none @sm:shrink-0">
-          {/* Each team carries its colour as a swatch, in the list and on the
-              trigger, so the dropdown and the outlined card below read as the
-              same thing. */}
+          {/* Colour swatch matches each team's card outline below. */}
           <Select
             label="Team to add players to"
             value={target}
@@ -109,8 +89,7 @@ export function AddPlayersBar({ teams, target, assigned, onTarget, onAdd }) {
             triggerClassName="font-semibold"
           />
 
-          {/* The one piece that can go when the row is tight: clicking a card
-              is discoverable anyway, since the chosen one is outlined. */}
+          {/* Hidden first when the row is tight -- clicking a card is discoverable via its outline. */}
           <span className="text-base-content/35 hidden whitespace-nowrap @xl:inline">
             or click a team
           </span>

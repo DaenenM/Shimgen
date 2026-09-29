@@ -8,7 +8,7 @@ import { paths } from '@/routes/paths'
 
 import { useAuth } from './useAuth'
 
-/** State and handlers for the sign-up form, by password or by Google. */
+// State and handlers for the sign-up form (password or Google). Used by RegisterForm.jsx.
 export function useRegisterForm() {
   const { register, loginWithGoogle } = useAuth()
   const { players: localPlayers, clear: clearLocalRoster } = useLocalRoster()
@@ -20,14 +20,7 @@ export function useRegisterForm() {
 
   const update = (field) => (event) => setForm({ ...form, [field]: event.target.value })
 
-  /**
-   * Carry a logged-out roster into the new account.
-   *
-   * The localStorage shape mirrors the server's Player model on purpose
-   * (plan §5), so this is a straight bulk insert. Shared by both signup paths,
-   * because someone who clicks Continue with Google should keep the names they
-   * typed just as much as someone who fills in the form.
-   */
+  // Carries a logged-out roster into the new account (plan §5). Shared by both signup paths.
   async function mergeLocalRoster() {
     if (localPlayers.length === 0) return
 
@@ -35,8 +28,7 @@ export function useRegisterForm() {
       await roster.mergeLocal(localPlayers.map((p) => p.display_name))
       clearLocalRoster()
     } catch {
-      // A failed merge must not undo a signup that already succeeded; the
-      // local list stays put and can be merged again later.
+      // Don't undo a successful signup; local list stays and can be retried later.
     }
   }
 

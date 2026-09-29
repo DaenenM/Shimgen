@@ -2,6 +2,7 @@ import { useTeamDropTarget } from '../hooks/useTeamDropTarget'
 import { DraggableMembers } from './drag/DraggableMembers'
 import { TeamCardShell } from './TeamCardShell'
 
+// One rolled team card, draggable. Used by GeneratedTeams.jsx.
 export function GeneratedTeamCard({ index, ids, labelOf, name, onRename }) {
   const drop = useTeamDropTarget(index)
 
@@ -15,8 +16,7 @@ export function GeneratedTeamCard({ index, ids, labelOf, name, onRename }) {
       className={drop.highlight.className}
       style={drop.highlight.style}
     >
-      {/* No remove button: a rolled team is rearranged, not edited. Players
-          are added or taken out in the list on the left, and a re-roll. */}
+      {/* No remove button: a rolled team is rearranged, not edited or removed from. */}
       <DraggableMembers index={index} keys={ids} labelOf={labelOf} emptyText="Nobody left" />
     </TeamCardShell>
   )

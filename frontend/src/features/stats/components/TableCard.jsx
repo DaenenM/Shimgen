@@ -12,12 +12,8 @@ const ICON_BUTTON =
 const TEXT_BUTTON =
   'text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150'
 
-/**
- * One table on a board, with the controls that only appear in edit mode.
- *
- * `above` and `below` are the neighbouring tables, for swapping positions;
- * `actions` is the object `useBoard` returns.
- */
+// One table on a board, with edit-mode controls. Used by BoardPage.jsx.
+// `above`/`below` are neighbouring tables for reordering; `actions` is useBoard's return value.
 export function TableCard({ table, above, below, canEdit, editing, roster, busyKey, actions }) {
   const [addingColumn, setAddingColumn] = useState(false)
   const [addingRows, setAddingRows] = useState(false)
@@ -39,9 +35,7 @@ export function TableCard({ table, above, below, canEdit, editing, roster, busyK
 
           {editing && (
             <div className="flex items-center gap-2">
-              {/* Arrows rather than drag: no new dependency, works from the
-                  keyboard, and a board holds a handful of tables. Disabled at
-                  the ends rather than hidden, so the cluster keeps its width. */}
+              {/* Arrows, not drag, keep this keyboard-usable; disabled (not hidden) at ends. */}
               <div className="flex items-center">
                 <button
                   className={ICON_BUTTON}
@@ -84,9 +78,7 @@ export function TableCard({ table, above, below, canEdit, editing, roster, busyK
         </div>
 
         {addingRows && editing && (
-          // Stays open across adds. Adding players is done in a run — a name
-          // from the roster, three more pasted, one typed — and closing after
-          // each one meant reopening the panel for every person.
+          // Stays open across adds, since players are usually added in a batch.
           <AddRows
             roster={roster}
             existing={table.rows}
@@ -117,11 +109,7 @@ export function TableCard({ table, above, below, canEdit, editing, roster, busyK
           onSwapRow={actions.swapRow}
           onRenameRow={actions.renameRow}
           onUnlinkRow={actions.unlinkRow}
-          // Friends and yourself. Swapping a row onto somebody's account
-          // attaches their record to this board, and a friendship is the
-          // consent that makes that reasonable — your own account needs no
-          // such permission, and tallying yourself under a typed name is
-          // exactly as common as doing it for somebody else.
+          // Only friends and yourself: swapping a row onto an account needs their consent.
           friends={roster.filter((player) => player.is_friend || player.is_self)}
         />
       </div>

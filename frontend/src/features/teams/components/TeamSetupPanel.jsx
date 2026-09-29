@@ -6,7 +6,7 @@ import { RosterPicker } from '@/features/roster/components/RosterPicker'
 import { RulesPanel } from './RulesPanel'
 import { TeamCountStepper } from './TeamCountStepper'
 
-/** The team generator's form: players, team count, rules, and the generate button. */
+// Team generator form: players, team count, rules, generate button. Used by TeamGeneratorPage.jsx.
 export function TeamSetupPanel({ gen, className = '' }) {
   return (
     <div className={`glass-panel min-w-0 ${className}`}>
@@ -38,8 +38,7 @@ export function TeamSetupPanel({ gen, className = '' }) {
 
         <button className={ACTION_BUTTON} disabled={!gen.canGenerate} onClick={gen.generate}>
           <ActionSheen />
-          {/* The shuffle mark turning is the one icon animation that says
-              what the button does, so it is worth the rotation. */}
+          {/* Shuffle icon rotates to signal the action. */}
           <Shuffle className="h-4 w-4 transition-transform duration-300 ease-out group-hover:rotate-180" />
           {gen.result ? 'Re-roll teams' : 'Generate teams'}
         </button>

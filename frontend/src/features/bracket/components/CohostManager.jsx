@@ -10,54 +10,32 @@ import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
 
 /**
- * Who else may report results, granted from the bracket itself.
- *
- * The same grant offered when a tournament is created (plan §4, NEW 12), but
- * available once it is running — which is when the need actually shows up. The
- * host is on the far side of the room, someone else is at the console, and
- * handing over the ability to click a winner is faster than relaying scores.
- *
- * A popover rather than a panel: it sits in the header beside the night's other
- * actions, but granting permission is occasional and does not deserve standing
- * space next to Start and Share.
- *
- * One list, not two. This used to stack a row of removable pills above a
- * separate picker, so the same person appeared in one place or the other
- * depending on state, and granting and revoking were two different gestures in
- * two different shapes. Every friend now has exactly one row that toggles —
- * the same pattern as the saved roster, where a tick means "in" and becomes a
- * cross on hover to say what the click will do.
- *
- * Only the creator sees this. A co-host can report results but not pass that
- * right onward — otherwise the person who built the bracket could be given
- * co-hosts they never chose.
+ * Popover to grant/revoke co-host access to report results (plan §4, NEW 12).
+ * Used by TournamentHeader.jsx. Only the creator sees this; co-hosts can't
+ * grant access onward.
  */
 export function CohostManager({ cohosts, creatorId, onAdd, onRemove, pending }) {
   const { isAuthenticated } = useAuth()
   const [open, setOpen] = useState(false)
   const container = useRef(null)
 
-  // Only co-hosts are listed and removable. The creator's own role is what
-  // makes them the host — offering to remove it would break the tournament.
+  // Creator's own role is excluded — removing it would break the tournament.
   const helpers = cohosts.filter((role) => role.role === 'cohost' && role.user)
   const granted = new Set(helpers.map((role) => role.user.id))
 
-  // Asked for only once the popover is open: a bracket page should not fetch a
-  // friends list nobody has looked at.
+  // Fetch only once the popover opens, not on every bracket page load.
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.friends.accepted,
     queryFn: friendsApi.list,
     enabled: open && isAuthenticated,
   })
 
-  // A friendship is stored directionally, so which side is "them" depends on
-  // who sent the original request.
+  // Friendship is stored directionally; which side is "them" depends on who sent the request.
   const friends = (data ?? [])
     .map((item) => (item.direction === 'outgoing' ? item.to_user : item.from_user))
     .filter((person) => person && person.id !== creatorId)
 
-  // Anyone already helping is shown even if the friendship has since gone —
-  // they still hold the permission, so there has to be a way to take it back.
+  // Keep anyone still holding the permission even if the friendship has since ended.
   const orphaned = helpers
     .map((role) => role.user)
     .filter((person) => !friends.some((friend) => friend.id === person.id))
@@ -66,8 +44,7 @@ export function CohostManager({ cohosts, creatorId, onAdd, onRemove, pending }) 
     (a.name ?? '').localeCompare(b.name ?? ''),
   )
 
-  // Click-away and Escape, so the popover behaves like every other one on the
-  // page rather than needing its own button pressed again.
+  // Click-away and Escape close the popover, matching every other one on the page.
   useDismiss(container, open, () => setOpen(false))
 
   return (
@@ -99,9 +76,7 @@ export function CohostManager({ cohosts, creatorId, onAdd, onRemove, pending }) 
           {isLoading ? (
             <span className="loading loading-spinner loading-sm" />
           ) : people.length === 0 ? (
-            // Two different empty states. Having no friends at all is worth a
-            // prompt to go and add one; having none left to add is just done,
-            // and telling that person to "add a friend first" reads as a bug.
+            // Distinct from "everyone is already added" — this person has no friends yet.
             <div className="border-base-content/10 rounded-xl border border-dashed p-4 text-center">
               <Users className="text-base-content/30 mx-auto h-6 w-6" />
               <p className="text-base-content/60 mt-2 text-sm">
@@ -126,9 +101,7 @@ export function CohostManager({ cohosts, creatorId, onAdd, onRemove, pending }) 
                       type="button"
                       onClick={() => (added ? onRemove(person.id) : onAdd(person.id))}
                       disabled={pending}
-                      // Toggles rather than disabling: clicking a name that
-                      // already has access takes it away, so a mis-click is
-                      // undone the same way it was made.
+                      // Toggles: clicking an already-added name removes access.
                       aria-pressed={added}
                       title={added ? `Remove ${person.name}` : `Give ${person.name} access`}
                       className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1.5 text-left text-sm transition-colors duration-150 disabled:pointer-events-none disabled:opacity-40 ${
@@ -138,9 +111,7 @@ export function CohostManager({ cohosts, creatorId, onAdd, onRemove, pending }) 
                       }`}
                     >
                       {added ? (
-                        // Tick at rest, cross on hover — both in one slot so the
-                        // row does not reflow as they swap. The tick says "in";
-                        // the cross says what the click about to happen does.
+                        // Tick at rest, cross on hover, same slot to avoid reflow.
                         <span className="relative grid h-3.5 w-3.5 shrink-0 place-items-center">
                           <Check className="absolute h-3.5 w-3.5 transition-opacity duration-150 group-hover:opacity-0" />
                           <X className="absolute h-3.5 w-3.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />

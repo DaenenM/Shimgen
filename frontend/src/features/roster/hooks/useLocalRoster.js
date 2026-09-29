@@ -1,14 +1,6 @@
-/**
- * The saved roster for someone with no account.
- *
- * Plan §7 moves this into v1 deliberately: it is an afternoon of work backed by
- * localStorage, needs no accounts, and is the feature most likely to make
- * someone use the site a second time. Re-typing ten names every Saturday is
- * exactly the friction that sends people back to a random generator.
- *
- * The stored shape mirrors the server's Player model, so signing up is a
- * straight bulk insert with no translation layer.
- */
+// Saved roster for a signed-out visitor, backed by localStorage (plan §7).
+// Used by useRoster.js, useRegisterForm.js.
+// Stored shape mirrors the server's Player model so signup can bulk-insert it directly.
 
 import { useCallback, useMemo } from 'react'
 
@@ -16,8 +8,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 
 const STORAGE_KEY = 'shim.roster'
 
-// Module-level constant, not a fresh [] per render: useSyncExternalStore
-// compares snapshots by identity, and a new array each time would loop.
+// Module-level, not a fresh [] per render — useSyncExternalStore compares by identity.
 const EMPTY = []
 
 export function useLocalRoster() {
@@ -29,8 +20,7 @@ export function useLocalRoster() {
       if (!display_name) return
 
       setPlayers((current) => {
-        // Case-insensitive de-duplication: "Brett" and "brett" are one person,
-        // and a roster with both in it is just noise.
+        // Case-insensitive de-dup: "Brett" and "brett" are the same person.
         if (current.some((p) => p.display_name.toLowerCase() === display_name.toLowerCase())) {
           return current
         }
@@ -67,7 +57,7 @@ export function useLocalRoster() {
     [setPlayers],
   )
 
-  /** Stamp everyone used in an event, so the picker orders by recency. */
+  // Stamps everyone used in an event, so the picker orders by recency.
   const touch = useCallback(
     (names) => {
       const used = new Set(names.map((n) => n.toLowerCase()))
@@ -82,7 +72,7 @@ export function useLocalRoster() {
     [setPlayers],
   )
 
-  // Most recently played first, never-played last, alphabetical within each.
+  // Most recently played first, never-played last, alphabetical within each group.
   const sorted = useMemo(
     () =>
       [...players].sort((a, b) => {

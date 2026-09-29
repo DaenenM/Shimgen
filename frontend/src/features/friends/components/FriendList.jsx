@@ -4,6 +4,7 @@ import { SkeletonCards } from '@/components/ui/Skeleton'
 
 import { PersonRow } from './PersonRow'
 
+// Accepted friends list with a remove action. Used by FriendsPage.jsx.
 export function FriendList({ friends, isLoading, remove }) {
   return (
     <>
@@ -22,8 +23,7 @@ export function FriendList({ friends, isLoading, remove }) {
       ) : (
         <ul className="grid gap-2">
           {friends.map((item) => (
-            // The friendship is stored directionally, so which side is "them"
-            // depends on who sent the original request.
+            // Friendship is stored directionally; "them" is whichever side isn't the sender.
             <PersonRow
               key={item.id}
               person={item.direction === 'outgoing' ? item.to_user : item.from_user}

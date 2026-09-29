@@ -1,17 +1,11 @@
-/**
- * A draft's state after one pick or one undo, computed locally.
- *
- * Applied exactly as the server applies them — name out of the pool, onto the
- * picking team, turn advanced — so the optimistic view and the confirmed one
- * agree. Anything less and the screen would flicker as the response corrected
- * it.
- */
+// Computes a draft's state after one pick/undo, locally, for optimistic updates.
+// Used by useDraftLobby.js. Must mirror the server's logic exactly or the UI will flicker
+// when the confirmed response arrives.
 
 export function applyPick(draft, label) {
   const position = draft.current_team
   const picksMade = draft.picks_made + 1
-  // Read from the stored rotation rather than guessed: the order is not a
-  // simple increment once it wraps, and the server is the one that decided it.
+  // Read from stored rotation, not computed — order isn't a simple increment once it wraps.
   const next = draft.pick_order?.[picksMade] ?? null
 
   return {
@@ -32,12 +26,9 @@ export function applyUndo(draft) {
   if (draft.picks_made === 0) return draft
 
   const picksMade = draft.picks_made - 1
-  // Whose pick is being taken back — the turn *before* the current one.
-  const position = draft.pick_order?.[picksMade] ?? null
+  const position = draft.pick_order?.[picksMade] ?? null // the turn before the current one
   const undone = draft.teams.find((team) => team.position === position)
-  // The captain leads `members` and is not a pick, so the last entry is the
-  // only thing an undo can remove.
-  const restored = undone?.members?.[undone.members.length - 1]
+  const restored = undone?.members?.[undone.members.length - 1] // last entry; captain (index 0) is never removed
 
   return {
     ...draft,

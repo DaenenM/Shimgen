@@ -7,14 +7,8 @@ import { AuthField } from './AuthField'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { SubmitButton } from './SubmitButton'
 
-/**
- * Sign in by email and password, or with Google.
- *
- * name/id on the inputs are load-bearing for autofill, not decoration: mobile
- * Safari and Chrome fall back to field-name heuristics, and a password manager
- * needs a stable identity to match a saved credential against. autoComplete
- * alone is not enough.
- */
+// Sign-in form (email/password or Google). Used by LoginPage.jsx.
+// name/id on inputs matter for autofill/password-manager matching, not just autoComplete.
 export function LoginForm({ login }) {
   const { form, update, error, setError, busy, onSubmit, onGoogle } = login
 

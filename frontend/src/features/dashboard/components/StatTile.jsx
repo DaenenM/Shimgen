@@ -1,12 +1,8 @@
 import { Link } from 'react-router-dom'
 
-/**
- * One headline number, linking to the page behind it.
- *
- * `glass-inset` rather than `glass-panel`: these sit three across in a row of
- * small tiles, and a full panel's 20px blur plus drop shadow made them read as
- * three floating cards rather than one band of figures.
- */
+// One headline stat linking to its page. Used by DashboardPage.jsx.
+// glass-inset, not glass-panel: three of these sit in a row and the panel's
+// blur/shadow made them read as separate cards instead of one band.
 export function StatTile({ label, value, to }) {
   return (
     <Link

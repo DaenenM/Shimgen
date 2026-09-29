@@ -1,18 +1,8 @@
 import { Trophy, Users } from '@/components/icons'
 import { FORMAT_LABELS } from '@/features/bracket/utils/layout'
 
-/**
- * The same formats, named for a phone.
- *
- * Length is what decided the row's height: at full width "Double elimination"
- * plus an entrant count plus a state pill cannot share one line on a 375px
- * screen, so those rows wrapped to two while "Round robin" stayed at one — the
- * list came out ragged, tall rows next to short ones.
- *
- * Shortening is better than wrapping or truncating. The row already says this
- * is a tournament, so "Double" is unambiguous, and it keeps every card the same
- * height whatever format it holds.
- */
+// Short format names for phone width, so a row stays one line at 375px
+// ("Double elimination" + entrant count + state pill doesn't fit otherwise).
 const FORMAT_LABELS_SHORT = {
   single: 'Single',
   double: 'Double',
@@ -20,16 +10,8 @@ const FORMAT_LABELS_SHORT = {
   swiss: 'Swiss',
 }
 
-/**
- * A hue per format, as its own scale rather than borrowed semantic colours.
- *
- * Format is categorical — it says which kind of bracket this is, not whether
- * something is good or wrong — so it cannot use success/warning/error without
- * breaking the palette's one-hue-one-meaning rule. These are the same oklch
- * values the team colours use, which keeps every categorical colour in the app
- * on one scale. The old version reached for raw `teal-500` and `fuchsia-500`,
- * which sat outside the palette entirely and did not shift with the theme.
- */
+// Format is categorical, not good/bad, so it uses its own hue scale instead of
+// success/warning/error. Same oklch values as the team colours.
 const FORMAT_HUES = {
   single: 250,
   double: 195,
@@ -42,60 +24,34 @@ const formatTone = (format) => {
   if (hue === undefined) return undefined
 
   return {
-    // `light-dark()` rather than one fixed lightness: a 72%-L hue is right on a
-    // dark card and a pastel on a white one, which is the same reason the
-    // palette rebuilds the light theme instead of inverting it. The custom
-    // property is set per theme in index.css so this follows a theme switch.
+    // light-dark() so the tone adjusts per theme instead of one fixed lightness.
     color: `light-dark(oklch(48% 0.16 ${hue}), oklch(74% 0.13 ${hue}))`,
-    // A wash rather than a border. At this size a 1px outline plus a fill is
-    // two competing edges on a 20px tall element, and on glass the outline is
-    // what made these read as stickers rather than part of the card.
     backgroundColor: `light-dark(oklch(48% 0.16 ${hue} / 0.12), oklch(74% 0.13 ${hue} / 0.16))`,
   }
 }
 
-// One shared shape for every pill in the meta row — format, entrants, and
-// winner all read as the same kind of thing, just in different tones.
-//
-// Borderless, 12px rather than 11px, and with real horizontal padding: the
-// previous pills were small enough and tight enough to read as badges stamped
-// on the row instead of labels belonging to it.
+// Shared shape for every pill in the meta row (format, entrants, winner/state).
 const PILL =
   'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 ' +
   'text-xs font-medium tracking-tight'
 
-/**
- * The state pill's tone.
- *
- * These use the semantic palette rather than the categorical `FORMAT_HUES`,
- * because state genuinely carries meaning: `success` is already "good / in
- * progress" and a live tournament is exactly that. Draft and complete stay
- * neutral — neither is a state worth colouring the row for, and giving all
- * three a colour would leave nothing standing out.
- */
+// State pill tone. Uses the semantic palette (success = live), not FORMAT_HUES,
+// since state genuinely carries meaning; draft/complete stay neutral.
 const STATE_PILL = {
   draft: 'bg-base-content/8 text-base-content/60',
-  // The one state that is asking something of the reader: a lobby is open and
-  // somebody is waiting on them to pick. Solid rather than the 15% wash `active`
-  // uses, because a live draft has to win against a list of finished nights.
+  // Solid, not a wash — a live draft has to stand out against a list of finished nights.
   drafting: 'bg-success text-success-content',
   active: 'bg-success/15 text-success',
   complete: 'bg-base-content/8 text-base-content/60',
 }
 
-/** What the state pill says. Only `drafting` differs from the raw value. */
+// Only 'drafting' differs from the raw state value.
 const STATE_LABEL = {
   drafting: 'Live draft',
 }
 
-/**
- * Format, entrants, and the winner or state, under a tournament's title.
- *
- * `flex-nowrap` rather than wrapping: every row is one line tall whatever it
- * holds, which is what keeps the list even. The short format labels above are
- * what make that fit. The indent is dropped below `sm`: aligning under the
- * title costs 14px the pills need more.
- */
+// Format, entrants, and winner/state pills under a tournament title. Used by
+// TournamentCard.jsx. flex-nowrap keeps every row one line tall.
 export function TournamentPills({ tournament }) {
   const tone = formatTone(tournament.format)
   const isDrafting = tournament.state === 'drafting'
@@ -114,10 +70,6 @@ export function TournamentPills({ tournament }) {
         </span>
       </span>
 
-      {/* The icon is the unit at every width. It says "entrants" faster than
-          the word does, and keeping one form across breakpoints means the row
-          does not re-flow as the window is resized. The accessible name carries
-          the word for anyone not seeing it. */}
       <span
         className={`${PILL} bg-base-content/8 text-base-content/70`}
         aria-label={`${tournament.entrant_count} ${
@@ -137,14 +89,9 @@ export function TournamentPills({ tournament }) {
         <span
           className={`${PILL} capitalize ${STATE_PILL[tournament.state] ?? STATE_PILL.draft}`}
           title={isDrafting ? 'A captain draft is in progress' : undefined}
-          // "drafting" beside "draft" is two states a glance cannot tell apart,
-          // and they mean opposite things — one is waiting to start, the other
-          // is happening right now.
         >
           {(tournament.state === 'active' || isDrafting) && (
-            // A live dot, so an in-progress night is findable by movement in a
-            // long list rather than only by reading each row. A draft earns it
-            // most: somebody is waiting on a pick.
+            // Pulsing dot makes an in-progress night findable at a glance.
             <span
               className={`h-1.5 w-1.5 animate-pulse rounded-full ${
                 isDrafting ? 'bg-success-content' : 'bg-success'

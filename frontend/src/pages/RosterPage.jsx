@@ -12,13 +12,8 @@ import { PasteNames } from '@/features/roster/components/PasteNames'
 import { PlayerRow } from '@/features/roster/components/PlayerRow'
 import { useRosterManager } from '@/features/roster/hooks/useRosterManager'
 
-/**
- * The saved roster.
- *
- * Plan §3 calls this the highest ratio of user-delight to engineering effort in
- * the whole product: re-typing ten names every Saturday is precisely the
- * friction that sends people back to a random generator.
- */
+// Saved roster. Route: /roster
+// Avoids re-typing names every game night (plan §3).
 export function RosterPage() {
   const { isLoading, active, archived, add, archive, restore, remove } = useRosterManager()
   const [pasting, setPasting] = useState(false)

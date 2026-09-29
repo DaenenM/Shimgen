@@ -7,12 +7,8 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
 
-/**
- * One stats board, and every change that can be made to it.
- *
- * Actions come back as plain functions rather than mutation objects: the board
- * has seventeen of them, and the components below only ever need to call one.
- */
+// Loads one stats board and exposes every mutation on it as a plain function.
+// Used by BoardPage.jsx and StatsBoardField.jsx.
 export function useBoard(slug) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -25,31 +21,23 @@ export function useBoard(slug) {
   const { data: board, isLoading } = useQuery({
     queryKey: key,
     queryFn: () => boardsApi.get(slug),
-    // This is the page the numbers are actually read off, and they move
-    // whenever any linked bracket is reported — by this tab or by a co-host on
-    // their own phone. Always ask on arrival; `placeholderData` keeps the board
-    // on screen while it refetches, so the tallies update underneath rather
-    // than flashing a loader.
+    // Always refetch on arrival since other users can update tallies live.
     staleTime: 0,
   })
 
-  // Only the people who can actually be given access: sharing a board is
-  // limited to friends, the same rule co-hosting a bracket follows.
+  // Sharing is limited to friends, same rule as bracket co-hosting.
   const { data: friendships } = useQuery({
     queryKey: queryKeys.friends.accepted,
     queryFn: friendsApi.list,
   })
 
-  // A friendship is stored directionally, so which side is "them" depends on
-  // who sent the original request.
+  // Friendship is stored directionally; "them" is whichever side isn't the request sender.
   const friends = (friendships ?? [])
     .map((item) => (item.direction === 'outgoing' ? item.to_user : item.from_user))
     .filter(Boolean)
     .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
 
-  // Arriving by the bare slug — an old link, or one typed by hand — rewrites
-  // the address bar to the named form, so copying from the browser gives the
-  // same URL the Share button does. `replace` keeps it out of the back stack.
+  // Rewrites a bare-slug URL to the named form so the address bar matches the Share link.
   const canonical = board ? paths.board(board.slug, board.name) : null
 
   useEffect(() => {
@@ -60,24 +48,14 @@ export function useBoard(slug) {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: key })
 
-  // Tallying is a burst of clicks — eight wins for one player is eight taps —
-  // and the optimistic write has already drawn each one. Reconciling once the
-  // burst ends keeps the board from refetching under the user's finger.
+  // Debounced so a burst of tally clicks doesn't refetch after every tap.
   const reconcile = useDebouncedCallback(refresh, 400)
 
-  /**
-   * Add or remove a mark, applied to the cache first.
-   *
-   * The whole feel of the board is that a win lands the instant you click it —
-   * waiting on a round trip to see an emoji appear makes tallying six wins feel
-   * like filling in a form.
-   */
+  // Award/remove a mark optimistically so it appears instantly, then reconciles with the server.
   const award = useMutation({
     mutationFn: ({ row, column, delta }) => boardsApi.award(slug, row, column, delta),
     onMutate: ({ row, column, delta }) => {
-      // Written synchronously, then the in-flight refetch is cancelled without
-      // awaiting it: React Query holds the mutation until onMutate resolves, so
-      // awaiting the abort first made every tap wait on it.
+      // Cache write is synchronous; cancelQueries isn't awaited so taps don't wait on it.
       const previous = queryClient.getQueryData(key)
       if (previous) queryClient.setQueryData(key, withTally(previous, row, column, delta))
 
@@ -97,21 +75,14 @@ export function useBoard(slug) {
   // Every structural change is a request followed by a refetch.
   const change = (mutationFn, options = {}) => ({ mutationFn, onSuccess: refresh, ...options })
 
-  // The slug is stable and carries the readable name only as decoration, so a
-  // rename does not move the board or break a link somebody already holds.
+  // Slug stays stable across a rename, so existing links keep working.
   const renameBoard = useMutation(change((name) => boardsApi.update(slug, { name })))
   const addTable = useMutation(change((payload) => boardsApi.addTable(slug, payload)))
   const renameTable = useMutation(change(({ id, name }) => boardsApi.updateTable(id, { name })))
   const removeTable = useMutation(change((id) => boardsApi.removeTable(id)))
 
-  /**
-   * Swap two tables' positions.
-   *
-   * Two PATCHes rather than one bulk call: `position` is an ordinary writable
-   * field and a swap only ever touches a pair, so the endpoint that already
-   * exists does the job. Sent together and refreshed once — refreshing after
-   * the first would repaint the board while both tables shared a position.
-   */
+  // Swaps two tables' positions via two PATCHes sent together, refreshed once
+  // (refreshing after only the first would repaint mid-swap).
   const moveTable = useMutation(
     change(({ a, b }) =>
       Promise.all([
@@ -133,11 +104,7 @@ export function useBoard(slug) {
     change(({ tableId, ...payload }) => boardsApi.addRows(tableId, payload)),
   )
   const removeRow = useMutation(change((id) => boardsApi.removeRow(id)))
-  // `label` is the row's own name, so the tallies and any account link stay
-  // exactly where they are — renaming changes what the row is called, not who
-  // it is. Swapping re-points the row at a friend's account and keeps its
-  // tallies, which is the whole reason to do it instead of delete-and-add;
-  // unlinking keeps the row, name and tallies and drops only the link.
+  // Renaming/swapping/unlinking a row all keep its tallies; only `label` or `player` changes.
   const updateRow = useMutation(change(({ id, ...payload }) => boardsApi.updateRow(id, payload)))
 
   const addPerson = useMutation(
@@ -187,7 +154,7 @@ export function useBoard(slug) {
   }
 }
 
-/** The board with one tally cell moved by `delta`, floored at zero like the server. */
+// Board with one tally cell moved by `delta`, floored at zero like the server.
 function withTally(board, rowId, column, delta) {
   return {
     ...board,

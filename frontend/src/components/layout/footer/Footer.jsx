@@ -5,17 +5,8 @@ import { paths } from '@/routes/paths'
 
 import { FooterColumn } from './FooterColumn'
 
-/**
- * The site footer.
- *
- * Only links to pages that exist. A footer full of dead "Privacy" and "About"
- * links is the clearest possible signal that a site is unfinished — worse than
- * a short footer, which just reads as focused.
- *
- * Every destination here works signed out, which matters because the footer is
- * most visible to people who arrived on a shared spectator or board link and
- * have no account (plan §4, NEW 2).
- */
+// Site footer. Used by RootLayout.jsx.
+// Only links to pages that exist; every destination works signed out (plan §4, NEW 2).
 
 const TOOLS = [
   { to: paths.quickStart, label: 'New tournament', icon: Trophy },

@@ -4,19 +4,8 @@ import { Archive, ChevronDown } from '@/components/icons'
 
 import { TournamentCard } from './tournament-card/TournamentCard'
 
-/**
- * Archived tournaments, folded under the main list.
- *
- * A disclosure rather than a mode. The previous toggle swapped the whole page
- * over to archived and swapped the header's meaning with it, which on a phone
- * was a 32px icon nobody found — and once found, left no way back except the
- * same invisible control. Archived tournaments are a footnote to the list, so
- * they live under it.
- *
- * Only rendered when something is actually archived. A permanent empty
- * disclosure is a control that never does anything, and the count is what
- * makes it worth a tap.
- */
+// Archived tournaments, folded under the main list as a disclosure. Used by
+// TournamentsPage.jsx. Renders nothing if there's nothing archived.
 export function ArchivedTournaments({ items, cardHandlers }) {
   const [open, setOpen] = useState(false)
 
@@ -33,8 +22,6 @@ export function ArchivedTournaments({ items, cardHandlers }) {
         <Archive className="h-4 w-4 shrink-0" />
         <span>Archived tournaments</span>
 
-        {/* The count sits in the label so the section says how much is behind
-            it before it is opened. */}
         <span className="bg-base-content/10 text-base-content/70 rounded-full px-2 py-0.5 text-xs">
           {items.length}
         </span>

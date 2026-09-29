@@ -1,14 +1,5 @@
-/**
- * A surface that sits on the page.
- *
- * Cards were written by hand and drifted into eight variants — some with
- * shadows, some without, padding between p-3 and p-5, margins baked into the
- * card itself rather than left to whatever is arranging it. Different pages
- * ended up with visibly different card metrics.
- *
- * One set of metrics here, and spacing stays the parent's job: a card that
- * carries `mb-6` cannot be put in a grid.
- */
+// Shared card surface primitive with one set of padding/shadow metrics.
+// Never carries its own margin — spacing is the parent's job.
 
 const PADDING = {
   none: '',
@@ -20,8 +11,7 @@ const PADDING = {
 export function Card({
   children,
   padding = 'md',
-  // Interactive cards lift slightly. Static ones must not, or every list looks
-  // clickable and the ones that are stop standing out.
+  // Static cards must not lift on hover, or clickable ones stop standing out.
   interactive = false,
   className = '',
   as: Tag = 'div',

@@ -1,39 +1,21 @@
-/**
- * Reserved space for an advertisement.
- *
- * Built before there are ads to put in it, deliberately. An ad dropped into a
- * page that never budgeted for it pushes content down as it loads — the single
- * most irritating thing a page can do, and the reason Core Web Vitals scores
- * layout shift at all. Reserving the box now means the ad appears *into* space
- * that was always there.
- *
- * Each placement declares the real IAB size it will hold:
- *
- *   mobile-banner  320×50, above the content, small screens only
- *   sidebar        300×250, in the rail, wide screens only
- *   footer         728×90 leaderboard, under the content
- *
- * To hook up a network later: render the script's container inside `children`
- * and the reserved box becomes its frame. Until something is passed, a quiet
- * placeholder shows in development and nothing at all ships to users — an empty
- * bordered rectangle on a live site reads as a broken image.
- */
+// Reserved space for an ad slot, sized before any ad network is wired in, so
+// space doesn't shift layout when one lands. Used by PageShell.jsx.
+// To hook up a network later: render its container inside `children`.
 
 const PLACEMENTS = {
   'mobile-banner': {
-    // 320×50 plus breathing room. `lg:hidden` because the sidebar rail serves
-    // wide screens and two slots at once is where a page starts feeling cheap.
+    // 320x50 IAB size. Hidden at `lg` since the sidebar rail covers wide screens.
     box: 'h-[3.75rem] w-full max-w-[20rem]',
     wrapper: 'mb-4 flex justify-center lg:hidden',
     label: 'Advertisement',
   },
   sidebar: {
-    box: 'h-[15.625rem] w-full max-w-[18.75rem]',
+    box: 'h-[15.625rem] w-full max-w-[18.75rem]', // 300x250
     wrapper: 'hidden xl:flex xl:justify-center',
     label: 'Advertisement',
   },
   footer: {
-    box: 'h-[6.25rem] w-full max-w-[45.5rem]',
+    box: 'h-[6.25rem] w-full max-w-[45.5rem]', // 728x90 leaderboard
     wrapper: 'flex justify-center',
     label: 'Advertisement',
   },
@@ -42,9 +24,7 @@ const PLACEMENTS = {
 export function AdSlot({ placement = 'footer', children, className = '' }) {
   const spec = PLACEMENTS[placement] ?? PLACEMENTS.footer
 
-  // Nothing to show and nothing to reserve: an empty box on a production page
-  // is worse than no box. In development it stays visible so the space it will
-  // occupy is part of what gets designed around.
+  // No placeholder in production — an empty box reads as a broken image.
   if (!children && import.meta.env.PROD) return null
 
   return (

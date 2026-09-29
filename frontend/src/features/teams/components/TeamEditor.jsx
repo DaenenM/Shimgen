@@ -11,13 +11,7 @@ import { LogoPicker } from './LogoPicker'
 import { MemberPills } from './MemberPills'
 import { RosterChecklist } from './RosterChecklist'
 
-/**
- * Create or correct a team.
- *
- * One component for both, because the fields and the rules are identical — a
- * separate "new" form would be the same code with a different heading, and the
- * two would drift.
- */
+// Create or edit a team (same form for both). Used by SavedTeamList.jsx and SavedTeamsPage.jsx.
 export function TeamEditor({ team, players, remember, pending, error, onSave, onCancel }) {
   const [name, setName] = useState(team?.name ?? '')
   const [logo, setLogo] = useState(team?.logo ?? '')

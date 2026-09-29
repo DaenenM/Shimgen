@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/Button'
 
 import { PersonRow } from './PersonRow'
 
-/** Requests you sent that nobody has answered yet. */
+// Sent friend requests awaiting a reply. Used by FriendsPage.jsx.
 export function OutgoingRequests({ requests, remove }) {
   if (requests.length === 0) return null
 

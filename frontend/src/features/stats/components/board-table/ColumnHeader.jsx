@@ -4,7 +4,7 @@ import { ROLE_TONE, ariaSort } from '../../utils/columns'
 import { ColumnEditor } from './ColumnEditor'
 import { SortMarker } from './SortMarker'
 
-/** One tally column's header: sorts on click, and edits in place on an editing board. */
+// One column header: sorts on click, edits in place when editing. Used by BoardTable.jsx.
 export function ColumnHeader({
   column,
   wide,
@@ -47,9 +47,7 @@ export function ColumnHeader({
         <SortMarker active={sortKey === column.id} descending={descending} />
       </button>
 
-      {/* Layered under the sort button rather than replacing it: a header still
-          sorts while the board is being edited, and a column's name and mark
-          are changed from where they are read. */}
+      {/* Layered under the sort button so the header keeps sorting while editing. */}
       {editing && (
         <ColumnEditor
           column={column}

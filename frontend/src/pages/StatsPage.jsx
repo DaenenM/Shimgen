@@ -13,14 +13,8 @@ import { NewBoardForm } from '@/features/stats/components/NewBoardForm'
 import { useBoards } from '@/features/stats/hooks/useBoards'
 import { paths } from '@/routes/paths'
 
-/**
- * The boards a crew keeps.
- *
- * Most of a game night never becomes a bracket — someone wins a round of Pummel
- * Party and a name gets another emoji (plan §3). A board is where that lives,
- * and it is deliberately the crew's own shape: they name the tables, the
- * columns, and the mark that gets stamped.
- */
+// Stats boards list. Route: /stats
+// For game nights that never become a bracket (plan §3).
 export function StatsPage() {
   const { isAuthenticated } = useAuth()
   const { boards, isLoading, create, remove, favourite } = useBoards({
@@ -28,8 +22,7 @@ export function StatsPage() {
   })
 
   const [creating, setCreating] = useState(false)
-  // The board awaiting confirmation, held whole so the dialog can name it.
-  // Deleting takes every tally on it, which is worth a real pause.
+  // Board pending delete confirmation, held whole so the dialog can name it.
   const [confirming, setConfirming] = useState(null)
 
   if (!isAuthenticated) {

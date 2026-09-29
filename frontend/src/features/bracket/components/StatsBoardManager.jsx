@@ -9,20 +9,9 @@ import { queryKeys } from '@/lib/queryClient'
 
 import { BoardLinkOption } from './BoardLinkOption'
 
-/**
- * Change which stats board a running tournament feeds.
- *
- * The board is picked on the new-tournament form, which is exactly when a host
- * is least likely to be thinking about it — the bracket is what they came for.
- * That made the first choice final: a night that should have counted towards
- * the league simply did not, and the only way to fix it was to run it again.
- *
- * Linking here catches up on whatever has already been played, so a board
- * attached halfway through the night still shows the whole night.
- *
- * Host-only, and signed-in only: a board is something an account owns, and an
- * anonymous quick-start bracket has none to attach to.
- */
+// Lets a host change which stats board a running tournament feeds, so a board
+// linked mid-tournament still gets full credit for the night. Used by
+// TournamentHeader.jsx. Host + signed-in only.
 export function StatsBoardManager({ board, onLink, pending, error }) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -34,29 +23,20 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
 
   useDismiss(container, open, () => setOpen(false))
 
-  // Only asked for once the menu is open: a bracket page should not fetch a
-  // board list nobody has looked at.
+  // Only fetched once the menu opens.
   const { data } = useQuery({
     queryKey: queryKeys.boards.all,
     queryFn: boardsApi.list,
     enabled: open,
   })
 
-  // Only boards the host may write to, and only boards built to receive a
-  // tournament. Linking writes onto someone else's record, so offering one they
-  // cannot edit would be an error waiting to be refused — and linking a
-  // hand-counted board would restructure it, adding the four columns a bracket
-  // fills to a table made for counting by hand.
+  // Only boards the host can edit and that are built to receive a tournament
+  // (linking would restructure a hand-counted board).
   const editable = unwrapList(data).filter(
     (item) => (item.role === 'owner' || item.role === 'editor') && item.tracks_tournaments,
   )
 
-  /**
-   * Make a board without leaving the bracket.
-   *
-   * Always a tournament board: it exists to receive this bracket's results, so
-   * the kind is not a question worth interrupting for.
-   */
+  // Creates a tournament-tracking board without leaving the bracket page.
   async function create() {
     const trimmed = name.trim()
     if (!trimmed) return
@@ -84,24 +64,17 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        // The board's name rather than "Stats board": what a host wants to know
-        // at a glance is whether tonight is being counted, and where.
         title={
           board
             ? `Counting towards ${board.name}${board.table_name ? ` — ${board.table_name}` : ''}`
             : 'This tournament is not being counted'
         }
-        // `min-w-0` and a shrink are what let this be the control that gives way
-        // when the header row runs out of phone: it is the only one carrying
-        // text, so squeezing its name is cheaper than pushing Share off the end.
+        // Shrinks first on a phone, since it's the only control carrying text.
         className="glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-9 max-w-[7rem] min-w-0 shrink items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 sm:max-w-[13rem] sm:shrink-0 sm:gap-2 sm:px-4"
         disabled={pending}
       >
         <BarChart3 className={`h-4 w-4 shrink-0 ${board ? 'text-primary' : ''}`} />
-        {/* The board's name alone, even when a table is linked: the button is
-            narrow, and "Pummel Party — Solo wins" truncates to something less
-            useful than the board it names. The table is named in the menu and
-            in the title attribute. */}
+        {/* Board name only, even with a table linked — too narrow to show both. */}
         <span className="truncate">{board ? board.name : 'No board'}</span>
         <ChevronDown
           className={`text-base-content/40 h-4 w-4 shrink-0 transition-transform duration-200 ${
@@ -167,14 +140,8 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
                   }}
                 />
 
-                {/* A board with one table is offered as itself; a board with
-                    several is offered a table at a time.
-
-                    Naming the board alone is enough when there is only one
-                    place the results can go. When there are two — "Solo wins"
-                    and "Team wins" — the server would have to guess, and a 3v3
-                    night landing in the solo column is the kind of wrong nobody
-                    notices until the numbers are weeks old. */}
+                {/* A board with multiple tables offers each table separately,
+                    since the server can't guess which one a night belongs on. */}
                 {editable.flatMap((item) => {
                   const tables = (item.tables_summary ?? []).filter((t) => t.tracks_tournaments)
 
@@ -219,9 +186,6 @@ export function StatsBoardManager({ board, onLink, pending, error }) {
             </>
           )}
 
-          {/* Said here rather than in a tooltip: a host linking a board
-              mid-tournament is usually worried they have missed the results
-              already reported. */}
           {!making && (
             <p className="text-base-content/50 px-2.5 py-1.5 text-xs">
               Linking adds every player and counts everything played so far.

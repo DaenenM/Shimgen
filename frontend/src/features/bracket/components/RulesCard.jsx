@@ -1,4 +1,4 @@
-/** A tournament's house rules, beside the bracket. */
+// A tournament's house rules, beside the bracket. Used by TournamentDetailPage.jsx.
 export function RulesCard({ rules }) {
   return (
     <aside>

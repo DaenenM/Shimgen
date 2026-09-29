@@ -2,13 +2,7 @@ import { useState } from 'react'
 
 import { Plus } from '@/components/icons'
 
-/**
- * Manual entry.
- *
- * A typed name becomes a roster entry first, then joins the team — members are
- * Player rows precisely so they carry account links and stats, and a free-text
- * member would be a string that merely looks like a person.
- */
+// Typed-name entry field for TeamEditor. Adds a name to the team via onAdd.
 export function AddNameForm({ onAdd }) {
   const [typed, setTyped] = useState('')
 

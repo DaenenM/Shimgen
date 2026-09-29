@@ -3,23 +3,15 @@ import { Link } from 'react-router-dom'
 import { House, Trophy } from '@/components/icons'
 import { paths } from '@/routes/paths'
 
-/**
- * A link that went nowhere.
- *
- * Reached by `path: '*'` inside the layout, so the nav is still there and this
- * is a dead end only for the URL, not for the visit. It offers the two places
- * worth going rather than a single "back home", because a broken link is very
- * often a shared bracket that has since been deleted — and the person holding
- * it came to look at a tournament, not at a home page.
- */
+// 404 page. Route: * (catch-all)
+// Offers home + tournaments rather than just "back home", since a broken
+// link is often a deleted shared bracket.
 export function NotFoundPage() {
   return (
     <div className="glass-backdrop mx-auto flex min-h-[60vh] max-w-xl items-center px-4 py-10">
       <div className="glass-panel rise-in w-full">
         <div className="flex flex-col items-center gap-4 p-8 text-center sm:p-10">
-          {/* Set in the panel's own tint rather than as a headline: the number
-              is context, and at 5rem solid it was the loudest thing on a page
-              whose job is to move somebody along. */}
+          {/* Tinted, not a solid headline — the 404 is context, not the point. */}
           <span className="text-base-content/15 text-6xl leading-none font-black tracking-tight">
             404
           </span>

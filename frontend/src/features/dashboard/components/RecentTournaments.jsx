@@ -4,10 +4,9 @@ import { SkeletonRows } from '@/components/ui/Skeleton'
 import { TournamentCard } from '@/features/tournaments/components/tournament-card/TournamentCard'
 import { paths } from '@/routes/paths'
 
-/** The last few tournaments, as the same rows the tournaments page uses. */
+// Recent-tournaments list, reusing TournamentCard. Used by DashboardPage.jsx.
 export function RecentTournaments({ tournaments, isLoading }) {
-  // Only the list waits. The header, its actions and the counters are above
-  // and already interactive, so the page is usable before the fetch lands.
+  // Only the list waits; header/counters above are already interactive.
   if (isLoading) return <SkeletonRows count={3} />
 
   if (tournaments.length === 0) {
@@ -23,17 +22,12 @@ export function RecentTournaments({ tournaments, isLoading }) {
   }
 
   return (
-    // The same row the tournaments list uses, rather than a second version of
-    // it. The two pages showed the same tournaments in two different shapes —
-    // different pills, a different state badge, a different surface — which
-    // read as two different products.
     <ul className="grid gap-2">
       {tournaments.map((tournament) => (
         <TournamentCard
           key={tournament.id}
           tournament={tournament}
-          // The dashboard is a glance, not a workbench: pinning, archiving and
-          // deleting all live on the tournaments page, one tap away.
+          // Pinning/archiving/deleting live on the tournaments page only.
           readOnly
         />
       ))}

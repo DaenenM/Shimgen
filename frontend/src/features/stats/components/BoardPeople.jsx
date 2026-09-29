@@ -4,16 +4,10 @@ import { Check, Plus, Users, X } from '@/components/icons'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 
-/**
- * Who else can add to this board.
- *
- * Owner-only, because an editor who could hand out access could hand it to
- * anyone — which would leave the owner's control over the board nominal.
- */
+// Manages who can edit this board, and board deletion. Owner-only. Used by BoardPage.jsx.
 export function BoardPeople({ people, friends, onAdd, onRemove, error, onDeleteBoard, boardName }) {
   const [confirming, setConfirming] = useState(false)
 
-  // Keyed by account id, which is what both halves of the toggle address.
   const granted = new Set(people.map((person) => person.user))
 
   return (
@@ -32,13 +26,8 @@ export function BoardPeople({ people, friends, onAdd, onRemove, error, onDeleteB
 
         <ErrorAlert>{error}</ErrorAlert>
 
-        {/* One list, not two. This used to stack a picker above a separate
-            row of removable names, so the same person appeared in one place or
-            the other depending on state and granting and revoking were two
-            different gestures. Every friend now has exactly one row that
-            toggles — the same treatment the tournament permissions popover
-            uses, where a tick means "in" and becomes a cross on hover to say
-            what the click will do. */}
+        {/* Each friend is one toggleable row (check -> cross on hover), same
+            pattern as the tournament permissions popover. */}
         {friends.length === 0 ? (
           <div className="border-base-content/10 rounded-xl border border-dashed p-4 text-center">
             <Users className="text-base-content/30 mx-auto h-6 w-6" />
@@ -80,8 +69,7 @@ export function BoardPeople({ people, friends, onAdd, onRemove, error, onDeleteB
           </ul>
         )}
 
-        {/* Deleting takes everyone's accumulated history with it, so it asks
-            first rather than living one click away. */}
+        {/* Confirm dialog guards this: deleting takes everyone's history with it. */}
         <div className="border-base-content/10 mt-2 border-t pt-4">
           <button
             className="text-base-content/50 hover:text-error text-sm transition-colors"

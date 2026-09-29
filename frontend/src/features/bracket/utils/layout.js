@@ -1,10 +1,5 @@
-/**
- * Turning a flat list of matches into something renderable.
- *
- * The API returns matches as a graph — each carrying `round_no`, `position`,
- * `bracket` and its advancement edges. These helpers group that into columns
- * without the components needing to know anything about the graph structure.
- */
+// Turns the flat match-graph the API returns into columns, labels and colors for rendering.
+// Used by BracketView.jsx, BracketRound.jsx, RoundList.jsx, MatchSide.jsx, TournamentHeader.jsx.
 
 export const FORMAT_LABELS = {
   single: 'Single elimination',
@@ -13,23 +8,8 @@ export const FORMAT_LABELS = {
   swiss: 'Swiss',
 }
 
-/**
- * The colour a round is played in, heating up toward the final.
- *
- * The bracket's own shape is an escalation — eight matches become four, then
- * two, then the one everybody stays for — and the old all-blue rendering threw
- * that away, so round one and the final looked identical. Hue carries it
- * instead: cool blue early, violet through the middle, amber at the end, which
- * is the accent the rest of the app already uses for victory.
- *
- * Counted back from the final rather than forward from round one, for the same
- * reason `roundLabel` is: which round is the semifinal depends on how many
- * there are.
- *
- * Chroma climbs with the heat too. A vivid amber next to a vivid blue at equal
- * saturation reads as two arbitrary colours; letting the late rounds be the
- * more saturated ones is what makes the sequence feel like a build.
- */
+// The colour a round is played in, heating up toward the final: cool blue early,
+// violet mid, amber (the app's victory colour) at the end.
 const ROUND_HUES = [
   { hue: 80, chroma: 0.15 }, // the final — amber, the app's victory colour
   { hue: 300, chroma: 0.13 }, // semifinal — violet
@@ -37,16 +17,11 @@ const ROUND_HUES = [
   { hue: 230, chroma: 0.11 }, // earlier rounds — blue
 ]
 
-/**
- * `fromEnd` 0 is the final, 1 the semifinal, and so on. Anything earlier than
- * the scale has to share the coolest tone: a twelve-round bracket cannot have
- * twelve distinguishable hues, and pretending otherwise gives two adjacent
- * rounds colours nobody can tell apart.
- */
+// `fromEnd` 0 is the final, 1 the semifinal, etc. Anything earlier than the scale
+// shares the coolest tone — a 12-round bracket can't have 12 distinguishable hues.
 export function roundTone(roundNo, totalRounds, section = 'main') {
-  // The losers bracket runs alongside the winners bracket rather than after it,
-  // so heating it on the same scale would give a losers round the final's gold.
-  // It stays cool throughout — it is the second chance, not the climax.
+  // Losers bracket runs alongside winners, not after it, so it stays cool throughout
+  // rather than sharing the final's gold.
   const fromEnd = section === 'losers' ? ROUND_HUES.length - 1 : totalRounds - roundNo
 
   const { hue, chroma } = ROUND_HUES[Math.min(Math.max(fromEnd, 0), ROUND_HUES.length - 1)]
@@ -63,13 +38,8 @@ export function roundTone(roundNo, totalRounds, section = 'main') {
   }
 }
 
-/**
- * Group matches into ordered rounds within one bracket section.
- *
- * Returns [{ roundNo, matches }], ascending. Rounds are derived from the data
- * rather than counted from the entrant list, because byes and phantom matches
- * mean the two do not always agree.
- */
+// Group matches into ordered rounds within one bracket section. Returns [{ roundNo, matches }],
+// ascending. Derived from the data, not the entrant list, since byes and phantom matches disagree.
 export function toRounds(matches, section = 'main') {
   const inSection = matches.filter((m) => m.bracket === section)
 
@@ -87,22 +57,11 @@ export function toRounds(matches, section = 'main') {
     }))
 }
 
-/**
- * A human name for a round, counted back from the final.
- *
- * "Semifinal" is more useful than "Round 3", and which round *is* the semifinal
- * depends on how many there are — so it can only be named relative to the end.
- *
- * `displayNo` is what an ordinary round gets numbered. It exists because a
- * losers bracket with byes has whole rounds hidden: `round_no` 2 can be the
- * first column on the page, and "Losers round 2" then points at a round one
- * nobody can see. The caller passes the position among the columns it actually
- * drew. The named rounds ignore it — a semifinal is the semifinal however many
- * rounds preceded it.
- */
+// A human name for a round, counted back from the final ("Semifinal" beats "Round 3").
+// `displayNo` is the position among columns actually drawn — needed because a losers
+// bracket with byes can hide whole rounds, so `round_no` alone would misnumber it.
 export function roundLabel(roundNo, totalRounds, section = 'main', displayNo = roundNo) {
-  // A second grand final only exists when the losers-bracket winner took the
-  // first one, forcing a decider (plan §3).
+  // A second grand final only exists when the losers-bracket winner forced a decider (plan §3).
   if (section === 'final') return roundNo === totalRounds ? 'Bracket reset' : 'Grand final'
   if (section === 'third') return 'Third place'
 
@@ -116,46 +75,15 @@ export function roundLabel(roundNo, totalRounds, section = 'main', displayNo = r
   return `${prefix}Round ${displayNo}`
 }
 
-/**
- * How wide a bracket draws itself, by how many columns it has to fit.
- *
- * A 28-entrant draw is five columns in the winners bracket and six in the
- * losers, and at full size that is far wider than any laptop — so the whole
- * thing became a side-scroller and no single view showed the shape of the
- * tournament, which is the one thing a bracket is for.
- *
- * Two invariants hold across every tier, and both have broken before:
- *
- *  - **`gap` is exactly twice `arm`.** The two arms of a connector sit inside
- *    the gap, so any other ratio leaves the elbow short of the card or running
- *    past it.
- *  - **`card` is used by the heading row and the card column alike.** They are
- *    separate flex rows that have to agree, or every round label drifts
- *    sideways from the column it names.
- *
- * Only horizontal measurements shrink. Row height is fixed in `MatchCard` so a
- * slot does not resize the instant a name lands in it, and names already
- * truncate — so a narrower card loses some of a long team name and nothing
- * else. Losing the tail of "Team 28" beats losing the bracket.
- *
- * The unprefixed token is the phone width and the `sm:` one the laptop width,
- * and they are tuned against different constraints. Do not "tidy" the two into
- * a single scale — the `sm:` values were sized for a laptop and are not a
- * phone's business.
- *
- * Every tier shares one phone width, and that is deliberate. "Two columns" is a
- * property of the viewport, not of how deep the draw is: a 390px screen less
- * its gutters leaves ~358px, so a card plus its gap has to be ~179px whatever
- * else is true. Letting the phone width shrink with depth is what put a
- * 28-entrant losers bracket at 96px a column — nearly four columns on screen,
- * each too narrow to read. `w-40` + `w-4` is 176px, which lands just over two.
- *
- * Only the `sm:` widths still step down with depth, because a laptop has the
- * room to trade card size for seeing more of the shape at once.
- *
- * Lives here rather than in `BracketView` because it is a pure function, and a
- * component file that also exports one breaks Fast Refresh.
- */
+// How wide a bracket draws itself, by column count. Two invariants:
+//  - `gap` is exactly twice `arm` (the connector's two arms sit inside the gap).
+//  - `card` is shared by the heading row and the card column, or labels drift.
+// Only horizontal sizes shrink; row height is fixed in MatchCard.
+// The unprefixed token is phone width, `sm:` is laptop width — tuned separately, don't merge them.
+// Every tier shares one phone width on purpose: "two columns" is a viewport property, not a depth
+// property, and letting phone width shrink with depth used to put a 28-entrant losers bracket at
+// four unreadable columns. Only `sm:` steps down with depth.
+// Lives here, not in BracketView, so the component file stays Fast-Refresh-safe (one export).
 const SIZES = {
   // Four columns or fewer: a quarterfinal onward, which fits comfortably.
   roomy: { card: 'w-40 sm:w-64', gap: 'w-4 sm:w-16', arm: 'w-2 sm:w-8' },
@@ -165,11 +93,8 @@ const SIZES = {
   tight: { card: 'w-40 sm:w-40', gap: 'w-4 sm:w-8', arm: 'w-2 sm:w-4' },
 }
 
-/**
- * Picked per section rather than per tournament: the winners and losers
- * brackets are independent scrollers with different column counts, and sizing
- * both to the wider one would shrink the winners bracket for no reason.
- */
+// Per section, not per tournament: winners/losers are independent scrollers with
+// different column counts, and sizing both to the wider one shrinks the other for no reason.
 export function sizeFor(columnCount) {
   if (columnCount >= 6) return SIZES.tight
   if (columnCount === 5) return SIZES.compact
@@ -190,97 +115,40 @@ export const SECTION_LABELS = {
   final: 'Grand final',
 }
 
-/**
- * Whether a match should be hidden because it can never be a real contest.
- *
- * A double-elimination bracket is built for the next power of two, so a draw of
- * five entrants gets a losers bracket sized for eight. Several of those slots
- * are fed only by byes, which produces a "Losers round 1" of TBD-versus-TBD and
- * a half-empty "Losers quarterfinal" where somebody stands alone marked
- * ADVANCES. Both read as a broken bracket rather than as byes working
- * correctly.
- *
- * The test is **capacity**: how many entrants could this slot ever hold, at
- * best, across every way the tournament could still play out? Fewer than two
- * means no match can ever happen here — it is either dead or a corridor
- * somebody walks through untouched — so it is hidden.
- *
- * Capacity ignores results entirely. It asks only what the edges allow, which
- * is why the bracket is correct the moment it is created rather than tidying
- * itself up as results land. A slot's capacity never changes, so nothing
- * appears or disappears mid-tournament.
- *
- * Hiding a one-capacity slot does not make anybody vanish: their single
- * occupant is delivered straight on to the next slot, and the first one with
- * room for two is by definition a real match that stays on the page. The chain
- * simply collapses to where the bracket actually begins.
- *
- * Two things are deliberately exempt:
- *
- *  - **The winners bracket.** The same one-sided shape there is a first-round
- *    bye, and that is real information: it says who sat out and why they appear
- *    in round two without having played. Hide it and the bracket looks like it
- *    skipped somebody.
- *  - **A contested match.** Once two entrants have actually played, it is
- *    history and stays on the page whatever the arithmetic says.
- *
- * A *walkover* is deliberately not exempt, and that distinction is the whole
- * reason this is not simply `if (match.winner) return false`. When the winners
- * match above a capacity-1 slot resolves, the backend cascades the lone
- * occupant onward and stamps a winner on the slot on its way past. Treating
- * that as history brought every hidden slot back the moment a result landed —
- * the bracket was clean when created and sprouted dead rounds as it was played.
- * Nobody played them; the engine walked somebody through.
- */
+// Whether a match should be hidden because it can never be a real contest.
+// A double-elimination bracket is sized for the next power of two, so a losers
+// bracket can have slots fed only by byes ("Losers round 1" of TBD-vs-TBD).
+//
+// Test is capacity: how many entrants could this slot ever hold, ignoring results
+// entirely (so the bracket is correct at creation and never changes mid-tournament).
+// Fewer than two capacity means hidden. The single occupant of a hidden slot still
+// advances normally; the chain just collapses to where a real match begins.
+//
+// Exempt: the winners bracket (a one-sided slot there is a real first-round bye,
+// worth showing) and any match that was actually contested (two entrants played).
+// NOT exempt: a walkover with only a winner — the backend stamps a winner as it
+// cascades a lone occupant through, and treating that as "history" would un-hide
+// every dead slot the moment a result landed.
 export function isPhantom(match, allMatches) {
-  // Two entrants means a real game happened, whatever the arithmetic says.
-  // One or none is a walkover the engine resolved, which earns no exemption.
+  // Two entrants: a real game happened. One or none is a walkover, no exemption.
   if (match.winner && match.a && match.b) return false
 
-  // A decided grand final whose undefeated side held kills the decider behind
-  // it. The backend creates that decider up front but seats it only when the
-  // losers finalist wins the grand final (`_resolve_grand_final`), so a bracket
-  // reset that is still empty after the grand final has been won by the side in
-  // slot `a` is a match nobody will ever play — and it sat there reading TBD
-  // under a finished tournament, which is the one card on the page that should
-  // never be ambiguous.
-  //
-  // Slot `a` is load-bearing here, not incidental: the grand final always seats
-  // the undefeated entrant in `a` and whoever came up from the losers bracket in
-  // `b` (`_slot_for`). That is the whole test — the same entrant winning from
-  // slot `b` is the case that *does* force the decider.
+  // A decided grand final won by the undefeated side (slot `a`, per `_slot_for`
+  // on the backend) kills the bracket-reset decider behind it — it will never be played.
   if (isDeadBracketReset(match, allMatches)) return true
 
-  // Only the losers bracket. The winners bracket's one-sided matches are byes,
-  // which explain themselves; the grand final and the bracket reset are the
-  // climax of the page and are seated from two different brackets, so counting
-  // feeders understates them.
+  // Only the losers bracket: winners-bracket one-sided matches are real byes,
+  // and the grand final / bracket reset are seated from two brackets, not counted by feeders.
   if (match.bracket !== 'losers') return false
 
   return capacity(match, allMatches) < 2
 }
 
-/**
- * Whether this is a bracket reset that can no longer happen.
- *
- * True only for the decider behind a grand final that the undefeated side has
- * already won. Three conditions, and all of them matter:
- *
- *  - **It is still empty.** A seated decider is a live match, and one that has
- *    been played is history. Either way it stays.
- *  - **Its grand final is decided.** Before that the decider is simply pending,
- *    which is the ordinary state of every unplayed match on the page.
- *  - **That grand final was won from slot `a`.** The undefeated side sits in
- *    `a` and the losers finalist in `b` (`_slot_for` on the backend). A win
- *    from `b` levels the score at one loss each and is exactly what *does*
- *    bring the decider to life, so testing the slot rather than merely "is
- *    decided" is the difference between hiding a dead card and hiding the
- *    deciding match of the tournament.
- *
- * Found by walking the edge backwards — the grand final points at its decider
- * through `next_match_win` — rather than by assuming round numbers, so it holds
- * however the finals are numbered.
- */
+// Whether this is a bracket-reset decider that can no longer happen: still empty,
+// its grand final decided, and won from slot `a` (the undefeated side — `_slot_for`
+// on the backend). A win from `b` levels the score and *does* bring the decider to
+// life, so the slot check (not just "is decided") matters.
+// Walks the edge backwards via `next_match_win` rather than assuming round numbers.
 function isDeadBracketReset(match, allMatches) {
   if (match.bracket !== 'final') return false
 
@@ -299,27 +167,17 @@ function isDeadBracketReset(match, allMatches) {
   return grandFinal.winner === grandFinal.a
 }
 
-/**
- * The most entrants this match could ever hold.
- *
- * Counts the seats already filled, then asks each feeder whether its edge could
- * ever deliver somebody — assuming, unlike a reachability count, that every
- * undecided match upstream fills as fully as its own edges allow. That is what
- * keeps the answer independent of results.
- *
- * The losing edge is the interesting one: a feeder needs two entrants to
- * produce a loser at all, so a slot that can only ever hold one drops nobody.
- * That single fact is what propagates a bye's emptiness down the bracket.
- *
- * Memoised across the whole walk, which also stops a malformed graph with a
- * cycle from recursing forever — a match already being resolved contributes
- * nothing rather than reentering.
- */
+// The most entrants this match could ever hold: seats already filled, plus each
+// feeder that could still deliver somebody, assuming upstream fills as fully as
+// its edges allow (keeps the answer independent of actual results).
+// The losing edge matters: a feeder needs two entrants to produce a loser at all,
+// so a one-capacity feeder drops nobody — this is how a bye's emptiness propagates.
+// Memoised, which also stops a cycle in a malformed graph from recursing forever.
 function capacity(match, allMatches, memo = new Map()) {
   const cached = memo.get(match.id)
   if (cached !== undefined) return cached
 
-  // Seeded before the real value so a cycle terminates instead of recursing.
+  // Seeded before the real value so a cycle terminates.
   memo.set(match.id, 0)
 
   let count = (match.a ? 1 : 0) + (match.b ? 1 : 0)
@@ -329,8 +187,7 @@ function capacity(match, allMatches, memo = new Map()) {
     const dropping = feeder.next_match_lose === match.id
     if (!advancing && !dropping) continue
 
-    // A decided feeder has already sent whoever it was going to send, and
-    // anyone it seated is counted above.
+    // A decided feeder already sent whoever it was going to; counted above.
     if (feeder.winner) continue
 
     const upstream = capacity(feeder, allMatches, memo)

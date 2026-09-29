@@ -10,12 +10,11 @@ import { Field } from '@/components/ui/Field'
 import { TextInput } from '@/components/ui/TextInput'
 import { paths } from '@/routes/paths'
 
-/** Name a board, choose what it counts, and go straight to it. */
+// Form for creating a new board. Used by StatsPage.jsx.
 export function NewBoardForm({ create, onClose }) {
   const navigate = useNavigate()
   const [name, setName] = useState('')
-  // Decides the board's first table: a hand-counted tally, or the four columns
-  // a linked bracket fills in by itself.
+  // Determines the board's first table: hand-tallied, or fed by linked brackets.
   const [tracks, setTracks] = useState(false)
 
   function submit() {

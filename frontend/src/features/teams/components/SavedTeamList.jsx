@@ -4,10 +4,8 @@ import { SectionLoader } from '@/components/ui/SectionLoader'
 import { SavedTeamCard } from './SavedTeamCard'
 import { TeamEditor } from './TeamEditor'
 
-/**
- * The saved teams, each either a card or — for the one being edited — its
- * editor in place.
- */
+// Saved teams grid; the team being edited shows its editor in place of the card.
+// Used by SavedTeamsPage.jsx.
 export function SavedTeamList({
   teams,
   isLoading,

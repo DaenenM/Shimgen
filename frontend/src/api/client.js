@@ -1,31 +1,17 @@
-/**
- * The single axios instance every request goes through.
- *
- * Two interceptors do the work:
- *
- *  - request:  attaches the bearer token, when there is one.
- *  - response: unwraps the backend's error envelope into an ApiError, and
- *              transparently refreshes an expired access token once.
- *
- * The refresh path is the fiddly part. A page that fires six queries at once
- * will get six 401s within milliseconds of the access token expiring; naively
- * refreshing per response would fire six refreshes, and with rotation enabled
- * on the server the first would invalidate the other five and log the user out.
- * So a single in-flight refresh promise is shared by every waiting request.
- */
+// Shared axios instance for every API request. Used by src/api/endpoints.js.
+// Request interceptor attaches the bearer token; response interceptor unwraps
+// the error envelope into ApiError and refreshes an expired access token once.
+// Concurrent 401s share one refresh promise so simultaneous requests don't
+// each trigger a refresh and invalidate each other under token rotation.
 
 import axios from 'axios'
 
 import { API_BASE_URL } from '@/config/env'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from './tokens'
 
-/**
- * A failed request, normalised.
- *
- * The backend returns every error as {error: {code, message, details}}
- * (see backend/config/exceptions.py), so components can rely on `message` for a
- * toast and `details` for per-field errors without inspecting status codes.
- */
+// Normalised failed request. Backend returns {error: {code, message, details}}
+// (see backend/config/exceptions.py); `message` is for toasts, `details` for
+// per-field errors.
 export class ApiError extends Error {
   constructor({ message, code, details, status }) {
     super(message)
@@ -35,7 +21,7 @@ export class ApiError extends Error {
     this.status = status
   }
 
-  /** Messages for one form field, or an empty array. */
+  // Messages for one form field, or an empty array.
   fieldErrors(field) {
     return this.details[field] ?? []
   }
@@ -55,12 +41,7 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-/**
- * Wording for a response that arrived without the envelope.
- *
- * Only responses Django never handed to DRF land here: an unhandled exception's
- * HTML 500, or a proxy's 502/504 while the host restarts.
- */
+// Wording for a response with no error envelope (unhandled 500, proxy 502/504).
 function fallbackMessage(status) {
   if (status >= 500) return 'Something broke on our end. Try again in a moment.'
   if (status === 404) return 'That could not be found. It may have been deleted.'
@@ -71,10 +52,8 @@ function fallbackMessage(status) {
 // Shared across every 401 that arrives while a refresh is already running.
 let refreshPromise = null
 
-/**
- * Exchange the refresh token for a new pair, at most once concurrently.
- * Returns the new access token, or null if the session is truly over.
- */
+// Exchanges the refresh token for a new pair, at most once concurrently.
+// Returns the new access token, or null if the session is over.
 function refreshAccessToken() {
   if (refreshPromise) return refreshPromise
 
@@ -82,15 +61,14 @@ function refreshAccessToken() {
   if (!refresh) return Promise.resolve(null)
 
   refreshPromise = axios
-    // A bare axios call, not `api`: going through the instance would re-enter
-    // these interceptors and, on a rejected refresh, recurse.
+    // Bare axios call, not `api` — going through the instance would recurse.
     .post(`${API_BASE_URL}/auth/token/refresh/`, { refresh })
     .then(({ data }) => {
       setTokens({ access: data.access, refresh: data.refresh })
       return data.access
     })
     .catch(() => {
-      // The refresh token is expired, blacklisted or forged. Nothing to salvage.
+      // Refresh token expired, blacklisted, or forged.
       clearTokens()
       return null
     })
@@ -108,9 +86,8 @@ api.interceptors.response.use(
 
     // No response at all: offline, DNS failure, CORS rejection or timeout.
     if (!response) {
-      // A timeout is worth telling apart: the host sleeps when idle, so the
-      // first request after a quiet spell can outlast the 20s limit while the
-      // connection itself is fine.
+      // Distinguish timeout: host sleeps when idle, so the first request after
+      // a quiet spell can outlast the 20s limit while the connection is fine.
       const timedOut = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
       throw new ApiError({
         message: timedOut
@@ -123,8 +100,7 @@ api.interceptors.response.use(
 
     const isAuthEndpoint = config?.url?.includes('/auth/token/')
 
-    // `_retried` stops an infinite loop when the refreshed token is also
-    // rejected — one retry per request, then the error surfaces.
+    // `_retried` caps this at one retry per request.
     if (response.status === 401 && !config._retried && !isAuthEndpoint) {
       config._retried = true
 
@@ -135,10 +111,7 @@ api.interceptors.response.use(
       }
     }
 
-    // Past the refresh, a 401 means the session is over. The server's wording
-    // ("Given token not valid for any token type") is for developers.
-    // Only when a token was actually sent: signed out, there was no session to
-    // expire and the server's "credentials were not provided" is accurate.
+    // Only treat as a session expiry if a token was actually sent.
     const sessionEnded =
       response.status === 401 && !isAuthEndpoint && Boolean(config?.headers?.Authorization)
 
@@ -154,5 +127,5 @@ api.interceptors.response.use(
   },
 )
 
-/** Paginated endpoints return `{ results }`; unpaginated ones return an array. */
+// Paginated endpoints return `{ results }`; unpaginated ones return an array.
 export const unwrapList = (data) => data?.results ?? data ?? []

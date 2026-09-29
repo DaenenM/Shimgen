@@ -2,18 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Check, Pencil, X } from '@/components/icons'
 
-/**
- * The tournament's name, editable in place by the host.
- *
- * A typo in a title is noticed once the bracket is on a television and the
- * night has started, which is exactly when the tournament can no longer be
- * recreated. Editing here rather than behind a settings page keeps the fix
- * where the mistake is seen.
- *
- * Renaming is deliberately allowed in every state. Unlike entrants, a title
- * has no structural meaning — nothing advances because of it — so there is no
- * reason to lock it once play begins.
- */
+// Tournament name, editable in place by the host. Used by TournamentHeader.jsx.
+// Renaming is allowed in every tournament state — a title has no structural
+// meaning, so nothing needs to lock once play begins.
 export function EditableTitle({ title, canEdit, onSave, pending }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(title ?? '')
@@ -35,8 +26,7 @@ export function EditableTitle({ title, canEdit, onSave, pending }) {
     const next = draft.trim()
     setEditing(false)
 
-    // An unchanged or emptied title is a cancel, not a save: a bracket with a
-    // blank name reads as broken, and the placeholder is not a real title.
+    // Unchanged or emptied title is treated as a cancel, not a save.
     if (!next || next === title) {
       setDraft(title ?? '')
       return

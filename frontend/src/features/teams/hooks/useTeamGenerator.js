@@ -5,17 +5,11 @@ import { useLocalStorage } from '@/hooks/useLocalStorage'
 
 import { generateTeams } from '../utils/generate'
 
-/** Namespaced like the app's other stored values (`shim.roster`, `shim.access`). */
+// Namespaced like the app's other stored values (shim.roster, shim.access).
 const STORAGE_KEY = 'shim.team-generator'
 
-/**
- * Module-level, not a fresh object per render.
- *
- * `useLocalStorage` is built on `useSyncExternalStore`, which compares
- * snapshots by identity — a new default each render would report a changed
- * store on every pass and loop. The same reason `useLocalRoster` keeps its
- * `EMPTY` at module scope.
- */
+// Module-level, not recreated per render: useLocalStorage compares snapshots by identity
+// (useSyncExternalStore), so a fresh object each render would loop.
 const EMPTY_SETUP = {
   rosterText: '',
   teamCount: 2,
@@ -26,8 +20,7 @@ const EMPTY_SETUP = {
 
 const EMPTY_DRAFT = { kind: 'apart', a: '', b: '' }
 
-// Shared everywhere a name list needs to come from raw text: the textarea
-// itself, and the staging helpers that edit it from outside.
+// Parses the textarea's raw text into a name list. Shared by the textarea and staging helpers.
 function parseNames(text) {
   return text
     .split(/[\n,]/)
@@ -35,24 +28,13 @@ function parseNames(text) {
     .filter(Boolean)
 }
 
-/**
- * The team generator's state and actions.
- *
- * One source of truth for who is playing — the textarea's raw text — and
- * `names` is just that text parsed. Picking a saved name stages it into the
- * text instead of a separate list, so there's exactly one place a host looks
- * to see who's in.
- */
+// Team generator's state and actions. Used by TeamGeneratorPage.jsx.
+// The textarea's raw text is the single source of truth for who's playing; `names` is just it parsed.
 export function useTeamGenerator() {
   const { touchLocal } = useRoster()
 
-  // Everything a host has actually entered survives a reload. Typing ten names,
-  // setting up rules and rolling teams is several minutes of work, and losing
-  // it to an accidental refresh — or to following a link and coming back — is
-  // the kind of thing that makes people distrust the page and keep a paper
-  // list. Held in one record rather than five keys so a reload restores a
-  // coherent setup: a stored result whose roster had already been cleared would
-  // show teams built from names no longer on the page.
+  // Persisted as one record (not separate keys) so a reload restores a coherent setup —
+  // otherwise a stored result could reference names no longer on the page.
   const [saved, setSaved] = useLocalStorage(STORAGE_KEY, EMPTY_SETUP)
   const { rosterText, teamCount, constraints, result, teamNames } = saved
 
@@ -61,9 +43,7 @@ export function useTeamGenerator() {
     [setSaved],
   )
 
-  // Deliberately not persisted. `draft` is a half-built rule and `error` is a
-  // complaint about the last click — restoring either would greet a returning
-  // host with a stale grievance rather than with their teams.
+  // Not persisted: a half-built rule or stale error shouldn't greet a returning host.
   const [draft, setDraft] = useState(EMPTY_DRAFT)
   const [error, setError] = useState(null)
 
@@ -88,34 +68,20 @@ export function useTeamGenerator() {
     [setSaved],
   )
 
-  /**
-   * Back to an empty page — what "Clear all" means here.
-   *
-   * Everything on this page hangs off the player list: the teams were generated
-   * from it, the rules name people in it, and the team count is bounded by how
-   * many there are. Clearing only the names left teams on screen built from
-   * players who were no longer listed, and rules pointing at nobody.
-   *
-   * Written as one assignment to `EMPTY_SETUP` rather than five patches, so the
-   * stored record can never come back half-cleared — a reload after a partial
-   * reset would restore exactly the stale teams this is meant to remove. The
-   * unsaved rule and error go too: a half-typed rule surviving a clear is the
-   * same bug at smaller scale.
-   */
+  // "Clear all": resets everything in one assignment so nothing can come back half-cleared
+  // (teams/rules referencing players no longer listed).
   const clearEverything = useCallback(() => {
     setSaved(EMPTY_SETUP)
     setDraft(EMPTY_DRAFT)
     setError(null)
   }, [setSaved])
 
-  // Adds a saved name to the text field rather than to a list — appended as
-  // its own line, so it reads the same as if the host had typed it.
+  // Adds a saved name as a new line in the text field, as if typed.
   function stageAdd(name) {
     setRosterText((current) => [...parseNames(current), name].join('\n'))
   }
 
-  // Removes a name from the text field by dropping any line that matches it
-  // — case-insensitively, since that's how "already added" is judged too.
+  // Removes a name by dropping any matching line, case-insensitively.
   function stageRemove(name) {
     setRosterText((current) =>
       parseNames(current)
@@ -175,16 +141,8 @@ export function useTeamGenerator() {
   const renameTeam = (index, name) => patch({ teamNames: { ...teamNames, [index]: name } })
   const nameFor = (index) => teamNames[index]?.trim() || `Team ${index + 1}`
 
-  /**
-   * Rearrange the rolled teams by hand — a player dragged from one team to
-   * another, or up and down within one.
-   *
-   * `groups` is the teams as lists of player ids in their new order. Ids rather
-   * than names because two players may share a name; the records themselves
-   * are looked up again, so nothing about a player changes except where they
-   * sit. Stored like any other result, so a reload keeps the adjustment, and
-   * the next re-roll avoids this arrangement just as it would a rolled one.
-   */
+  // Rearrange rolled teams by drag. `groups` is teams as lists of player ids in new order
+  // (ids, not names, since two players may share a name). Persisted like any generated result.
   function arrangeTeams(groups) {
     const byId = new Map((result?.teams ?? []).flat().map((player) => [String(player.id), player]))
     patch({

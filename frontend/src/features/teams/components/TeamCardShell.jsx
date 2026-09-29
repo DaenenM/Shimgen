@@ -1,17 +1,8 @@
 import { teamTone } from '../utils/tone'
 
-/**
- * A team's card: its colour, number, editable name and head count.
- *
- * Shared by the team generator's results and the new-tournament team builder,
- * so a team looks the same on the page that rolled it and the page that
- * enters it. The body — a plain list of names, or an editable one — is the
- * caller's.
- *
- * `surface` is the glass class. The generator's cards sit on the open page and
- * take `glass-panel`; the builder's sit inside a panel already, where a second
- * heavy blur compounds into mud, so they take `glass-inset`.
- */
+// Shared team card shell: colour, number, editable name, head count.
+// Used by GeneratedTeamCard.jsx and BuilderTeamCard.jsx (new-tournament). Body content is the caller's.
+// `surface`: generator cards use glass-panel; builder cards (nested panel) use glass-inset.
 export function TeamCardShell({
   as: Tag = 'div',
   index,
@@ -35,9 +26,7 @@ export function TeamCardShell({
       className={`${surface} relative overflow-hidden ${className}`}
       style={{ borderTopColor: tone.edge, ...style }}
     >
-      {/* The team's hue as a light source above the panel rather than a stripe
-          beside it: colour arriving through the glass is what ties the two
-          ideas together. */}
+      {/* Team hue as a light wash from the top, not a stripe. */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-24"
         style={{ background: `linear-gradient(to bottom, ${tone.wash}, transparent)` }}

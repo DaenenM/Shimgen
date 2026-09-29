@@ -1,13 +1,7 @@
 import { Info } from '@/components/icons'
 
-/**
- * Said before the host commits, rather than after.
- *
- * A red edge rather than the quiet glass box it used to be: sitting among the
- * settings it read as one more hint and was skipped, and a bracket full of byes
- * is the thing hosts then think is broken. The text stays the body colour — the
- * border draws the eye, the words still have to be comfortable to read.
- */
+// Bye warning shown before creating the tournament. Used by SettingsPanel.jsx.
+// Red border draws the eye (a quiet glass box got skipped); body-colour text stays readable.
 export function ByeWarning({ warning }) {
   return (
     <div

@@ -2,13 +2,8 @@ import { useState } from 'react'
 
 import { Check, Share2 } from '@/components/icons'
 
-/**
- * Copy a URL, and say so for two seconds.
- *
- * The label is dropped below `sm`: the icon is distinct, and labelled pills
- * wrapped onto extra rows in a phone header — which is most of what made those
- * headers feel cluttered.
- */
+// Copies a URL to the clipboard and confirms for 2 seconds. Shared UI primitive.
+// Label hides below `sm` to avoid wrapping in tight phone headers.
 export function CopyLinkButton({ url, label = 'Share', title, className = '' }) {
   const [copied, setCopied] = useState(false)
 
@@ -18,7 +13,7 @@ export function CopyLinkButton({ url, label = 'Share', title, className = '' }) 
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Clipboard access can be denied; nothing is lost, the URL is in the bar.
+      // Clipboard access denied; URL is still in the address bar.
     }
   }
 

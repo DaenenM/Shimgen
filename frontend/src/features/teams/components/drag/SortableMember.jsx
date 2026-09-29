@@ -5,13 +5,8 @@ import { Menu, X } from '@/components/icons'
 
 import { memberId } from '../../context/dragState'
 
-/**
- * A player on a team, as a plain line — one that can be picked up and carried
- * to another team.
- *
- * While it is being dragged this stays behind as a faded placeholder holding
- * the gap, and `LiftedMember` in the overlay is what follows the pointer.
- */
+// A draggable player row. Used by DraggableMembers.jsx.
+// While dragging, this stays as a faded placeholder; LiftedMember follows the pointer.
 export function SortableMember({ id, label, onRemove, removeLabel }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: memberId(id),
@@ -29,9 +24,7 @@ export function SortableMember({ id, label, onRemove, removeLabel }) {
       aria-label={`${label} — press space to move to another team`}
     >
       <span className="flex min-w-0 items-center gap-1.5">
-        {/* The drag affordance, shown on hover — and always on touch, where
-            there is no hover to reveal it. Its space is kept at rest so the
-            name does not shift sideways when it appears. */}
+        {/* Drag handle icon: hover-revealed on pointer, always visible on touch. */}
         <Menu
           className="text-base-content/40 h-3.5 w-3.5 shrink-0 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100"
           aria-hidden="true"
@@ -46,17 +39,13 @@ export function SortableMember({ id, label, onRemove, removeLabel }) {
             event.stopPropagation()
             onRemove()
           }}
-          // The × sits inside the drag handle, so the events the sensors listen
-          // for are stopped here: otherwise a press on it could start a drag,
-          // and Enter on a focused × would pick the row up instead of removing
-          // it.
+          // Stop propagation so this button doesn't trigger the row's drag sensors.
           onMouseDown={(event) => event.stopPropagation()}
           onTouchStart={(event) => event.stopPropagation()}
           onKeyDown={(event) => event.stopPropagation()}
           aria-label={removeLabel}
           title="Remove"
-          // Shown on hover where there is hover; always there on touch, where
-          // there is not.
+          // Hover-revealed on pointer, always visible on touch.
           className="text-base-content/40 hover:text-error hover:bg-error/10 grid h-6 w-6 shrink-0 place-items-center rounded-md transition-all duration-150 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
         >
           <X className="h-3.5 w-3.5" />

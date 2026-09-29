@@ -3,39 +3,20 @@ import { TeamCrest } from '@/components/ui/TeamCrest'
 
 import { useSavedTeams } from '../hooks/useSavedTeams'
 
-/**
- * Saved squads, ready to drop into the form.
- *
- * The sibling of `SavedRoster`, and deliberately the same shape: a rail beside
- * the form, one click per entry, no confirmation step. The difference is what a
- * click inserts — a roster click adds one name, a team click adds the whole
- * side and its members at once.
- *
- * Only useful in teams mode. In solo mode a "team" has nowhere to go, so the
- * caller hides it rather than this rendering a panel whose entries do nothing.
- *
- * Renders nothing until there is at least one saved team — an empty panel is a
- * whole card beside the form that offers nothing to click. That includes while
- * loading, so it never shows a spinner only to vanish.
- */
+// Saved-teams rail: one click adds a whole team + its members to the form.
+// Used by RosterRail.jsx (new-tournament) and TeamGeneratorPage-adjacent flows in teams mode only.
+// Renders nothing while loading or if there are no saved teams.
 export function SavedTeamPicker({ onPick, placed = [], glass = false, maxHeight = null }) {
   const { teams, isLoading } = useSavedTeams()
 
   const surface = glass ? 'glass-panel' : 'card bg-base-100 border-base-300 border'
-  // `min-w-0 w-full` is what lets the card be bounded by its column rather than
-  // by its widest line. A grid/flex child defaults to `min-width: auto`, so it
-  // refuses to shrink below its content's intrinsic width — which meant a team
-  // whose members read "Big Kirk, Brett, Il, Pig Benis, ShimBob" pushed this
-  // panel wider than the roster rail above it, and `truncate` never engaged
-  // because nothing upstream ever constrained the width.
+  // min-w-0 lets the card shrink below its content's intrinsic width so truncate can engage.
   const sizing = maxHeight
     ? 'w-full min-w-0 self-start overflow-hidden'
     : 'w-full min-w-0 self-start'
   const capStyle = maxHeight ? { maxHeight: `${maxHeight}px` } : undefined
 
-  // Which teams are already in the form, matched by name — the form holds
-  // labels and members, not ids, so the name is the only handle back to the
-  // saved team it came from.
+  // Matched by name since the form holds labels/members, not ids.
   const used = new Set(placed.map((label) => label.toLowerCase()))
 
   if (isLoading || teams.length === 0) return null

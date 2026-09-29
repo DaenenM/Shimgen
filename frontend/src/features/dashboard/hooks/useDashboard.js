@@ -8,7 +8,7 @@ import {
 } from '@/api/endpoints'
 import { queryKeys } from '@/lib/queryClient'
 
-/** Everything the signed-in landing page shows, already counted. */
+// Data for DashboardPage.jsx: recent tournaments and header counts.
 export function useDashboard() {
   const { data: tournaments, isLoading } = useQuery({
     queryKey: queryKeys.tournaments.all,

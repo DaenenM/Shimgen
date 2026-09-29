@@ -6,11 +6,8 @@ const CAPTAIN_MODES = [
   ['manual', 'Choose captains'],
 ]
 
-/**
- * Captains mode: how many sides, and who leads them.
- *
- * `captains` is `{ count, mode, chosen }`; `onChange` takes an updater.
- */
+// Captains mode settings: team count and captain selection. Used by SettingsPanel.jsx.
+// `captains` is `{ count, mode, chosen }`; `onChange` takes an updater function.
 export function CaptainSettings({ captains, names, onChange }) {
   const { count, mode, chosen } = captains
   const set = (changes) => onChange((current) => ({ ...current, ...changes }))
@@ -61,10 +58,7 @@ export function CaptainSettings({ captains, names, onChange }) {
         className="mt-3"
       />
 
-      {/* Chosen from the names already typed rather than a separate field: a
-          captain who is not in the player list is a captain the draft cannot
-          seat. Clicking toggles, and the count caps at the team count so the
-          selection cannot overrun. */}
+      {/* Captains chosen from the typed player list, not a separate field, so the draft can seat them. */}
       {mode === 'manual' && (
         <div className="mt-2.5">
           {names.length === 0 ? (

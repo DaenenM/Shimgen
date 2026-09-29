@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 
+// One row in AccountMenu.jsx's dropdown.
 export function MenuLink({ to, label, icon: Icon, badge = 0 }) {
   return (
     <li>

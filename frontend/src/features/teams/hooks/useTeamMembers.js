@@ -1,27 +1,14 @@
 import { useMemo, useState } from 'react'
 
-/**
- * Who is on a team being edited, from roster picks and typed names alike.
- *
- * Members are roster entries rather than typed names, so the people on a team
- * carry their account links and their stats with them. A typed name that is not
- * on the roster yet is posted there first (`remember`) and joins the team once
- * the refreshed roster has an id for it.
- */
+// Tracks who's on a team being edited, from roster picks and typed names. Used by TeamEditor.jsx.
+// A typed name not yet on the roster is posted via `remember` and joins the team once it gets an id.
 export function useTeamMembers({ team, players, remember }) {
   const [memberIds, setMemberIds] = useState(() => new Set(team?.members?.map((m) => m.id) ?? []))
-  // Names typed here but not yet resolved to a Player id. `remember` posts to
-  // the roster and returns nothing, so the id only exists once the refreshed
-  // list arrives — these are the names waiting for that.
+  // Typed names not yet resolved to a Player id -- waiting on the roster refetch.
   const [staged, setStaged] = useState([])
 
-  /**
-   * You first, then friends alphabetically, then everyone else as they came.
-   *
-   * The same ordering the saved-roster rail uses, and for the same reason: your
-   * own name is the one most likely to be wanted and the one nobody should have
-   * to hunt for, and the server's recency order is worth keeping for the rest.
-   */
+  // You first, then friends alphabetically, then everyone else in server order.
+  // Same ordering as the saved-roster rail.
   const ordered = useMemo(() => {
     const me = players.filter((player) => player.is_self)
     const friends = players.filter((player) => player.is_friend && !player.is_self)
@@ -34,17 +21,8 @@ export function useTeamMembers({ team, players, remember }) {
     return [...me, ...friends, ...rest]
   }, [players])
 
-  /**
-   * Who is on the team: the ids picked plus any typed name the roster has
-   * caught up with.
-   *
-   * Derived rather than reconciled in an effect. A typed name becomes a Player
-   * first — members are foreign keys precisely so they carry account links and
-   * stats — and its id only exists once the roster query refetches. Watching
-   * for that in an effect and calling setState there is a cascading render;
-   * computing it here is the same behaviour with none of that, and the staged
-   * name simply stops mattering once its id is in the set.
-   */
+  // Who's on the team: picked ids plus any staged name the roster has now resolved.
+  // Computed here rather than reconciled in an effect, to avoid a cascading render.
   const selected = useMemo(() => {
     if (staged.length === 0) return memberIds
 
@@ -58,15 +36,7 @@ export function useTeamMembers({ team, players, remember }) {
     return next
   }, [memberIds, staged, players])
 
-  /**
-   * Everyone on the team, as something renderable.
-   *
-   * Two kinds of member, and the pills have to show both: a roster member has
-   * an id and is found in `players`, while a name typed a moment ago exists
-   * only as a staged string until the roster query catches up with it. Keying
-   * on ids alone would leave a just-typed name invisible in the very row that
-   * exists to let you take it back off.
-   */
+  // Renderable pills for both kinds of member: roster members (by id) and staged typed names.
   const memberPills = useMemo(() => {
     const byId = new Map(players.map((player) => [player.id, player]))
 
@@ -77,8 +47,7 @@ export function useTeamMembers({ team, players, remember }) {
 
     const known = new Set(saved.map((pill) => pill.label.toLowerCase()))
 
-    // Only the staged names the roster has not produced a Player for yet —
-    // once it has, the entry above is the same person and this would double it.
+    // Only staged names not yet resolved, to avoid showing the same person twice.
     const pending = staged
       .filter((name) => !known.has(name.toLowerCase()))
       .map((name) => ({ key: `staged:${name.toLowerCase()}`, id: null, label: name }))
@@ -86,7 +55,7 @@ export function useTeamMembers({ team, players, remember }) {
     return [...saved, ...pending]
   }, [selected, staged, players])
 
-  /** Take someone off the team, whichever kind of member they are. */
+  // Remove a member, whichever kind (staged name or roster id).
   function removeMember(pill) {
     const gone = pill.label.toLowerCase()
     setStaged((current) => current.filter((name) => name.toLowerCase() !== gone))
@@ -101,10 +70,8 @@ export function useTeamMembers({ team, players, remember }) {
   }
 
   function toggle(id) {
-    // Un-staging matters as much as the id: a name typed a moment ago is on the
-    // team *because* it is staged, not because its id is in `memberIds`, so
-    // deleting the id alone would leave the derivation putting it straight
-    // back.
+    // Must un-stage too: a just-typed name is on the team because it's staged, not
+    // because its id is in memberIds -- deleting only the id would leave it re-added.
     const player = players.find((candidate) => candidate.id === id)
     if (player) {
       const gone = player.display_name.toLowerCase()
@@ -119,13 +86,8 @@ export function useTeamMembers({ team, players, remember }) {
     })
   }
 
-  /**
-   * Add a typed name.
-   *
-   * Someone already on the roster is simply selected — `remember`
-   * de-duplicates server-side, so re-posting an existing name is harmless, but
-   * selecting directly avoids a needless round trip and works offline.
-   */
+  // Add a typed name: select directly if already on the roster (avoids a round trip),
+  // otherwise stage it and post via `remember`.
   function addName(typed) {
     const name = typed.trim()
     if (!name) return
@@ -138,8 +100,7 @@ export function useTeamMembers({ team, players, remember }) {
       setMemberIds((current) => new Set(current).add(existing.id))
     } else {
       remember([name])
-      // Stored as typed: this string is what the pill shows. Comparisons
-      // against it lowercase both sides instead.
+      // Stored as typed (for pill display); comparisons lowercase both sides instead.
       setStaged((current) => [...current, name])
     }
   }

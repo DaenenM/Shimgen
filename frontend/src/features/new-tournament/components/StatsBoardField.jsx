@@ -6,41 +6,23 @@ import { useBoards } from '@/features/stats/hooks/useBoards'
 
 import { TABLE_SEPARATOR } from '../utils/payload'
 
-// A select value that cannot collide with a board slug, so "make a new one" can
-// live in the same control as the boards themselves.
+// Sentinel value that can't collide with a real board slug, for the "new board" option.
 const NEW_BOARD = '__new__'
 
-/**
- * "Connect Stats Board" — where this bracket's results should also land.
- *
- * Linking to a board is what makes a league night count for something past
- * Saturday. The caller renders this signed-in only, since an anonymous bracket
- * has no board of its own to feed.
- */
+// "Connect Stats Board" field: where this bracket's results also land. Used by SettingsPanel.jsx.
+// Rendered signed-in only -- an anonymous bracket has no board to feed.
 export function StatsBoardField({ value, onChange }) {
   const { boards, create } = useBoards()
   const [making, setMaking] = useState(false)
   const [name, setName] = useState('')
 
-  // Only boards the host may write to, and only boards built to receive a
-  // tournament.
-  //
-  // Linking a hand-counted board does not merely record alongside the tally —
-  // it gives that table the four automatic columns a bracket fills, which is a
-  // structural change to a board somebody made to count by hand. Leaving it out
-  // of the list keeps the board the thing its owner built.
+  // Only writable boards built to receive a tournament -- linking a hand-counted board
+  // would add automatic columns, changing what its owner built.
   const editable = boards.filter(
     (board) => (board.role === 'owner' || board.role === 'editor') && board.tracks_tournaments,
   )
 
-  /**
-   * Make a board without leaving the form.
-   *
-   * Always a tournament board: it exists to receive this bracket's results, so
-   * asking whether it should be hand-counted would be offering an answer that
-   * cannot be right. Selected on success, which is the only reason to have made
-   * it.
-   */
+  // Creates a board without leaving the form; always a tournament board, since that's its purpose here.
   function createBoard() {
     if (!name.trim()) return
     create.mutate(
@@ -116,12 +98,8 @@ export function StatsBoardField({ value, onChange }) {
   )
 }
 
-/**
- * A board with several tournament tables is listed one table at a time —
- * "Pummel Party — Solo wins". With one table there is nothing to choose
- * between, so the board's own name is the option and the server picks the
- * table.
- */
+// A board with multiple tournament tables is listed per-table ("Board -- Table name").
+// A single-table board is listed by its own name; the server picks the table.
 function boardOptions(board) {
   const tables = (board.tables_summary ?? []).filter((table) => table.tracks_tournaments)
 

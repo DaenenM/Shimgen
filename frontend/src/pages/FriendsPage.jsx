@@ -6,13 +6,8 @@ import { IncomingRequests } from '@/features/friends/components/IncomingRequests
 import { OutgoingRequests } from '@/features/friends/components/OutgoingRequests'
 import { useFriends } from '@/features/friends/hooks/useFriends'
 
-/**
- * Friends.
- *
- * Not a social feature for its own sake: linking accounts is what gives stats
- * continuity across different hosts' events (plan §3), so results follow the
- * person rather than the roster entry they happened to be added under.
- */
+// Friends list and requests. Route: /friends
+// Linking accounts gives stats continuity across different hosts' events.
 export function FriendsPage() {
   const { isLoading, friends, incoming, outgoing, connectedIds, request, accept, remove } =
     useFriends()

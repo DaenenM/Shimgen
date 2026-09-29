@@ -1,14 +1,12 @@
 import { NavLink } from 'react-router-dom'
 
-/** One destination in the phone sheet, with room to say what it is. */
+// One destination row in the phone menu sheet. Used by MobileMenu.jsx.
 export function MobileNavLink({ to, label, icon: Icon, end, hint, onNavigate }) {
   return (
     <NavLink
       to={to}
       end={end}
-      // Closed here rather than by an effect watching the route: a tap is what
-      // dismisses the sheet, and calling setState from an effect cascades an
-      // extra render for no benefit.
+      // Closed on click directly, not via an effect watching the route.
       onClick={onNavigate}
       className={({ isActive }) =>
         `flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${

@@ -1,10 +1,5 @@
-/**
- * The auth context object itself.
- *
- * Kept in its own non-component module on purpose: React Fast Refresh can only
- * hot-reload a file that exports components exclusively, so mixing the provider
- * component and this constant would make every auth edit trigger a full reload.
- */
+// Auth context object. Used by AuthProvider.jsx, useAuth.js.
+// Kept separate from AuthProvider so Fast Refresh can still hot-reload the component file.
 
 import { createContext } from 'react'
 

@@ -8,10 +8,9 @@ import { paths } from '@/routes/paths'
 
 import { MenuLink } from './MenuLink'
 
+// Signed-in account dropdown. Used by Navbar.jsx.
 export function AccountMenu({ user, onLogout }) {
-  // Friend requests are only visible on a page nobody opens speculatively, so
-  // the nav has to be what says one arrived. Polled on a slow interval rather
-  // than pushed: a request is not urgent, and this costs one small query.
+  // Polled on a slow interval — requests aren't urgent, and it's a small query.
   const { data: pending } = useQuery({
     queryKey: queryKeys.friends.pending,
     queryFn: friendsApi.pending,
@@ -30,8 +29,7 @@ export function AccountMenu({ user, onLogout }) {
       >
         <span className="relative">
           <Avatar name={user?.display_name || user?.username} />
-          {/* A dot rather than a number: the menu below carries the count, and
-              this only has to say "there is something in here". */}
+          {/* Dot only — the menu below carries the actual count. */}
           {waiting > 0 && (
             <span
               className="bg-primary border-base-100 absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2"

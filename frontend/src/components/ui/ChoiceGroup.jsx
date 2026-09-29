@@ -1,10 +1,5 @@
-/**
- * A group of mutually exclusive choices, as cards rather than radio dots.
- *
- * A native radio is a 16px target with its label alongside; this makes the
- * whole option tappable and gives each choice room for the sentence that says
- * what it means. `options` is `[{ value, label, hint }]`.
- */
+// Mutually-exclusive choice group rendered as tappable cards, not radio dots.
+// `options` is `[{ value, label, hint }]`.
 export function ChoiceGroup({ name, value, onChange, options, columns = 2, className = '' }) {
   return (
     <div

@@ -3,15 +3,9 @@ import { useContext } from 'react'
 
 import { DragState, teamId } from '../context/dragState'
 
-/**
- * Make a team card a drop target.
- *
- * The whole card accepts a drop, not only its rows — otherwise an empty team
- * could never receive anyone. `highlight` is the card's drop-target styling:
- * outlined in the interactive blue and faintly tinted while a name is over it,
- * or outlined in `restColor` otherwise (transparent unless the page marks a
- * card, as the form does its target team).
- */
+// Makes a team card a drop target (whole card, not just its rows, so an empty team can receive a drop).
+// Used by GeneratedTeamCard.jsx and BuilderTeamCard.jsx.
+// `highlight`: outlined blue + tinted while a name is over it, otherwise outlined in `restColor`.
 export function useTeamDropTarget(index, restColor = 'transparent') {
   const { dragging, overGroup } = useContext(DragState)
   const { setNodeRef } = useDroppable({ id: teamId(index) })

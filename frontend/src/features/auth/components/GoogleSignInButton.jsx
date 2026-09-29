@@ -2,13 +2,9 @@ import { useRef, useState } from 'react'
 
 import { useGoogleButton } from '../hooks/useGoogleSignIn'
 
-/**
- * "Continue with Google", plus the divider above it.
- *
- * Renders nothing at all when the server has no Google client ID configured —
- * so an unconfigured deployment shows a clean email-only form rather than a
- * dead button or an empty gap where one should be.
- */
+// "Continue with Google" button plus divider.
+// Used by LoginForm.jsx, RegisterForm.jsx.
+// Renders nothing when the server has no Google client ID configured.
 export function GoogleSignInButton({ onCredential, onError, text = 'continue_with' }) {
   const containerRef = useRef(null)
   const [failed, setFailed] = useState(null)
@@ -34,8 +30,7 @@ export function GoogleSignInButton({ onCredential, onError, text = 'continue_wit
       </div>
 
       <div className="flex min-h-[44px] justify-center">
-        {/* Google renders its own button in here. A skeleton holds the space
-            until it does, so the form does not jump as the script arrives. */}
+        {/* Google renders its own button here; skeleton avoids layout jump while it loads. */}
         <div ref={containerRef} />
         {!ready && !failed && <span className="skeleton h-11 w-full max-w-[320px] rounded" />}
       </div>

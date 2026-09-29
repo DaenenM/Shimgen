@@ -1,9 +1,7 @@
 import { Avatar } from '@/components/ui/Avatar'
 
-/**
- * A user in a friends list: avatar, display name, handle, and the row's
- * actions on the right.
- */
+// One row in a friends/requests list: avatar, name, handle, and actions.
+// Used by FriendList.jsx, IncomingRequests.jsx, OutgoingRequests.jsx.
 export function PersonRow({ person, children }) {
   return (
     <li className="glass-inset">
@@ -12,8 +10,6 @@ export function PersonRow({ person, children }) {
           <Avatar name={person.name || person.username} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{person.name}</p>
-            {/* The handle under the name, quieter than it: the name is who they
-                are, the handle is how they are addressed. */}
             <p className="text-base-content/50 truncate text-xs">@{person.username}</p>
           </div>
         </div>

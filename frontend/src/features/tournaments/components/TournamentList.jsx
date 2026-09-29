@@ -5,7 +5,7 @@ import { paths } from '@/routes/paths'
 
 import { TournamentCard } from './tournament-card/TournamentCard'
 
-/** The live tournaments, or whichever empty state explains their absence. */
+// Live tournaments, or an empty state explaining their absence. Used by TournamentsPage.jsx.
 export function TournamentList({ isAuthenticated, isLoading, items, cardHandlers }) {
   if (!isAuthenticated) {
     return (

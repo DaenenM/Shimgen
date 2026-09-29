@@ -16,10 +16,10 @@ import { useBracketReporting } from '@/features/bracket/hooks/useBracketReportin
 import { useTournamentDetail } from '@/features/bracket/hooks/useTournamentDetail'
 import { paths } from '@/routes/paths'
 
-// Formats with no tree to draw: nobody is eliminated, so a bracket layout
-// would imply a structure that is not there.
+// Formats with no elimination tree to draw.
 const LIST_FORMATS = new Set(['rr', 'swiss'])
 
+// Tournament detail / bracket view. Route: /tournaments/:id/:name?
 export function TournamentDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
@@ -69,10 +69,7 @@ export function TournamentDetailPage() {
         </div>
       )}
 
-      {/* The bracket takes the full width. Standings used to hold a 16rem
-          column beside it, which cost the bracket a whole round of horizontal
-          room on a laptop — and standings are what you read after a result,
-          not while clicking one. They now sit below, next to the entrants. */}
+      {/* Bracket takes full width; standings moved below (next to entrants). */}
       <div className={`grid gap-6 ${tournament.rules ? 'lg:grid-cols-[1fr_18rem]' : ''}`}>
         <div className="min-w-0">
           {tournament.matches.length === 0 ? (
@@ -91,14 +88,11 @@ export function TournamentDetailPage() {
           )}
         </div>
 
-        {/* Rules only. The spectator link lives on the Share button — a
-            permanent card for a URL nobody reads was dead weight. */}
+        {/* Rules only — spectator link lives on the Share button instead. */}
         {tournament.rules && <RulesCard rules={tournament.rules} />}
       </div>
 
-      {/* Standings and the roster share the bottom row: both are things you
-          read once the bracket has moved, and side by side they fill the width
-          that a single full-bleed list would waste. */}
+      {/* Standings and roster share the bottom row. */}
       <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[20rem_1fr]">
         <StandingsSection rows={standings} />
         <EntrantRoster entrants={tournament.entrants} />

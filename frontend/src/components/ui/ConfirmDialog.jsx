@@ -2,18 +2,8 @@ import { useEffect, useRef } from 'react'
 
 import { AlertTriangle } from '@/components/icons'
 
-/**
- * A confirmation people actually read.
- *
- * Deleting a board or a bracket takes everyone's history with it, so it is
- * worth a real pause. This replaces the inline "Delete? [Delete] [Cancel]" row
- * that used to sit in the card — that put a destructive button one stray click
- * from where the list had just been, and read as debug UI rather than a
- * decision.
- *
- * Built on <dialog>, so the browser handles the focus trap, the backdrop and
- * Escape rather than this reimplementing all three badly.
- */
+// Confirmation modal for destructive actions. Shared UI primitive.
+// Built on <dialog> so the browser handles focus trap, backdrop, and Escape.
 export function ConfirmDialog({
   open,
   title,
@@ -38,14 +28,9 @@ export function ConfirmDialog({
     <dialog
       ref={ref}
       className="modal"
-      // Escape and the backdrop both mean "no", and the browser fires close for
-      // either — so cancelling is handled in one place rather than three.
+      // Escape and backdrop both fire native close, so cancel is handled once.
       onClose={onCancel}
     >
-      {/* `glass-raised`, like every other floating surface in the app. The
-          destructive colouring stays — red icon tile, red confirm — because
-          that is a deliberate difference from the other dialogs rather than an
-          inconsistency with them. */}
       <div className="glass-raised w-full max-w-md p-5 sm:p-6">
         <div className="flex items-start gap-3">
           <span className="bg-error/12 text-error grid h-10 w-10 shrink-0 place-items-center rounded-xl">
@@ -80,8 +65,7 @@ export function ConfirmDialog({
         </div>
       </div>
 
-      {/* DaisyUI's backdrop form: clicking outside submits it, which closes the
-          dialog and runs onClose above. */}
+      {/* DaisyUI backdrop: clicking outside submits, closing the dialog. */}
       <form method="dialog" className="modal-backdrop">
         <button aria-label="Cancel">close</button>
       </form>

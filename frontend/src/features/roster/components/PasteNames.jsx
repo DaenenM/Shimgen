@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/Button'
 
-/** Paste-a-list import (plan §4, NEW 8): newlines or commas, blanks dropped. */
+// Paste-a-list import (plan §4, NEW 8): newlines or commas, blanks dropped. Used by RosterPage.jsx.
 export function PasteNames({ onAdd, onClose }) {
   const [pasted, setPasted] = useState('')
 

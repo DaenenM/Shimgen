@@ -9,7 +9,7 @@ import { FormatPicker } from './FormatPicker'
 import { MatchOptions } from './MatchOptions'
 import { StatsBoardField } from './StatsBoardField'
 
-/** How they play: format, match options, stats board, and the create button. */
+// Format, match options, stats board, and the create button. Used by QuickStartPage.jsx.
 export function SettingsPanel({ form, className = '' }) {
   const { isAuthenticated } = useAuth()
   const { mode, create, blocker, warning } = form
@@ -17,8 +17,7 @@ export function SettingsPanel({ form, className = '' }) {
   return (
     <div className={`glass-panel min-w-0 ${className}`}>
       <div className="flex flex-col gap-5 p-5">
-        {/* Above Format because it decides what the entrants *are* — the format
-            then decides how those entrants play each other. */}
+        {/* Above Format: this decides what the entrants are, before format decides how they play. */}
         {mode === 'captains' && (
           <CaptainSettings
             captains={form.captains}
@@ -39,9 +38,7 @@ export function SettingsPanel({ form, className = '' }) {
           onBracketResetChange={form.setBracketReset}
         />
 
-        {/* Co-hosts are granted from the bracket page instead: choosing who may
-            help is a decision made once the night is running, not while filling
-            in a form. */}
+        {/* Co-hosts are granted from the bracket page instead, once the night is running. */}
 
         {isAuthenticated && (
           <StatsBoardField value={form.statsBoard} onChange={form.setStatsBoard} />

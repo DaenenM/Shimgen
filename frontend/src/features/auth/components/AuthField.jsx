@@ -1,9 +1,6 @@
-/**
- * A labelled text field on the sign-in, sign-up and profile forms.
- *
- * `error` swaps the hint for the server's message and reddens the edge, so a
- * field says what is wrong with it where the eye already is.
- */
+// Labelled text field for the sign-in, sign-up and profile forms.
+// Used by LoginForm.jsx, RegisterForm.jsx, ProfileForm.jsx.
+// `error` swaps the hint for the server's message and reddens the border.
 export function AuthField({ label, optional = false, hint, error, className = '', ...input }) {
   return (
     <label className="form-control">

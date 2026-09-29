@@ -1,9 +1,5 @@
-/**
- * A labelled control.
- *
- * The label is a real `<label>` wrapping its input, so tapping the text focuses
- * the field — which on a phone is a much bigger target than the input itself.
- */
+// Wraps a form control in a real <label> (so tapping the text focuses it) plus
+// an optional hint or error line. Used by NewBoardForm.jsx and other forms.
 export function Field({ label, hint, error, children, className = '' }) {
   return (
     <label className={`flex w-full flex-col gap-1.5 ${className}`}>

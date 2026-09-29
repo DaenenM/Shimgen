@@ -6,7 +6,7 @@ import { paths } from '@/routes/paths'
 
 import { useAuth } from './useAuth'
 
-/** State and handlers for the sign-in form, by password or by Google. */
+// State and handlers for the sign-in form (password or Google). Used by LoginForm.jsx.
 export function useLoginForm() {
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
@@ -16,7 +16,7 @@ export function useLoginForm() {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  // Where the route guard was trying to send them before it bounced them here.
+  // Where the route guard was sending them before it redirected here.
   const destination = location.state?.from?.pathname || paths.dashboard
 
   const update = (field) => (event) => setForm({ ...form, [field]: event.target.value })
@@ -30,8 +30,7 @@ export function useLoginForm() {
       await login(form.email, form.password)
       navigate(destination, { replace: true })
     } catch (err) {
-      // A failed sign-in says only that the pair was wrong, never which half —
-      // distinguishing them turns this form into an account-existence oracle.
+      // Never say which half was wrong — that would leak account existence.
       setError(
         err instanceof ApiError && err.status === 401
           ? 'That email and password do not match an account.'

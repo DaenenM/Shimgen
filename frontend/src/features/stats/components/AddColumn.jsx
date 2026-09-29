@@ -4,14 +4,12 @@ import { Plus } from '@/components/icons'
 
 import { EmojiPicker } from './EmojiPicker'
 
-/** Name a new countable thing and choose its mark. */
+// Form for naming a new column and picking its mark. Used by TableCard.jsx.
 export function AddColumn({ onAdd, onCancel }) {
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('\u{1F531}')
 
-  // One row rather than a stack of labelled blocks. A column is a short name
-  // and a glyph; the full-width field and the two headings around it made a
-  // two-word answer look like a form worth filling in.
+  // Single row layout keeps a two-word answer from looking like a big form.
   return (
     <div className="glass-inset space-y-2 p-2.5">
       <div className="flex flex-wrap items-center gap-2">

@@ -2,7 +2,7 @@ import { SavedRoster } from '@/features/roster/components/SavedRoster'
 import { SavedTeamPicker } from '@/features/teams/components/SavedTeamPicker'
 import { teamTone } from '@/features/teams/utils/tone'
 
-/** The left column of the new-tournament form: saved players, and saved teams. */
+// Left column of the new-tournament form: saved players and saved teams. Used by QuickStartPage.jsx.
 export function RosterRail({ form, className = '' }) {
   const { mode } = form
 
@@ -22,8 +22,7 @@ export function RosterRail({ form, className = '' }) {
         }
       />
 
-      {/* Teams mode only. A saved team has nowhere to go in solo mode — the
-          players box takes names, not sides. */}
+      {/* Teams mode only -- a saved team has nowhere to go in solo mode. */}
       {mode === 'teams' && (
         <SavedTeamPicker
           onPick={form.addSavedTeam}

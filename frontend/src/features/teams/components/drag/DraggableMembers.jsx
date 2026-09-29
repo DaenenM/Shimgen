@@ -4,12 +4,9 @@ import { useContext } from 'react'
 import { DragState, memberId } from '../../context/dragState'
 import { SortableMember } from './SortableMember'
 
-/**
- * A team's players as draggable rows, or a place to drop one when it is empty.
- *
- * `onRemove(key)` adds a × to each row; leave it out where players cannot be
- * removed (the generator's rolled teams).
- */
+// A team's players as draggable rows, or a drop placeholder when empty.
+// Used by GeneratedTeamCard.jsx and BuilderTeamCard.jsx (new-tournament).
+// Pass onRemove(key) to show a × per row; omit where members can't be removed.
 export function DraggableMembers({
   index,
   keys,
@@ -36,8 +33,7 @@ export function DraggableMembers({
           ))}
         </ul>
       ) : (
-        // An empty team needs a visible place to aim at while something is in
-        // the air; at rest it just says so.
+        // Shows a drop target while dragging; otherwise just the empty-state text.
         <div
           className={`grid h-9 place-items-center rounded-lg border border-dashed text-xs transition-colors duration-200 ${
             isTarget

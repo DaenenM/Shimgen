@@ -1,12 +1,7 @@
 import { useState } from 'react'
 
-/**
- * A name editable in place — the board's own, or one of its tables'.
- *
- * Commits on blur as well as Enter: renaming and then clicking straight back
- * into the board is the natural gesture, and losing the edit for want of a
- * keypress is the kind of thing you only notice after it has happened.
- */
+// Editable-in-place name field for a board or table. Used by BoardHeader.jsx and TableCard.jsx.
+// Commits on blur too, so clicking away doesn't lose the edit.
 export function InlineName({ name, onRename, label, className }) {
   const [draft, setDraft] = useState(name)
 

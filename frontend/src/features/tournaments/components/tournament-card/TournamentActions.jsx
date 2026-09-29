@@ -1,12 +1,7 @@
 import { Archive, ArchiveRestore, RotateCcw, Star, Trash2 } from '@/components/icons'
 
-/**
- * A host's controls on a tournament row: run back, pin, archive, delete.
- *
- * Icons with a label on hover rather than worded buttons: one button spelling
- * itself out would make the row read as a toolbar with an odd stray in it. The
- * title carries the words for a mouse, the aria-label for everything else.
- */
+// Host controls on a tournament row: run back, pin, archive, delete. Used by
+// TournamentCard.jsx. Icon buttons with a label on hover/aria-label, not worded buttons.
 export function TournamentActions({
   tournament,
   name,
@@ -22,8 +17,7 @@ export function TournamentActions({
 
   return (
     <div className="flex shrink-0 items-center">
-      {/* Not offered on an archived card — running one back puts a fresh draft
-          in the list, which is the opposite of what archiving just said. */}
+      {/* Not offered when archived — that would undo the archiving. */}
       {onRunBack && !archived && (
         <button
           type="button"

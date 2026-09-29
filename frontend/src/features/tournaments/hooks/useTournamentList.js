@@ -4,12 +4,8 @@ import { unwrapList } from '@/api/client'
 import { tournaments as tournamentsApi } from '@/api/endpoints'
 import { queryKeys } from '@/lib/queryClient'
 
-/**
- * The tournaments list: active and archived, and every row action.
- *
- * Nothing to list for a signed-out visitor — their brackets live in the links
- * they hold, not in an account — so both queries wait on `enabled`.
- */
+// Active + archived tournaments and their row actions. Used by TournamentsPage.jsx.
+// Both queries wait on `enabled` since a signed-out visitor has no account list.
 export function useTournamentList({ enabled = true } = {}) {
   const queryClient = useQueryClient()
 
@@ -17,18 +13,12 @@ export function useTournamentList({ enabled = true } = {}) {
     queryKey: [...queryKeys.tournaments.all, { archived: false }],
     queryFn: () => tournamentsApi.list(),
     enabled,
-    // Ten seconds rather than the global two minutes. This list is how somebody
-    // finds a lobby they have just been added to, and nothing on their device
-    // knows it happened — the invalidation after creating a tournament runs in
-    // the *host's* browser, not in theirs. Two minutes of "fresh" meant a
-    // friend opened this page and saw nothing, with no way to tell whether they
-    // had been added or not.
+    // Short staleTime: this is how someone discovers a lobby they were just
+    // added to, which their device has no other way to know about.
     staleTime: 10_000,
   })
 
-  // Fetched up front rather than on expand: the section only appears when it
-  // has something in it, so the page has to know the count before anyone can
-  // ask for it. A second short list is cheap next to hiding an empty control.
+  // Fetched up front (not on expand) so the disclosure knows its count before being opened.
   const { data: archivedData } = useQuery({
     queryKey: [...queryKeys.tournaments.all, { archived: true }],
     queryFn: () => tournamentsApi.list({ archived: 'true' }),
@@ -37,8 +27,7 @@ export function useTournamentList({ enabled = true } = {}) {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
 
-  // Deleting or restaging changes what linked boards show, so the boards this
-  // tab holds are out of date after either.
+  // Deleting/restaging also changes what linked boards show.
   const invalidateWithBoards = () => {
     invalidate()
     queryClient.invalidateQueries({ queryKey: queryKeys.boards.all })
@@ -63,9 +52,7 @@ export function useTournamentList({ enabled = true } = {}) {
   })
   const runBack = useMutation({
     meta: { errorShown: true },
-    // Always reshuffled. Running it back means playing it again, not replaying
-    // the same fixtures — and a rematch of the identical first round is the one
-    // thing nobody asks for twice.
+    // Always reshuffled — running it back means a fresh draw, not the same fixtures again.
     mutationFn: (id) => tournamentsApi.restage(id, { reshuffle: true }),
     onSuccess: invalidateWithBoards,
   })

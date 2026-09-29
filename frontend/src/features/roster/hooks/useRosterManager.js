@@ -4,20 +4,13 @@ import { unwrapList } from '@/api/client'
 import { roster as rosterApi } from '@/api/endpoints'
 import { queryKeys } from '@/lib/queryClient'
 
-/**
- * The roster page's data: every saved player, archived ones included, and the
- * actions that change them.
- *
- * Separate from `hooks/useRoster`, which serves the pickers and has to work
- * signed out. This page is signed-in only and needs the archive as well.
- */
+// Roster page data: every saved player (including archived) and actions on them.
+// Used by RosterPage.jsx. Signed-in only, unlike useRoster which also serves signed-out pickers.
 export function useRosterManager() {
   const queryClient = useQueryClient()
 
-  // Archived players are always fetched and filtered here rather than by the
-  // server. Asking only when the toggle was on meant the count was always zero
-  // while it was off — so the control that reveals them never appeared, and an
-  // archived name had no way back.
+  // Always fetch archived players (filtered client-side) so the reveal toggle's
+  // count isn't stuck at zero while collapsed.
   const { data, isLoading } = useQuery({
     queryKey: [...queryKeys.roster.all, 'all'],
     queryFn: () => rosterApi.list({ include_archived: 'true' }),

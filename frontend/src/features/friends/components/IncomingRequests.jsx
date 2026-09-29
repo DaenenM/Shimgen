@@ -3,10 +3,7 @@ import { Button } from '@/components/ui/Button'
 
 import { PersonRow } from './PersonRow'
 
-/**
- * Requests waiting on you. Above the friends list and visually louder than it:
- * this is the one thing on the page that needs an answer.
- */
+// Friend requests waiting on the current user. Used by FriendsPage.jsx.
 export function IncomingRequests({ requests, accept, remove }) {
   if (requests.length === 0) return null
 

@@ -1,13 +1,6 @@
 import { ArrowDown, ArrowUp } from '@/components/icons'
 
-/**
- * The sort arrow, in a slot that is always there.
- *
- * Returning `null` for an unsorted column meant the arrow appeared and
- * disappeared from the flex row, so every click widened one header and shoved
- * the rest of the table sideways — the whole grid twitched on each sort. The
- * slot is now reserved whatever the state, and only its contents change.
- */
+// Sort arrow with a reserved slot, so headers don't shift width on sort. Used by BoardTable.jsx and ColumnHeader.jsx.
 export function SortMarker({ active, descending }) {
   const Arrow = descending ? ArrowDown : ArrowUp
 

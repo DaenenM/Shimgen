@@ -6,12 +6,9 @@ import { tournaments as tournamentsApi } from '@/api/endpoints'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
 
-/**
- * A tournament, its standings, and the host's actions on it.
- *
- * Reporting results is separate — see `useBracketReporting` — because it runs
- * through a batching queue rather than one mutation per click.
- */
+// A tournament, its standings, and the host's actions on it (start, rename, link board, cohosts).
+// Used by TournamentHeader.jsx and TournamentDetailPage.jsx.
+// Reporting results is separate (see useBracketReporting) since it batches via a queue.
 export function useTournamentDetail(id) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -29,9 +26,7 @@ export function useTournamentDetail(id) {
     enabled: Boolean(tournament),
   })
 
-  // Arriving by the bare id — an old link, or one typed by hand — rewrites the
-  // address bar to the named form, so copying from the browser gives the same
-  // shape the share link does. `replace` keeps it out of the back stack.
+  // A bare-id URL rewrites to the named form; `replace` keeps it out of the back stack.
   const canonical = tournament ? paths.tournament(tournament.id, tournament.title) : null
 
   useEffect(() => {
@@ -40,20 +35,12 @@ export function useTournamentDetail(id) {
     }
   }, [canonical, location.pathname, navigate])
 
-  // Both the bracket and the standings derive from the same match rows, so any
-  // change invalidates both — standings are computed, never stored. One
-  // invalidation covers them: React Query matches keys by prefix, and
-  // ['tournaments', id] is a prefix of ['tournaments', id, 'standings'].
+  // Standings are computed from matches, never stored, so invalidating the detail
+  // key also covers standings (React Query matches by prefix).
   const refresh = () => queryClient.invalidateQueries({ queryKey: key })
 
-  /**
-   * Refresh the detail *and* the lists behind it.
-   *
-   * Used where the tournament's state changes — starting it, renaming it —
-   * because the list shows that state and would otherwise keep serving a cached
-   * copy for the next two minutes. A linked board moves with the tournament's
-   * state too, so its cache cannot be left claiming to be fresh.
-   */
+  // Also invalidates the tournament list and boards — used where tournament state
+  // changes (start, rename), since those caches would otherwise serve stale data.
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
     queryClient.invalidateQueries({ queryKey: queryKeys.boards.all })
@@ -71,13 +58,7 @@ export function useTournamentDetail(id) {
     onSuccess: refresh,
   })
 
-  /**
-   * Rename the tournament.
-   *
-   * Written to the cache first so the header changes on Enter. The list behind
-   * it shows the same title, and the URL carries it as a readable tail, so both
-   * are refreshed once the server confirms.
-   */
+  // Written to the cache first so the header updates on Enter, before the server confirms.
   const rename = useMutation({
     meta: { errorShown: true },
     mutationFn: (title) => tournamentsApi.update(id, { title }),
@@ -92,23 +73,14 @@ export function useTournamentDetail(id) {
     onSuccess: refreshAll,
   })
 
-  /**
-   * Move this tournament to another stats board, or take it off one.
-   *
-   * The response is the whole tournament, so it replaces the cache outright —
-   * linking enrols players and recounts what has been played, and none of that
-   * is worth trying to predict locally.
-   */
+  // Move this tournament to another stats board, or off one. Response is the whole
+  // tournament (linking enrols players and recounts), so it replaces the cache outright.
   const linkBoard = useMutation({
     meta: { errorShown: true },
-    // A table id when the host picked one table of several, so the night lands
-    // where they pointed it rather than wherever the server would have guessed.
+    // tableId lets the host pick one table of several rather than the server guessing.
     mutationFn: ({ slug, tableId }) => tournamentsApi.linkStatsBoard(id, slug, tableId),
     onSuccess: (fresh) => {
       queryClient.setQueryData(key, fresh)
-      // The board itself now holds different numbers, and the stats list shows
-      // them. `['boards']` is a prefix of every board's key, so this covers the
-      // one just linked and the one just left.
       queryClient.invalidateQueries({ queryKey: queryKeys.boards.all })
     },
   })
@@ -125,8 +97,7 @@ export function useTournamentDetail(id) {
     onSuccess: refresh,
   })
 
-  // One line under the header for whichever host action last failed. The
-  // board picker shows its own error in its own menu, so it is not here.
+  // One line under the header for whichever host action last failed (board picker shows its own).
   const actionError = [start, nextRound, rename, addCohost, removeCohost].find(
     (m) => m.isError,
   )?.error

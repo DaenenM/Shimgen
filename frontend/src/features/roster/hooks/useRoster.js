@@ -1,11 +1,6 @@
-/**
- * The saved roster, wherever it happens to live.
- *
- * Signed out it is localStorage; signed in it is the server. Both are exposed
- * through one interface so no component has to branch on auth state — which is
- * what keeps the roster picker identical in both modes, and is the whole reason
- * the stored shape mirrors the server's Player model (plan §5).
- */
+// Saved roster, signed out (localStorage) or signed in (server), behind one interface.
+// Used by RosterPicker.jsx, SavedRoster.jsx, TeamBuilder.jsx, and roster/team/board pages.
+// Stored shape mirrors the server's Player model (plan §5) so no branching is needed by callers.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
@@ -39,15 +34,8 @@ export function useRoster() {
   })
 
   const removeOne = useMutation({
-    // A real delete, matching what the trash-can control promises: the row is
-    // gone, not hidden, and re-adding the name makes a new Player.
-    //
-    // What survives and what does not, because the two differ: stats rows keep
-    // their own `label` and hold the player by SET_NULL, so past results stay
-    // on a board. `PlayerRating` is CASCADE, so a deleted player's Elo history
-    // goes with them — deleting someone who has played is not reversible by
-    // re-adding the same name. `rosterApi.archive` is still there if hiding
-    // rather than deleting is wanted somewhere.
+    // Real delete: stats rows survive (SET_NULL), but PlayerRating is CASCADE,
+    // so a deleted player's Elo history is gone even if the same name is re-added.
     mutationFn: (id) => rosterApi.remove(id),
     onSuccess: invalidate,
   })
@@ -62,13 +50,7 @@ export function useRoster() {
     return unwrapList(data)
   }, [isAuthenticated, local.players, data])
 
-  /**
-   * Remember names that were just used.
-   *
-   * Signed out this writes to localStorage. Signed in it posts to the bulk
-   * endpoint, which de-duplicates server-side — so calling it with names
-   * already on the roster is harmless and does not need a check here.
-   */
+  // Remembers names just used. Signed in, the bulk endpoint de-dupes server-side.
   const remember = useCallback(
     (names) => {
       const cleaned = names.map((n) => n.trim()).filter(Boolean)
@@ -83,13 +65,7 @@ export function useRoster() {
     [isAuthenticated, local, createMany],
   )
 
-  /**
-   * Drop someone from the saved roster.
-   *
-   * Deletes outright in both modes — the localStorage entry signed out, the
-   * Player row signed in — so the control does the same thing either way. See
-   * `removeOne` for what that does and does not take with it.
-   */
+  // Drops someone from the saved roster — deletes outright in both modes.
   const forget = useCallback(
     (player) => {
       if (isAuthenticated) {
@@ -101,14 +77,7 @@ export function useRoster() {
     [isAuthenticated, local, removeOne],
   )
 
-  /**
-   * Hide someone without losing what they have played.
-   *
-   * The only option offered for a friend or for your own row: deleting those
-   * cascades away a real person's rating history, and the server refuses it.
-   * Signed out there are no accounts to be friends with, so nothing reaches
-   * this path and the local list keeps its plain remove.
-   */
+  // Hides a friend/self row without losing rating history (delete is refused server-side for these).
   const archive = useCallback(
     (player) => {
       if (isAuthenticated && player.id) archiveOne.mutate(player.id)

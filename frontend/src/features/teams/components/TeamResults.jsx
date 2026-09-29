@@ -1,6 +1,6 @@
 import { GeneratedTeams } from './GeneratedTeams'
 
-/** The generated teams, or a placeholder where they will appear. */
+// Generated teams, or a placeholder. Used by TeamGeneratorPage.jsx.
 export function TeamResults({ gen }) {
   return gen.result ? (
     <GeneratedTeams

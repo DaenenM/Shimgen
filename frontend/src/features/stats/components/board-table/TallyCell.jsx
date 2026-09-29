@@ -1,35 +1,17 @@
 import { Minus, Plus } from '@/components/icons'
 
-/**
- * A row of emoji, one per win.
- *
- * The emoji *is* the number here. A crew already keeps this in a chat message —
- * "Brett: 🔱🔱🔱🔱🔱🔱🔱🔱" — and eight tridents read as "well ahead" at a glance
- * in a way the numeral 8 does not. The count is shown alongside once the row
- * gets long, because past a dozen marks nobody is counting glyphs.
- */
-
-/** Past this, the row is summarised rather than drawn mark by mark. */
+// Renders a tally as a row of emoji marks (or a number). Used by BoardRow.jsx.
+// Past MAX_MARKS the count is shown as "+N" instead of drawing every glyph.
 const MAX_MARKS = 20
 
 export function TallyCell({ count, emoji, canEdit, onAward, busy, display = 'emoji' }) {
   const marks = Math.min(count, MAX_MARKS)
   const overflow = count - marks
 
-  // Games played reaches forty in a season. Drawn as glyphs that is a wall
-  // nobody reads, so those columns say the number and skip the marks.
+  // High counts (e.g. games played) are unreadable as glyphs, so those columns use numbers.
   const asNumber = display === 'number'
 
-  // A number rather than a row of marks: centred under its header, with the
-  // same +/- either side so a hand-counted column can still be adjusted.
-  //
-  // On a wide screen the controls appear on hover, so a table at rest reads as
-  // figures rather than a form. On a phone they are simply there: a touch
-  // screen has no hover, so hiding them behind one made a hand-counted board
-  // impossible to add to — and the phone only ever gets this number layout.
-  //
-  // A column fed by a bracket has none at all, since editing one by hand would
-  // be overwritten the next time a result was reported.
+  // +/- controls show on hover on desktop, but always on mobile (no hover there).
   if (asNumber) {
     return (
       <div className="flex items-center justify-center gap-1">
@@ -75,10 +57,7 @@ export function TallyCell({ count, emoji, canEdit, onAward, busy, display = 'emo
           <span className="text-base-content/25 text-sm">0</span>
         ) : (
           <>
-            {/* Negative tracking pulls the marks together. An emoji carries a
-                wide advance of its own, so at default spacing eight of them
-                read as a scattered row rather than the solid block people
-                actually write in a chat message. */}
+            {/* Negative letter-spacing pulls emoji together into a solid block. */}
             <span
               className="text-lg leading-none [letter-spacing:-0.15em] break-all"
               aria-hidden="true"
@@ -98,18 +77,14 @@ export function TallyCell({ count, emoji, canEdit, onAward, busy, display = 'emo
           onClick={() => onAward(-1)}
           disabled={busy || count === 0}
           aria-label="Take one away"
-          // Beside the add button rather than before the marks, so the emoji
-          // start flush against the name and the row reads as a tally. Hidden
-          // until the row is hovered: taking a win back is the rare action, and
-          // a column of minus buttons makes the board look like a form.
+          // Hidden until row hover: a visible column of minus buttons looks like a form.
           className="text-base-content/30 hover:text-error hover:bg-error/10 grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-all duration-150 focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-0 sm:opacity-0 sm:group-hover/row:opacity-100"
         >
           <Minus className="h-3.5 w-3.5" />
         </button>
       )}
 
-      {/* The running total, so a long row stays legible. Announced to screen
-          readers as the real value, since the emoji above are decorative. */}
+      {/* Numeric total for long rows; emoji above are aria-hidden/decorative. */}
       <span
         className={`tabular w-8 shrink-0 text-right text-sm font-bold ${
           count === 0 ? 'text-base-content/25' : 'text-base-content'

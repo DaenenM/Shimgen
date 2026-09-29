@@ -13,14 +13,9 @@ import { TableCard } from '@/features/stats/components/TableCard'
 import { useBoard } from '@/features/stats/hooks/useBoard'
 import { paths } from '@/routes/paths'
 
-/**
- * One stats board.
- *
- * Reading it is the common case — it sits open on a second monitor during game
- * night — so tallying is one click and everything structural hides behind an
- * edit toggle. Anyone with the link can read it; only the owner and the people
- * they invited can change it.
- */
+// One stats board. Route: /stats/:slug/:name?
+// Reading is the common case; edits sit behind a toggle. Anyone with the
+// link can view; only owner/invitees can edit.
 export function BoardPage() {
   const { slug } = useParams()
   const { players: roster } = useRoster()
@@ -46,9 +41,7 @@ export function BoardPage() {
 
   return (
     <PageShell className="glass-backdrop">
-      {/* The frame animates, not the tables. A board's rows and tallies change
-          on every mark added, and a tally that re-animates as it is counted
-          would be unusable. */}
+      {/* Frame animates, not the tables — tallies update too often to re-animate. */}
       <Link
         to={paths.stats}
         className="text-base-content/60 hover:text-base-content rise-in rise-delay-1 mb-4 inline-flex items-center gap-1.5 text-sm transition-colors"

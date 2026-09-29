@@ -2,21 +2,15 @@ import { useState } from 'react'
 
 import { Check, Plus } from '@/components/icons'
 
-/**
- * Add competitors, from the saved roster or pasted.
- *
- * A roster name comes with its player link, which is what lets a finished
- * tournament find this row later — so those chips are offered first.
- */
+// Adds rows to a table from the saved roster or a pasted list. Used by TableCard.jsx.
+// Roster chips are shown first since they carry a player link a bracket can match later.
 export function AddRows({ roster, existing, onAdd, onDone }) {
   const [pasted, setPasted] = useState('')
 
   function addPasted() {
     if (!pasted.trim()) return
     onAdd({ names: pasted.split(/[\n,]/) })
-    // Cleared so the next batch starts empty — the panel stays open, and
-    // leaving the names in it would re-add them on the following click.
-    setPasted('')
+    setPasted('') // panel stays open for the next batch
   }
 
   const taken = new Set(existing.map((row) => row.display_name.toLowerCase()))
@@ -55,9 +49,7 @@ export function AddRows({ roster, existing, onAdd, onDone }) {
         placeholder={'One name per line, or comma separated'}
         value={pasted}
         onChange={(e) => setPasted(e.target.value)}
-        // Enter inserts a newline, as a textarea should. Submitting on it
-        // fought the box's own purpose: typing a list one name per line added
-        // the first name and cleared the rest.
+        // No Enter-to-submit: it would break typing one name per line.
         aria-label="Add players"
       />
 
@@ -71,8 +63,7 @@ export function AddRows({ roster, existing, onAdd, onDone }) {
           Add them
         </button>
 
-        {/* The panel closes here rather than after each add, so a run of
-            players is one visit instead of one visit per name. */}
+        {/* Explicit close, since adds don't close the panel automatically. */}
         <button
           className="text-base-content/60 hover:bg-base-content/8 hover:text-base-content flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150"
           onClick={onDone}

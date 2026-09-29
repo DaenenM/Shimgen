@@ -5,6 +5,7 @@ import { ProfileForm } from '@/features/auth/components/ProfileForm'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useProfileForm } from '@/features/auth/hooks/useProfileForm'
 
+// Profile settings + sign out. Route: /profile
 export function ProfilePage() {
   const { logout } = useAuth()
   const profile = useProfileForm()
@@ -19,15 +20,9 @@ export function ProfilePage() {
         <ProfileForm profile={profile} />
       </div>
 
-      {/* The button alone, with no panel around it. A heading and a sentence
-          explaining what signing out does was scaffolding around a control that
-          already says what it does — and a glass card holding one small button
-          reads as a section that lost its content.
-
-          Red and bordered, the same register as every other destructive control
-          in the app. Not the solid `bg-error` fill `ConfirmDialog` uses: that is
-          reserved for commits that destroy something, and signing out loses
-          nothing. */}
+      {/* No panel/heading needed — the button says what it does.
+          Bordered danger style, not ConfirmDialog's solid fill: signing out
+          loses nothing, so it doesn't need that weight. */}
       <div className="rise-in rise-delay-3 mt-6">
         <Button variant="danger" icon={LogOut} size="sm" onClick={logout}>
           Sign out

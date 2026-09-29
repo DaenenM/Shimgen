@@ -6,14 +6,8 @@ import { savedTeams as savedTeamsApi } from '@/api/endpoints'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { queryKeys } from '@/lib/queryClient'
 
-/**
- * Squads kept between game nights.
- *
- * Unlike `useRoster` there is no logged-out half: a saved team is built out of
- * roster entries that belong to an account, so there is nothing coherent to
- * store for a visitor who has none. Signed out the list is simply empty, and
- * the pages that offer it are behind the auth guard anyway.
- */
+// Saved teams CRUD. Used by SavedTeamsPage.jsx and SavedTeamPicker.jsx.
+// No logged-out mode (unlike useRoster) — a saved team belongs to an account, so signed out the list is empty.
 export function useSavedTeams() {
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
@@ -29,7 +23,7 @@ export function useSavedTeams() {
     [queryClient],
   )
 
-  // SavedTeamsPage shows create and update errors inside their own forms.
+  // Errors shown inline in SavedTeamsPage's own forms.
   const create = useMutation({
     meta: { errorShown: true },
     mutationFn: (payload) => savedTeamsApi.create(payload),
@@ -47,9 +41,7 @@ export function useSavedTeams() {
     onSuccess: invalidate,
   })
 
-  // The list endpoint is unpaginated for a personal collection, but DRF can be
-  // configured to paginate later — reading both shapes costs nothing now and
-  // saves a confusing empty list if it ever is.
+  // unwrapList reads both paginated and unpaginated shapes, since this endpoint may change.
   const teams = unwrapList(data)
 
   return { teams, isLoading, create, update, remove }

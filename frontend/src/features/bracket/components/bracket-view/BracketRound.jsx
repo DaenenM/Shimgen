@@ -1,39 +1,18 @@
 import { MatchCard } from '../MatchCard'
 import { RoundConnector } from './RoundConnector'
 
-/**
- * One column: the arms arriving at it, then its cards.
- *
- * The join is drawn entirely by the receiving column. It used to be split —
- * the previous column drew an elbow out of its own cards, this one drew a stub
- * into its own — and those are two independent flex layouts whose midpoints
- * agree only when a column happens to hold exactly half the cards of the one
- * before it. Where they disagreed the two halves stopped short of each other,
- * which is the floating, unconnected lines.
- *
- * Drawing both halves in one element makes that impossible: the riser and the
- * horizontal that leaves it are siblings in the same box, so they meet by
- * construction at any depth and whatever height a card happens to be.
- */
+// One bracket column: connector lines arriving at it, then its match cards.
+// Used by BracketSection.jsx. The receiving column draws the whole connector
+// (not split across two columns), so lines always meet regardless of column height.
 export function BracketRound({ matches, feeders, canReport, onReport, onClear, tone, size }) {
   return (
     <div className="flex items-stretch">
       {feeders && (
         <div className="flex shrink-0 flex-col">
           {matches.map(({ match, hidden }, index) => (
-            // One slot per card, sharing the column height exactly as the cards
-            // do — so whatever vertical this slot centres on is the vertical
-            // the card centres on. A hidden slot still takes its share, which
-            // is what keeps the cards around it on the grid their feeders were
-            // drawn against.
-            //
-            // No vertical padding here, unlike the card slots beside it. The
-            // riser has to span from one feeder card's midpoint to the other's,
-            // and those two cards sit in slots half this one's height — so the
-            // gap between their centres is exactly this slot's full height.
-            // Padding this slot shortened the riser by 3px at each end while
-            // the cards stayed put, which is what left the corners sitting
-            // inside the cards' midlines instead of on them.
+            // One slot per card (hidden slots still take their share, to keep
+            // the grid aligned with their feeders). No vertical padding, unlike
+            // the card slots — the riser must span exactly this slot's height.
             <div key={match.id} className="flex flex-1 items-stretch">
               {hidden ? (
                 <span className={`${size.gap} shrink-0`} />
@@ -47,9 +26,7 @@ export function BracketRound({ matches, feeders, canReport, onReport, onClear, t
 
       <div className={`${size.card} flex shrink-0 flex-col`}>
         {matches.map(({ match, hidden }) => (
-          // Each card takes an equal share of the column's height and centres
-          // itself in it. That is what puts a later round's card level with the
-          // midpoint of the group feeding it, at any depth.
+          // Equal-height share, centred — aligns each card with the midpoint of its feeders.
           <div key={match.id} className="flex flex-1 items-center py-1.5">
             {!hidden && (
               <div className="w-full">

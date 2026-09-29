@@ -1,18 +1,7 @@
-/**
- * Bye arithmetic, for warning a host before they commit to a bracket.
- *
- * An elimination bracket is a binary tree, so it always has a power-of-two
- * number of slots. Any entrant count that is not itself a power of two leaves
- * spare slots, and whoever draws one advances a round without playing.
- *
- * That is correct and standard — but on a fresh double-elimination bracket it
- * looks alarming, because the losers bracket is drawn empty and several
- * first-round matches already show a winner. Saying so up front is cheaper than
- * explaining it afterwards.
- *
- * Note that multiples of four do not avoid this: 12 entrants in a 16-slot
- * bracket still leaves 4 byes. Only exact powers of two are bye-free.
- */
+// Bye math, for warning a host before they commit to a bracket. An elimination
+// bracket always has a power-of-two slot count, so any other entrant count
+// leaves byes (entrants who advance without playing round 1). Used by
+// useNewTournamentForm.js.
 
 function nextPowerOfTwo(n) {
   if (n <= 1) return 1
@@ -24,18 +13,14 @@ function byeCount(entrantCount) {
   return nextPowerOfTwo(entrantCount) - entrantCount
 }
 
-/** The nearest bye-free sizes either side, to suggest in the warning. */
+// Nearest bye-free sizes either side, to suggest in the warning.
 function cleanSizes(entrantCount) {
   const upper = nextPowerOfTwo(entrantCount)
   return { lower: upper / 2, upper }
 }
 
-/**
- * A warning for the host, or null when the draw is clean.
- *
- * Only elimination formats care: round robin, Swiss and free-for-all handle any
- * count without byes at all.
- */
+// Warning for the host, or null when the draw is clean. Only elimination
+// formats have byes — round robin/Swiss/free-for-all handle any count.
 export function byeWarning(format, entrantCount) {
   if (format !== 'single' && format !== 'double') return null
   if (entrantCount < 2) return null

@@ -1,18 +1,9 @@
 import { Check, Shuffle } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 
-/**
- * The end of the draft.
- *
- * Confirmation rather than auto-generating on the final pick: the last tap of a
- * draft is the one most likely to be a misclick, and building the bracket is
- * not undoable from here.
- *
- * Host only. Completing the draft creates the entrants and generates the
- * bracket — `draft_complete` is gated on IsTournamentHost, so for anybody else
- * the button was an action that could only fail. Everyone else gets the state
- * instead of the control.
- */
+// End-of-draft control/status. Used by DraftLobbyPage.jsx.
+// Requires an explicit confirm (not auto-build) since the bracket build isn't undoable.
+// Host-only button; everyone else sees status text since `draft_complete` is host-gated server-side.
 export function DraftFinish({ isHost, ready, picksRemaining, complete }) {
   if (isHost) {
     return (
@@ -28,10 +19,7 @@ export function DraftFinish({ isHost, ready, picksRemaining, complete }) {
   }
 
   if (ready) {
-    // Green because it is the one moment in the draft that is simply good news:
-    // every team is settled and the bracket is moments away. The redirect fires
-    // on its own when the host builds it, so this says "wait" without asking
-    // anyone to do anything.
+    // Redirect fires automatically once the host builds it; this is just the wait state.
     return (
       <div className="border-success/30 bg-success/10 flex items-start gap-3 rounded-xl border p-4">
         <span className="bg-success/15 text-success grid h-9 w-9 shrink-0 place-items-center rounded-full">

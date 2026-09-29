@@ -5,7 +5,7 @@ import { auth } from '@/api/endpoints'
 
 import { useAuth } from './useAuth'
 
-/** The editable half of the signed-in user's profile, and saving it. */
+// Editable profile fields (display name, username) and saving them. Used by ProfileForm.jsx.
 export function useProfileForm() {
   const { user, setUser } = useAuth()
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')

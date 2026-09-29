@@ -1,20 +1,12 @@
 import { roundTone, toRounds } from '../utils/layout'
 import { MatchCard } from './MatchCard'
 
-/**
- * Round robin and Swiss, as a list of rounds.
- *
- * These formats have no tree to draw — nobody is eliminated and there is no
- * advancement to follow — so a bracket layout would imply a structure that is
- * not there. A grid of fixtures per round is what the host actually reads off
- * while running the night.
- */
+// Round robin / Swiss view: a grid of fixtures per round, since those formats
+// have no elimination tree to draw. Used by TournamentDetailPage.jsx and SpectatorPage.jsx.
 export function RoundList({ matches, canReport, onReport = () => {}, onClear = () => {} }) {
   const rounds = toRounds(matches, 'main')
 
-  // Swiss and round robin have no final as such, but the last round is still
-  // the one that settles it — so the same heat scale applies, counted back
-  // from the end exactly as the elimination bracket does.
+  // No true "final" here, but the last round still gets the hottest tone.
   const totalRounds = rounds.length > 0 ? rounds[rounds.length - 1].roundNo : 0
 
   return (

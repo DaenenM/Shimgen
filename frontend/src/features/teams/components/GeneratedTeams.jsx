@@ -7,18 +7,8 @@ import { paths } from '@/routes/paths'
 import { TeamDragProvider } from './drag/TeamDragProvider'
 import { GeneratedTeamCard } from './GeneratedTeamCard'
 
-/**
- * The rolled teams, and the way on to a bracket.
- *
- * Players can be dragged from one team to another, or reordered within one,
- * when the roll is nearly right — the same drag as the new-tournament form's
- * team builder (`TeamDrag`), so it looks and moves identically on both pages.
- * Keyed by player id rather than name: two players may share a name, and a
- * drag must move exactly one of them.
- *
- * Capped at two team cards plus their gap, so the button lines up with the
- * cards rather than running out to the full column width beside them.
- */
+// The rolled teams, draggable, plus the link into a bracket. Used by TeamResults.jsx.
+// Keyed by player id, not name, since two players can share a name.
 export function GeneratedTeams({ teams, teamNames, nameFor, onRename, onArrange }) {
   const labels = new Map(teams.flat().map((player) => [String(player.id), player.name]))
   const labelOf = (id) => labels.get(id) ?? ''
@@ -30,10 +20,7 @@ export function GeneratedTeams({ teams, teamNames, nameFor, onRename, onArrange 
         onChange={onArrange}
         labelOf={labelOf}
       >
-        {/* Two across, but each column capped rather than splitting the full
-            width: a team card is a short list of names, and at the column's
-            natural width it was mostly empty space with a name stranded on the
-            left. `justify-start` keeps the pair against the left edge. */}
+        {/* Two across, capped width so cards don't stretch across empty space. */}
         <div className="grid items-start justify-start gap-3 sm:grid-cols-[repeat(2,minmax(0,14rem))]">
           {teams.map((team, index) => (
             <GeneratedTeamCard
@@ -48,16 +35,11 @@ export function GeneratedTeams({ teams, teamNames, nameFor, onRename, onArrange 
         </div>
       </TeamDragProvider>
 
-      {/* One way out of this page for every team count. The two-team case used
-          to swap in a different panel with its own small "Set up" button, so
-          the button moved and changed shape depending on how many teams came
-          back. */}
+      {/* One consistent way out of this page, regardless of team count. */}
       <Link
         to={paths.quickStart}
         state={{
-          // The players, not the team names: this seeds the solo and captains
-          // box, which takes people. Team names there turned "Team 1" into a
-          // player the moment the host switched mode.
+          // Players, not team names — the quick-start box takes people.
           names: teams.flatMap((team) => team.map((p) => p.name)),
           squads: teams.map((team, i) => ({
             label: nameFor(i),

@@ -3,19 +3,11 @@ import { useLocation } from 'react-router-dom'
 
 import { AlertTriangle, RotateCcw } from '@/components/icons'
 
-/**
- * Catches render errors so one broken component does not blank the whole app.
- *
- * Still a class: componentDidCatch has no hook equivalent, and React has not
- * shipped one. Wrap this around the router, and around anything that renders
- * untrusted or generated content.
- *
- * Pass a `resetKey` to clear a caught error when something meaningful changes —
- * `RouteErrorBoundary` below does that with the current path. Without one the
- * boundary holds its error until the page is reloaded, which is the right
- * behaviour for the outermost boundary: if a provider threw, there is nothing
- * left to recover into.
- */
+// Catches render errors so one broken component doesn't blank the whole app.
+// Must be a class (componentDidCatch has no hook equivalent). Used by App.jsx
+// (outermost) and RouteErrorBoundary below.
+// Pass `resetKey` to clear the error when it changes (e.g. route path);
+// without it the error persists until reload.
 export class ErrorBoundary extends Component {
   state = { error: null }
 
@@ -30,8 +22,7 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Replace with a real error reporter when one is wired up. Logging here
-    // rather than swallowing it keeps the stack visible in development.
+    // TODO: send to an error reporter once one is wired up.
     console.error('Unhandled render error:', error, info.componentStack)
   }
 
@@ -41,11 +32,8 @@ export class ErrorBoundary extends Component {
     if (!error) return this.props.children
 
     return (
-      // Deliberately hand-built rather than reusing EmptyState or Button: the
-      // outermost boundary is mounted *outside* RouterProvider, so anything
-      // that renders a <Link> throws here — and a fallback that crashes is no
-      // fallback at all. `window.location` for the same reason: navigating
-      // needs the router this may be standing in for.
+      // Hand-built markup, not EmptyState/Button/<Link>: this can render
+      // outside the router, so those would throw here too.
       <div className="glass-backdrop flex min-h-[60vh] items-center justify-center px-4 py-10">
         <div className="glass-panel w-full max-w-md">
           <div className="flex flex-col items-center gap-4 p-8 text-center">
@@ -61,8 +49,7 @@ export class ErrorBoundary extends Component {
             </div>
 
             {import.meta.env.DEV && (
-              // Development only: the message is for whoever is building this,
-              // and a stack trace shown to a player is noise they cannot act on.
+              // Dev only — a stack trace means nothing to a real user.
               <pre className="glass-inset text-base-content/70 max-h-40 w-full overflow-auto p-3 text-left font-mono text-xs">
                 {error.message}
               </pre>
@@ -82,17 +69,9 @@ export class ErrorBoundary extends Component {
   }
 }
 
-/**
- * An ErrorBoundary that clears itself on navigation.
- *
- * A boundary holds its error state forever otherwise, so navigating away from
- * a page that threw swapped the URL but kept rendering the fallback — the app
- * looked frozen on the broken page until a hard reload.
- *
- * Only usable inside the router, which is why it is separate: the outermost
- * boundary in App sits above RouterProvider so it can catch a provider
- * throwing, and calling useLocation there is an error.
- */
+// ErrorBoundary that resets on navigation, so leaving a broken page recovers
+// it instead of leaving the fallback stuck. Used by RootLayout.jsx (must be
+// inside the router, since it calls useLocation).
 export function RouteErrorBoundary({ children }) {
   const location = useLocation()
 

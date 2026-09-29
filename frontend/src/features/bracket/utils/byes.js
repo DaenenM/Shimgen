@@ -32,10 +32,7 @@ export function byeWarning(format, entrantCount) {
 
   return {
     byes,
-    message:
-      `${byes} ${byes === 1 ? 'entrant gets' : 'entrants get'} a free first round, ` +
-      `because a bracket holds ${nextPowerOfTwo(entrantCount)} slots and you have ` +
-      `${entrantCount}.`,
-    hint: `${lower} or ${upper} entrants would give everyone a first-round match.`,
+    message: `${byes} ${byes === 1 ? 'entrant skips' : 'entrants skip'} round 1.`,
+    hint: `Use ${lower} or ${upper} entrants so everyone plays.`,
   }
 }

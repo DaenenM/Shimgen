@@ -534,6 +534,19 @@
     }
   }
 
+  /* A dialog opening: quick fade + slight scale up. No exit animation, so
+     closing is instant. */
+  .dialog-in {
+    animation: dialog-in 0.16s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
   /* And set down: dnd-kit tags the overlay with `pill-drop` while it glides
      back into the slot, so the scale unwinds over the same flight rather than
      snapping off when the overlay unmounts. Any lean left over settles on its

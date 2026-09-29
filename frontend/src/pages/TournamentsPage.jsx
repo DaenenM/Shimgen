@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { Plus } from '@/components/icons'
@@ -17,8 +17,29 @@ import { paths } from '@/routes/paths'
 export function TournamentsPage() {
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
-  const { items, archivedItems, isLoading, favourite, archive, restore, remove, runBack } =
-    useTournamentList({ enabled: isAuthenticated })
+  const {
+    items,
+    archivedItems,
+    isLoading,
+    isSettled,
+    favourite,
+    archive,
+    restore,
+    remove,
+    runBack,
+  } = useTournamentList({ enabled: isAuthenticated })
+
+  // Nothing to show at all (no live or archived tournaments): send them straight
+  // to the new-tournament form. Decided once, on arrival — deleting your last
+  // tournament while on the page doesn't bounce you away.
+  const arrivalChecked = useRef(false)
+  useEffect(() => {
+    if (!isAuthenticated || !isSettled || arrivalChecked.current) return
+    arrivalChecked.current = true
+    if (items.length === 0 && archivedItems.length === 0) {
+      navigate(paths.quickStart, { replace: true })
+    }
+  }, [isAuthenticated, isSettled, items.length, archivedItems.length, navigate])
 
   // Tournament pending delete confirmation, held whole so the dialog can name it.
   const [confirming, setConfirming] = useState(null)
@@ -33,7 +54,6 @@ export function TournamentsPage() {
     onRestore: (id) => restore.mutate(id),
     onRunBack: (tournament) => setRunningBack(tournament),
     onDelete: (tournament) => setConfirming(tournament),
-    pending: archive.isPending || restore.isPending,
   }
 
   return (
@@ -85,8 +105,11 @@ export function TournamentsPage() {
 
       <DeleteTournamentDialog
         tournament={confirming}
-        pending={remove.isPending}
-        onConfirm={() => remove.mutate(confirming.id, { onSuccess: () => setConfirming(null) })}
+        // Closes immediately; the row is removed optimistically while the server catches up.
+        onConfirm={() => {
+          remove.mutate(confirming.id)
+          setConfirming(null)
+        }}
         onCancel={() => setConfirming(null)}
       />
     </PageShell>

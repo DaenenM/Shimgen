@@ -12,6 +12,7 @@ export function RosterRail({ form, className = '' }) {
         selected={form.placed}
         onAdd={form.addFromRoster}
         onRemove={form.removeFromRoster}
+        colorOf={mode === 'teams' ? (name) => teamColorOf(form.teams, name) : null}
         target={
           mode === 'teams' && form.teams.length > 0
             ? {
@@ -32,4 +33,11 @@ export function RosterRail({ form, className = '' }) {
       )}
     </div>
   )
+}
+
+// The edge colour of the team a player is on, or null if they're on none.
+function teamColorOf(teams, name) {
+  const lower = name.toLowerCase()
+  const index = teams.findIndex((team) => team.members.some((m) => m.toLowerCase() === lower))
+  return index === -1 ? null : teamTone(index).edge
 }

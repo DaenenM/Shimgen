@@ -10,7 +10,9 @@ import { useRoster } from '../hooks/useRoster'
 // Used by RosterRail.jsx, TeamGeneratorPage.jsx.
 // Owns its own sizing (scrolls past 26rem) so callers only pass selection state.
 // `target` (optional `{ label, color }`) shows which team/spot a click adds to.
-export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
+// `colorOf` (optional `name => css colour | null`) tints an added player in their
+// team's colour instead of the default green.
+export function SavedRoster({ selected, onAdd, onRemove, target = null, colorOf = null }) {
   const { players, forget, archive, isLoading } = useRoster()
   const [autoSave, setAutoSave] = useAutoSaveRoster()
 
@@ -84,6 +86,7 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
           <ul className="max-h-[min(26rem,calc(100vh-14rem))] space-y-0.5 overflow-y-auto pr-1 pl-3">
             {ordered.map((player) => {
               const added = chosen.has(player.display_name.toLowerCase())
+              const teamColor = added ? colorOf?.(player.display_name) : null
 
               return (
                 <li key={player.id ?? player.display_name} className="group flex items-center">
@@ -97,9 +100,11 @@ export function SavedRoster({ selected, onAdd, onRemove, target = null }) {
                     title={added ? `Remove ${player.display_name}` : `Add ${player.display_name}`}
                     className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1.5 text-left text-sm transition-colors duration-150 ${
                       added
-                        ? 'text-success hover:bg-error/10 hover:text-error'
+                        ? `${teamColor ? 'text-(--team)' : 'text-success'} hover:bg-error/10 hover:text-error`
                         : 'hover:bg-primary/10 hover:text-primary'
                     }`}
+                    // Set as a variable, not `color`, so the red hover can still override it.
+                    style={teamColor ? { '--team': teamColor } : undefined}
                   >
                     {added ? (
                       // Tick at rest, cross on hover, same slot to avoid reflow.

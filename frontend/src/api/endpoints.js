@@ -8,6 +8,10 @@
 import { api } from './client'
 
 export const auth = {
+  config: () => api.get('/auth/config/').then((r) => r.data),
+  token: (email, password) => api.post('/auth/token/', { email, password }).then((r) => r.data),
+  google: (credential) => api.post('/auth/google/', { credential }).then((r) => r.data),
+  logout: () => api.post('/auth/logout/').then((r) => r.data),
   register: (payload) => api.post('/auth/register/', payload).then((r) => r.data),
   me: () => api.get('/auth/me/').then((r) => r.data),
   updateMe: (payload) => api.patch('/auth/me/', payload).then((r) => r.data),
@@ -25,15 +29,10 @@ export const friends = {
 
 export const roster = {
   list: (params) => api.get('/players/', { params }).then((r) => r.data),
-  create: (payload) => api.post('/players/', payload).then((r) => r.data),
-  update: (id, payload) => api.patch(`/players/${id}/`, payload).then((r) => r.data),
   remove: (id) => api.delete(`/players/${id}/`).then((r) => r.data),
   bulk: (names, group) => api.post('/players/bulk/', { names, group }).then((r) => r.data),
   archive: (id) => api.post(`/players/${id}/archive/`).then((r) => r.data),
   restore: (id) => api.post(`/players/${id}/restore/`).then((r) => r.data),
-  // Called when a roster entry is used in an event, so the picker can order
-  // by "most recently played" next time.
-  touch: (id) => api.post(`/players/${id}/touch/`).then((r) => r.data),
   mergeLocal: (names) => api.post('/players/merge_local/', { names }).then((r) => r.data),
 }
 
@@ -44,11 +43,6 @@ export const savedTeams = {
   remove: (id) => api.delete(`/saved-teams/${id}/`).then((r) => r.data),
 }
 
-export const games = {
-  list: () => api.get('/games/').then((r) => r.data),
-  modes: (game) => api.get('/modes/', { params: { game } }).then((r) => r.data),
-}
-
 export const tournaments = {
   list: (params) => api.get('/tournaments/', { params }).then((r) => r.data),
   get: (id) => api.get(`/tournaments/${id}/`).then((r) => r.data),
@@ -56,13 +50,8 @@ export const tournaments = {
   update: (id, payload) => api.patch(`/tournaments/${id}/`, payload).then((r) => r.data),
   remove: (id) => api.delete(`/tournaments/${id}/`).then((r) => r.data),
 
-  generate: (id, payload) => api.post(`/tournaments/${id}/generate/`, payload).then((r) => r.data),
   start: (id) => api.post(`/tournaments/${id}/start/`).then((r) => r.data),
   standings: (id) => api.get(`/tournaments/${id}/standings/`).then((r) => r.data),
-  addEntrant: (id, payload) =>
-    api.post(`/tournaments/${id}/entrants/`, payload).then((r) => r.data),
-  substitute: (id, entrantId, payload) =>
-    api.post(`/tournaments/${id}/entrants/${entrantId}/substitute/`, payload).then((r) => r.data),
   nextRound: (id) => api.post(`/tournaments/${id}/next-round/`).then((r) => r.data),
   // A run of results in one request. Returns the whole bracket, so the flush
   // doubles as the reconcile — no separate refetch needed after it.
@@ -97,7 +86,6 @@ export const tournaments = {
   favourite: (id) => api.post(`/tournaments/${id}/favourite/`).then((r) => r.data),
   archive: (id) => api.post(`/tournaments/${id}/archive/`).then((r) => r.data),
   restore: (id) => api.post(`/tournaments/${id}/restore/`).then((r) => r.data),
-  claim: (id, token) => api.post(`/tournaments/${id}/claim/`, { token }).then((r) => r.data),
 
   // ── Captain drafts ────────────────────────────────────────────────────────
   // A draft sits between "created" and "has a bracket": the tournament exists
@@ -113,19 +101,9 @@ export const tournaments = {
   draftComplete: (id) => api.post(`/tournaments/${id}/draft/complete/`).then((r) => r.data),
 }
 
-export const matches = {
-  report: (id, scoreA, scoreB) =>
-    api.post(`/matches/${id}/report/`, { score_a: scoreA, score_b: scoreB }).then((r) => r.data),
-  clear: (id) => api.post(`/matches/${id}/clear/`).then((r) => r.data),
-}
-
 export const spectate = {
   get: (publicSlug) => api.get(`/spectate/${publicSlug}/`).then((r) => r.data),
   standings: (publicSlug) => api.get(`/spectate/${publicSlug}/standings/`).then((r) => r.data),
-}
-
-export const teams = {
-  generate: (payload) => api.post('/teams/generate/', payload).then((r) => r.data),
 }
 
 export const boards = {
@@ -146,9 +124,6 @@ export const boards = {
   addPerson: (slug, user) => api.post(`/boards/${slug}/people/`, { user }).then((r) => r.data),
   removePerson: (slug, userId) =>
     api.delete(`/boards/${slug}/people/${userId}/`).then((r) => r.data),
-
-  trackTournaments: (tableId) =>
-    api.post(`/stats-tables/${tableId}/track-tournaments/`).then((r) => r.data),
 
   updateTable: (id, payload) => api.patch(`/stats-tables/${id}/`, payload).then((r) => r.data),
   removeTable: (id) => api.delete(`/stats-tables/${id}/`).then((r) => r.data),

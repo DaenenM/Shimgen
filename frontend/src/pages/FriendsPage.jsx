@@ -1,10 +1,10 @@
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { AddFriendForm } from '@/features/friends/AddFriendForm'
-import { FriendList } from '@/features/friends/FriendList'
-import { IncomingRequests } from '@/features/friends/IncomingRequests'
-import { OutgoingRequests } from '@/features/friends/OutgoingRequests'
-import { useFriends } from '@/features/friends/useFriends'
+import { AddFriendForm } from '@/features/friends/components/AddFriendForm'
+import { FriendList } from '@/features/friends/components/FriendList'
+import { IncomingRequests } from '@/features/friends/components/IncomingRequests'
+import { OutgoingRequests } from '@/features/friends/components/OutgoingRequests'
+import { useFriends } from '@/features/friends/hooks/useFriends'
 
 /**
  * Friends.

@@ -26,7 +26,7 @@ export const PERSIST_KEY = 'shimgen:query-cache'
  * library discards everything under a non-matching buster, so changing this is
  * the escape hatch for a serializer change that lands mid-week.
  */
-export const CACHE_BUSTER = 'v1'
+const CACHE_BUSTER = 'v1'
 
 /**
  * A week. Long enough that a fortnightly game night still opens warm, short
@@ -35,7 +35,7 @@ export const CACHE_BUSTER = 'v1'
  * This is an outer bound on restoration, not a freshness window — `staleTime`
  * still governs refetching, so restored data is refetched on mount regardless.
  */
-export const MAX_AGE = 7 * 24 * 60 * 60 * 1000
+const MAX_AGE = 7 * 24 * 60 * 60 * 1000
 
 /**
  * Only tournaments and boards are written to disk.
@@ -68,7 +68,7 @@ export function shouldPersist(query) {
   return PERSISTED_PREFIXES.includes(root)
 }
 
-export const persister = createSyncStoragePersister({
+const persister = createSyncStoragePersister({
   storage: typeof window === 'undefined' ? undefined : window.localStorage,
   key: PERSIST_KEY,
   /**

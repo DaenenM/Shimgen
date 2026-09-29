@@ -1,18 +1,16 @@
-import { Plus, Trophy } from '@/components/icons'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { Plus } from '@/components/icons'
 import { PageShell } from '@/components/layout/PageShell'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { SectionLoader } from '@/components/ui/SectionLoader'
-import { ArchivedTournaments } from '@/features/tournaments/ArchivedTournaments'
-import { RunBackDialog } from '@/features/tournaments/RunBackDialog'
-import { TournamentCard } from '@/features/tournaments/TournamentCard'
-import { useTournamentList } from '@/features/tournaments/useTournamentList'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { ArchivedTournaments } from '@/features/tournaments/components/ArchivedTournaments'
+import { DeleteTournamentDialog } from '@/features/tournaments/components/DeleteTournamentDialog'
+import { RunBackDialog } from '@/features/tournaments/components/RunBackDialog'
+import { TournamentList } from '@/features/tournaments/components/TournamentList'
+import { useTournamentList } from '@/features/tournaments/hooks/useTournamentList'
 import { paths } from '@/routes/paths'
 
 export function TournamentsPage() {
@@ -62,33 +60,12 @@ export function TournamentsPage() {
 
       <ErrorAlert className="mb-4">{remove.error?.message}</ErrorAlert>
 
-      {!isAuthenticated ? (
-        <EmptyState
-          icon={Trophy}
-          title="Your tournaments live in your account"
-          description="You can build a bracket without signing up, but an account is what keeps it, along with your roster and stats, for next Saturday."
-          actionLabel="Create a bracket"
-          actionTo={paths.quickStart}
-        />
-      ) : isLoading ? (
-        // The header and its "New tournament" button are above and already
-        // interactive: only the list is waiting on the server.
-        <SectionLoader label="Loading your tournaments…" />
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={Trophy}
-          title="No tournaments yet"
-          description="Paste in some names and you'll have a bracket in about ten seconds."
-          actionLabel="Create your first"
-          actionTo={paths.quickStart}
-        />
-      ) : (
-        <ul className="grid gap-2">
-          {items.map((tournament) => (
-            <TournamentCard key={tournament.id} tournament={tournament} {...cardHandlers} />
-          ))}
-        </ul>
-      )}
+      <TournamentList
+        isAuthenticated={isAuthenticated}
+        isLoading={isLoading}
+        items={items}
+        cardHandlers={cardHandlers}
+      />
 
       {isAuthenticated && !isLoading && (
         <ArchivedTournaments items={archivedItems} cardHandlers={cardHandlers} />
@@ -112,17 +89,8 @@ export function TournamentsPage() {
         onCancel={() => setRunningBack(null)}
       />
 
-      <ConfirmDialog
-        open={Boolean(confirming)}
-        title={`Delete ${confirming?.title || 'this tournament'}?`}
-        // The board consequence is named only when there is a board, so the
-        // warning stays true and does not become noise hosts click past.
-        message={
-          confirming?.feeds_stats_board
-            ? 'Every match and result in it goes too — and the wins, losses and trophies it added to its stats board are taken back off. This cannot be undone. To keep the stats, archive it instead.'
-            : 'Every match and result in it goes too. This cannot be undone. To keep it out of your list without losing the results, archive it instead.'
-        }
-        confirmLabel="Delete tournament"
+      <DeleteTournamentDialog
+        tournament={confirming}
         pending={remove.isPending}
         onConfirm={() => remove.mutate(confirming.id, { onSuccess: () => setConfirming(null) })}
         onCancel={() => setConfirming(null)}

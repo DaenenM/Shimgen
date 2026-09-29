@@ -153,3 +153,6 @@ api.interceptors.response.use(
     })
   },
 )
+
+/** Paginated endpoints return `{ results }`; unpaginated ones return an array. */
+export const unwrapList = (data) => data?.results ?? data ?? []

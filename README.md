@@ -47,20 +47,29 @@ TTS/
 │       └── tournaments/     # Tournament, Entrant, Match, Rating
 └── frontend/
     └── src/
-        ├── api/             # axios client, token storage
-        ├── components/      # layout/ and ui/ — shared, presentational
+        ├── api/             # axios client, every endpoint, token storage
+        ├── components/
+        │   ├── icons/       # the lucide icons the app uses
+        │   ├── layout/      # navbar/, mobile-nav/, footer/, page shell
+        │   └── ui/          # shared, presentational primitives
         ├── config/          # environment access
-        ├── context/         # AuthContext + AuthProvider
-        ├── features/        # feature modules (bracket, teams, roster…)
-        ├── hooks/
-        ├── lib/             # queryClient and query keys
-        ├── pages/           # one component per route
+        ├── features/        # one folder per product slice (auth, bracket, teams…)
+        │   └── <feature>/
+        │       ├── components/  # its components, one per file
+        │       ├── hooks/       # its queries, mutations and state
+        │       ├── context/     # React context, when it has one
+        │       └── utils/       # its pure logic — no React
+        ├── hooks/           # generic hooks with no feature knowledge
+        ├── lib/             # queryClient and query keys, persistence, toasts
+        ├── pages/           # one component per route; layout only
         └── routes/          # router, paths, guards
 ```
 
 `components/` holds anything shared and presentational; `features/` is where a
-self-contained slice of the product lives (the bracket renderer, the team
-generator) once it grows past a single file.
+slice of the product lives, split by kind so a component, a hook and a pure
+helper never sit side by side. A component that grows sub-parts gets its own
+folder inside `components/` (`bracket-view/`, `board-table/`). Pages compose
+feature components and hold no logic of their own.
 
 ---
 

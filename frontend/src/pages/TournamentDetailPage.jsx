@@ -1,18 +1,19 @@
-import { Users } from '@/components/icons'
 import { useParams } from 'react-router-dom'
 
+import { Users } from '@/components/icons'
 import { PageShell } from '@/components/layout/PageShell'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { SkeletonPage } from '@/components/ui/Skeleton'
-import { BracketView } from '@/features/bracket/BracketView'
-import { EntrantRoster } from '@/features/bracket/EntrantRoster'
-import { RoundList } from '@/features/bracket/RoundList'
-import { StandingsSection } from '@/features/bracket/StandingsSection'
-import { TournamentHeader } from '@/features/bracket/TournamentHeader'
-import { useBracketReporting } from '@/features/bracket/useBracketReporting'
-import { useTournamentDetail } from '@/features/bracket/useTournamentDetail'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/features/auth/hooks/useAuth'
+import { BracketView } from '@/features/bracket/components/bracket-view/BracketView'
+import { EntrantRoster } from '@/features/bracket/components/EntrantRoster'
+import { RoundList } from '@/features/bracket/components/RoundList'
+import { RulesCard } from '@/features/bracket/components/RulesCard'
+import { StandingsSection } from '@/features/bracket/components/StandingsSection'
+import { TournamentHeader } from '@/features/bracket/components/TournamentHeader'
+import { useBracketReporting } from '@/features/bracket/hooks/useBracketReporting'
+import { useTournamentDetail } from '@/features/bracket/hooks/useTournamentDetail'
 import { paths } from '@/routes/paths'
 
 // Formats with no tree to draw: nobody is eliminated, so a bracket layout
@@ -92,14 +93,7 @@ export function TournamentDetailPage() {
 
         {/* Rules only. The spectator link lives on the Share button — a
             permanent card for a URL nobody reads was dead weight. */}
-        {tournament.rules && (
-          <aside>
-            <div className="glass-panel p-4">
-              <h3 className="mb-1 text-sm font-semibold">Rules</h3>
-              <p className="text-base-content/70 text-xs whitespace-pre-wrap">{tournament.rules}</p>
-            </div>
-          </aside>
-        )}
+        {tournament.rules && <RulesCard rules={tournament.rules} />}
       </div>
 
       {/* Standings and the roster share the bottom row: both are things you

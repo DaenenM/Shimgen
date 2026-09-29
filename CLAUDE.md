@@ -43,8 +43,15 @@ advancement code.
 | A route                        | `frontend/src/routes/paths.js` + `router.jsx`|
 | A page                         | `frontend/src/pages/`                        |
 | A self-contained product slice | `frontend/src/features/<name>/`              |
-| A page's queries and mutations | a `use<Thing>` hook in that feature folder   |
+| A feature's component          | `features/<name>/components/`, one per file  |
+| A page's queries and mutations | `features/<name>/hooks/use<Thing>.js`        |
+| A feature's pure logic         | `features/<name>/utils/` — no React in there |
+| A generic hook (no feature)    | `frontend/src/hooks/`                        |
 | Something shared + presentational | `frontend/src/components/ui/`             |
+
+One component per file. When a component grows sub-parts, it moves into its
+own kebab-case folder inside `components/` (`board-table/`, `bracket-view/`).
+Imports are relative inside a feature and `@/` across features.
 
 ## Conventions
 

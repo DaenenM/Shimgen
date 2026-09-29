@@ -83,6 +83,7 @@ export const queryClient = new QueryClient({
 export const queryKeys = {
   auth: {
     me: ['auth', 'me'],
+    config: ['auth', 'config'],
     // Keyed by term so each query caches separately — backspacing to something
     // already typed comes back from cache rather than over the network.
     search: (term) => ['auth', 'search', term],
@@ -105,6 +106,10 @@ export const queryKeys = {
     accepted: ['friends', 'accepted'],
     pending: ['friends', 'pending'],
     sent: ['friends', 'sent'],
+  },
+  spectate: {
+    detail: (publicSlug) => ['spectate', publicSlug],
+    standings: (publicSlug) => ['spectate', publicSlug, 'standings'],
   },
   boards: {
     all: ['boards'],

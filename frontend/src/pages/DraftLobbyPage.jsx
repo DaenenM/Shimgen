@@ -1,14 +1,14 @@
-import { ArrowLeft } from '@/components/icons'
 import { Link, useParams } from 'react-router-dom'
 
+import { ArrowLeft } from '@/components/icons'
 import { PageShell } from '@/components/layout/PageShell'
-import { CopyLinkButton } from '@/components/ui/CopyLinkButton'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { SkeletonPage } from '@/components/ui/Skeleton'
-import { DraftFinish } from '@/features/draft/DraftFinish'
-import { DraftPool } from '@/features/draft/DraftPool'
-import { DraftTeamCard } from '@/features/draft/DraftTeamCard'
-import { useDraftLobby } from '@/features/draft/useDraftLobby'
+import { DraftFinish } from '@/features/draft/components/DraftFinish'
+import { DraftHeader } from '@/features/draft/components/DraftHeader'
+import { DraftPool } from '@/features/draft/components/DraftPool'
+import { DraftTeamCard } from '@/features/draft/components/DraftTeamCard'
+import { useDraftLobby } from '@/features/draft/hooks/useDraftLobby'
 import { paths } from '@/routes/paths'
 
 /**
@@ -53,37 +53,14 @@ export function DraftLobbyPage() {
         All tournaments
       </Link>
 
-      <div className="rise-in rise-delay-2 mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {tournament?.title || 'Team draft'}
-          </h1>
-
-          {/* The turn indicator is the most important thing on the page: with
-              one device being passed around, whoever is holding it needs to
-              know at a glance whether it is their turn. */}
-          <p className="text-base-content/60 mt-1 text-sm">
-            {ready ? (
-              <>Every player has a team. Review the sides below, then build the bracket.</>
-            ) : (
-              <>
-                <span className="text-primary font-semibold">{current?.captain_label}</span> picks —{' '}
-                {draft.picks_remaining} left
-              </>
-            )}
-          </p>
-        </div>
-
-        {/* A friend added to the pool has no way of knowing until their own
-            browser asks again, so handing them the link beats telling them to
-            go and look. */}
-        <CopyLinkButton
-          url={lobbyUrl}
-          label="Share lobby"
-          title="Copy a link to this lobby for the people in the draft"
-          className="shrink-0"
-        />
-      </div>
+      <DraftHeader
+        tournament={tournament}
+        draft={draft}
+        current={current}
+        ready={ready}
+        lobbyUrl={lobbyUrl}
+        className="rise-in rise-delay-2 mb-6"
+      />
 
       <ErrorAlert className="rise-in rise-delay-2 mb-4">{error?.message}</ErrorAlert>
 

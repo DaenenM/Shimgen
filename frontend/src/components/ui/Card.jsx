@@ -45,24 +45,3 @@ export function Card({
     </Tag>
   )
 }
-
-/**
- * A card's own heading row.
- *
- * Sits inside a `padding="none"` card so the divider can run the full width
- * rather than stopping short of the padding.
- */
-export function CardHeader({ title, description, children, className = '' }) {
-  return (
-    <div
-      className={`border-base-content/10 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5 ${className}`}
-    >
-      <div className="min-w-0">
-        <h2 className="truncate text-base font-semibold">{title}</h2>
-        {description && <p className="text-base-content/60 mt-0.5 text-sm">{description}</p>}
-      </div>
-
-      {children && <div className="flex shrink-0 flex-wrap gap-2">{children}</div>}
-    </div>
-  )
-}

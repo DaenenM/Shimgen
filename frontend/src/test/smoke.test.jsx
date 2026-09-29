@@ -16,23 +16,24 @@ import { PERSIST_KEY, clearPersistedCache, shouldPersist } from '@/lib/persist'
 import { clearTokens, getAccessToken, setTokens } from '@/api/tokens'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { SectionLoader } from '@/components/ui/SectionLoader'
-import { EditableTitle } from '@/features/bracket/EditableTitle'
-import { BracketView } from '@/features/bracket/BracketView'
-import { isPhantom, roundLabel, sizeFor, toRounds } from '@/features/bracket/layout'
+import { EditableTitle } from '@/features/bracket/components/EditableTitle'
+import { BracketView } from '@/features/bracket/components/bracket-view/BracketView'
+import { isPhantom, roundLabel, sizeFor, toRounds } from '@/features/bracket/utils/layout'
 import { useDragScroll } from '@/hooks/useDragScroll'
-import { applyResult, clearResult, scoreForClick } from '@/features/bracket/optimistic'
-import { useReportQueue } from '@/features/bracket/useReportQueue'
+import { applyResult, clearResult, scoreForClick } from '@/features/bracket/utils/optimistic'
+import { useReportQueue } from '@/features/bracket/hooks/useReportQueue'
 import { RootLayout } from '@/components/layout/RootLayout'
 import { AdSlot } from '@/components/ui/AdSlot'
-import { AuthContext } from '@/context/AuthContext'
+import { AuthContext } from '@/features/auth/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Field, TextInput } from '@/components/ui/Field'
-import { SaveIndicator } from '@/features/bracket/SaveIndicator'
-import { StandingsTable } from '@/features/bracket/StandingsTable'
-import { BoardTable } from '@/features/stats/BoardTable'
-import { TournamentCard } from '@/features/tournaments/TournamentCard'
-import { generateTeams, splitEvenly } from '@/features/teams/generate'
+import { Field } from '@/components/ui/Field'
+import { TextInput } from '@/components/ui/TextInput'
+import { SaveIndicator } from '@/features/bracket/components/SaveIndicator'
+import { StandingsTable } from '@/features/bracket/components/StandingsTable'
+import { BoardTable } from '@/features/stats/components/board-table/BoardTable'
+import { TournamentCard } from '@/features/tournaments/components/tournament-card/TournamentCard'
+import { generateTeams, splitEvenly } from '@/features/teams/utils/generate'
 import { paths } from '@/routes/paths'
 
 describe('token store', () => {
@@ -2210,7 +2211,7 @@ describe('saved roster ordering', () => {
     const { roster } = await import('@/api/endpoints')
     roster.list.mockResolvedValue({ count: rows.length, results: rows })
 
-    const { SavedRoster } = await import('@/components/ui/SavedRoster')
+    const { SavedRoster } = await import('@/features/roster/components/SavedRoster')
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
     const signedIn = {

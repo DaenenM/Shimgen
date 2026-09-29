@@ -1,17 +1,16 @@
-import { ArrowLeft, Check, Settings2, Users } from '@/components/icons'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { ArrowLeft, Users } from '@/components/icons'
 import { PageShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/Button'
-import { CopyLinkButton } from '@/components/ui/CopyLinkButton'
 import { SkeletonPage } from '@/components/ui/Skeleton'
-import { AddTable } from '@/features/stats/AddTable'
-import { BoardPeople } from '@/features/stats/BoardPeople'
-import { InlineName } from '@/features/stats/InlineName'
-import { TableCard } from '@/features/stats/TableCard'
-import { useBoard } from '@/features/stats/useBoard'
-import { useRoster } from '@/hooks/useRoster'
+import { useRoster } from '@/features/roster/hooks/useRoster'
+import { AddTable } from '@/features/stats/components/AddTable'
+import { BoardHeader } from '@/features/stats/components/BoardHeader'
+import { BoardPeople } from '@/features/stats/components/BoardPeople'
+import { TableCard } from '@/features/stats/components/TableCard'
+import { useBoard } from '@/features/stats/hooks/useBoard'
 import { paths } from '@/routes/paths'
 
 /**
@@ -58,47 +57,15 @@ export function BoardPage() {
         All boards
       </Link>
 
-      <div className="rise-in rise-delay-2 mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          {editing && isOwner ? (
-            // Owner only, like every other structural change — an editor may
-            // tally all night without being able to reshape what everyone's
-            // history lives under.
-            <InlineName
-              name={board.name}
-              onRename={actions.renameBoard}
-              label="Board name"
-              className="h-11 w-full max-w-sm text-2xl font-bold tracking-tight sm:text-3xl"
-            />
-          ) : (
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{board.name}</h1>
-          )}
-          {board.description && (
-            <p className="text-base-content/60 mt-1 text-sm">{board.description}</p>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {/* Built from the board rather than read off the address bar, so the
-              copied link carries the name even when this page was reached by
-              the bare slug. */}
-          <CopyLinkButton url={`${window.location.origin}${paths.board(board.slug, board.name)}`} />
-
-          {/* Solid while editing, glass at rest. "Done" is the way out of a
-              state the board is currently in, so it gets the page's one opaque
-              treatment, while "Edit" is just another header control. */}
-          {canEdit && (
-            <Button
-              variant={editing ? 'primary' : 'secondary'}
-              size="sm"
-              icon={editing ? Check : Settings2}
-              onClick={() => setEditing((on) => !on)}
-            >
-              {editing ? 'Done' : 'Edit'}
-            </Button>
-          )}
-        </div>
-      </div>
+      <BoardHeader
+        board={board}
+        canEdit={canEdit}
+        isOwner={isOwner}
+        editing={editing}
+        onToggleEditing={() => setEditing((on) => !on)}
+        onRename={actions.renameBoard}
+        className="rise-in rise-delay-2 mb-6"
+      />
 
       {!canEdit && (
         <div className="glass-inset mb-6 flex items-start gap-2.5 p-3 text-sm">

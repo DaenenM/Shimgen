@@ -1,7 +1,7 @@
-import { Check, ChevronDown } from '@/components/icons'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { Check, ChevronDown } from '@/components/icons'
 import { useDismiss } from '@/hooks/useDismiss'
 
 const SIZES = {

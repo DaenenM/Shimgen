@@ -6,8 +6,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { applyPick, applyUndo } from '@/features/draft/transitions'
-import { buildTournamentPayload } from '@/features/new-tournament/payload'
+import { applyPick, applyUndo } from '@/features/draft/utils/transitions'
+import { buildTournamentPayload } from '@/features/new-tournament/utils/payload'
 
 const draft = {
   pool: ['Cara', 'Dev', 'Eli'],

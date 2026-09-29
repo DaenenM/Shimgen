@@ -6,9 +6,10 @@ import { PageLoader } from '@/components/ui/PageLoader'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useScrollToTop } from '@/hooks/useScrollToTop'
 
-import { Footer } from './Footer'
-import { MobileNav } from './MobileNav'
-import { Navbar } from './Navbar'
+import { Footer } from './footer/Footer'
+import { MobileNav } from './mobile-nav/MobileNav'
+import { Navbar } from './navbar/Navbar'
+import { NavigationProgress } from './NavigationProgress'
 
 /**
  * The chrome every page sits inside.
@@ -57,27 +58,5 @@ export function RootLayout() {
 
       <Footer />
     </div>
-  )
-}
-
-/**
- * A thin bar across the top while a page is on its way.
- *
- * Held back for 150ms before it shows, so a page that arrives quickly — which
- * is every page once the background preload has run — never flashes it.
- */
-function NavigationProgress({ active }) {
-  return (
-    <div
-      aria-hidden="true"
-      // Creeps toward three quarters while waiting, since how long is unknown,
-      // and is gone the moment the page lands. It resets without a transition,
-      // so it never visibly runs backwards.
-      className={`bg-primary pointer-events-none fixed inset-x-0 top-0 z-[70] h-0.5 origin-left ${
-        active
-          ? 'scale-x-75 opacity-100 transition-[transform,opacity] delay-150 duration-[1500ms] ease-out'
-          : 'scale-x-0 opacity-0'
-      }`}
-    />
   )
 }

@@ -1,6 +1,6 @@
-import { House, Trophy } from '@/components/icons'
 import { Link } from 'react-router-dom'
 
+import { House, Trophy } from '@/components/icons'
 import { paths } from '@/routes/paths'
 
 /**

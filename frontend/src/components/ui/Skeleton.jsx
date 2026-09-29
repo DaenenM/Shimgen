@@ -11,7 +11,7 @@
  */
 
 /** One shimmering block. `className` sets its size. */
-export function Skeleton({ className = '' }) {
+function Skeleton({ className = '' }) {
   return <div className={`bg-base-300/60 animate-pulse rounded ${className}`} aria-hidden="true" />
 }
 

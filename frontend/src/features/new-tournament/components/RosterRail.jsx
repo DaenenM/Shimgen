@@ -1,0 +1,36 @@
+import { SavedRoster } from '@/features/roster/components/SavedRoster'
+import { SavedTeamPicker } from '@/features/teams/components/SavedTeamPicker'
+import { teamTone } from '@/features/teams/utils/tone'
+
+/** The left column of the new-tournament form: saved players, and saved teams. */
+export function RosterRail({ form, className = '' }) {
+  const { mode } = form
+
+  return (
+    <div className={`flex min-w-0 flex-col gap-4 ${className}`}>
+      <SavedRoster
+        selected={form.placed}
+        onAdd={form.addFromRoster}
+        onRemove={form.removeFromRoster}
+        target={
+          mode === 'teams' && form.teams.length > 0
+            ? {
+                label: form.teams[form.activeTeam]?.label.trim() || `Team ${form.activeTeam + 1}`,
+                color: teamTone(form.activeTeam).edge,
+              }
+            : null
+        }
+      />
+
+      {/* Teams mode only. A saved team has nowhere to go in solo mode — the
+          players box takes names, not sides. */}
+      {mode === 'teams' && (
+        <SavedTeamPicker
+          onPick={form.addSavedTeam}
+          placed={form.teams.map((team) => team.label)}
+          glass
+        />
+      )}
+    </div>
+  )
+}

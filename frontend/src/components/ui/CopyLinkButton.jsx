@@ -1,5 +1,6 @@
-import { Check, Share2 } from '@/components/icons'
 import { useState } from 'react'
+
+import { Check, Share2 } from '@/components/icons'
 
 /**
  * Copy a URL, and say so for two seconds.

@@ -1,16 +1,16 @@
-import { Users } from '@/components/icons'
 import { useState } from 'react'
 
+import { Users } from '@/components/icons'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { SkeletonCards } from '@/components/ui/Skeleton'
-import { AddPlayerForm } from '@/features/roster/AddPlayerForm'
-import { ArchivedPlayers } from '@/features/roster/ArchivedPlayers'
-import { PasteNames } from '@/features/roster/PasteNames'
-import { PlayerRow } from '@/features/roster/PlayerRow'
-import { useRosterManager } from '@/features/roster/useRosterManager'
+import { AddPlayerForm } from '@/features/roster/components/AddPlayerForm'
+import { ArchivedPlayers } from '@/features/roster/components/ArchivedPlayers'
+import { PasteNames } from '@/features/roster/components/PasteNames'
+import { PlayerRow } from '@/features/roster/components/PlayerRow'
+import { useRosterManager } from '@/features/roster/hooks/useRosterManager'
 
 /**
  * The saved roster.

@@ -1,5 +1,6 @@
-import { AlertTriangle } from '@/components/icons'
 import { useEffect, useRef } from 'react'
+
+import { AlertTriangle } from '@/components/icons'
 
 /**
  * A confirmation people actually read.

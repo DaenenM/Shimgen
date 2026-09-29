@@ -1,6 +1,6 @@
-import { AlertTriangle, X } from '@/components/icons'
 import { useSyncExternalStore } from 'react'
 
+import { AlertTriangle, X } from '@/components/icons'
 import { dismissToast, getToasts, subscribeToasts } from '@/lib/toast'
 
 /**

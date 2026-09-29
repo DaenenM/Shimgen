@@ -36,7 +36,7 @@ export function useDocumentTitle() {
   const description = handle?.description
 
   useEffect(() => {
-    document.title = name ? `${SITE_NAME} | ${name}` : SITE_NAME
+    document.title = name ? `${SITE_NAME}  •  ${name}` : SITE_NAME
   }, [name])
 
   useEffect(() => {

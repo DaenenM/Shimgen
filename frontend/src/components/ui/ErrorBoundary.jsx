@@ -1,6 +1,7 @@
-import { AlertTriangle, RotateCcw } from '@/components/icons'
 import { Component } from 'react'
 import { useLocation } from 'react-router-dom'
+
+import { AlertTriangle, RotateCcw } from '@/components/icons'
 
 /**
  * Catches render errors so one broken component does not blank the whole app.

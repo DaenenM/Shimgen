@@ -1,15 +1,14 @@
-import { Plus, Users } from '@/components/icons'
 import { useState } from 'react'
 
+import { Plus } from '@/components/icons'
 import { PageShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { SectionLoader } from '@/components/ui/SectionLoader'
-import { SavedTeamCard } from '@/features/teams/SavedTeamCard'
-import { TeamEditor } from '@/features/teams/TeamEditor'
-import { useRoster } from '@/hooks/useRoster'
-import { useSavedTeams } from '@/hooks/useSavedTeams'
+import { useRoster } from '@/features/roster/hooks/useRoster'
+import { SavedTeamList } from '@/features/teams/components/SavedTeamList'
+import { TeamEditor } from '@/features/teams/components/TeamEditor'
+import { useSavedTeams } from '@/features/teams/hooks/useSavedTeams'
 
 /**
  * Squads kept between game nights.
@@ -58,45 +57,18 @@ export function SavedTeamsPage() {
         </div>
       )}
 
-      {isLoading ? (
-        <SectionLoader label="Loading your teams…" />
-      ) : teams.length === 0 && editing !== 'new' ? (
-        <div className="border-base-content/12 text-base-content/50 rounded-[1.25rem] border border-dashed p-10 text-center">
-          <Users className="mx-auto h-6 w-6 opacity-50" />
-          <p className="mt-2 text-sm">No teams saved yet.</p>
-          <p className="text-base-content/40 mt-1 text-xs">
-            Build one from your roster and it will be one click away next time.
-          </p>
-        </div>
-      ) : (
-        <ul className="rise-in rise-delay-2 grid gap-3 sm:grid-cols-2">
-          {teams.map((team) =>
-            editing === team.id ? (
-              <li key={team.id} className="sm:col-span-2">
-                <TeamEditor
-                  team={team}
-                  players={players}
-                  remember={remember}
-                  pending={update.isPending}
-                  error={update.error?.message}
-                  onCancel={close}
-                  onSave={(payload) =>
-                    update.mutate({ id: team.id, ...payload }, { onSuccess: close })
-                  }
-                />
-              </li>
-            ) : (
-              <SavedTeamCard
-                key={team.id}
-                team={team}
-                disabled={busy}
-                onEdit={() => setEditing(team.id)}
-                onDelete={() => setConfirming(team)}
-              />
-            ),
-          )}
-        </ul>
-      )}
+      <SavedTeamList
+        teams={teams}
+        isLoading={isLoading}
+        editing={editing}
+        players={players}
+        remember={remember}
+        update={update}
+        busy={busy}
+        onEdit={setEditing}
+        onClose={close}
+        onDelete={setConfirming}
+      />
 
       <ConfirmDialog
         open={Boolean(confirming)}

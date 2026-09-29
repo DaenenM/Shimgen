@@ -4,7 +4,7 @@ import { RouterProvider } from 'react-router-dom'
 
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { Toaster } from '@/components/ui/Toaster'
-import { AuthProvider } from '@/context/AuthProvider'
+import { AuthProvider } from '@/features/auth/context/AuthProvider'
 import { persistOptions } from '@/lib/persist'
 import { queryClient } from '@/lib/queryClient'
 import { preloadPages, router } from '@/routes/router'

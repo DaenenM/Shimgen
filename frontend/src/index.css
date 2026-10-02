@@ -222,13 +222,17 @@
 }
 
 @layer components {
+  /* Every backdrop-filter below lists the -webkit- form FIRST. The production
+     minifier treats the pair as one property and keeps only the last; with the
+     prefix last, Chrome and Firefox lost all blur on the live site while dev,
+     which is not minified, looked fine. */
   .glass-panel {
     position: relative;
     background: var(--glass-tint);
     /* `saturate` is doing as much work as `blur`. Without it the colour bleeding
        through goes grey and the panel reads as frosted plastic. */
-    backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--glass-border);
     border-radius: 1.25rem;
     box-shadow:
@@ -240,16 +244,16 @@
      compound into mud. More tint, less blur. */
   .glass-inset {
     background: var(--glass-tint);
-    backdrop-filter: blur(8px) saturate(140%);
     -webkit-backdrop-filter: blur(8px) saturate(140%);
+    backdrop-filter: blur(8px) saturate(140%);
     border: 1px solid var(--glass-border);
     border-radius: 0.875rem;
   }
 
   .glass-raised {
     background: var(--glass-tint-strong);
-    backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
     border: 1px solid var(--glass-border);
     border-radius: 1rem;
     box-shadow:
@@ -285,8 +289,8 @@
     z-index: -1;
     pointer-events: none;
     background: var(--glass-tint-strong);
-    backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
     /* Carries the lit edge, which the bar's own inset shadow would paint under. */
     box-shadow: inherit;
   }
@@ -309,8 +313,8 @@
      itself, which is more specific and wins. */
   dialog[open]::backdrop {
     background: oklch(25% 0.02 260 / 0.28);
-    backdrop-filter: blur(6px) saturate(120%);
     -webkit-backdrop-filter: blur(6px) saturate(120%);
+    backdrop-filter: blur(6px) saturate(120%);
   }
 
   .glass-chrome-top {

@@ -103,8 +103,8 @@ export const router = createBrowserRouter([
       {
         index: true,
         lazy: pages.Home,
+        // No title: the home tab reads just "Shimgen".
         handle: {
-          title: 'Home',
           description:
             'Free tournament bracket generator and random team generator. Single and double elimination, round robin and Swiss, plus stats boards that track wins across game nights. No sign-up needed.',
         },

@@ -31,27 +31,28 @@ restating the reasoning.
 ## Layout
 
 ```
-TTS/
+Shimgen/
 ├── backend/
 │   ├── config/              # project config, not an app
-│   │   ├── settings/        # base.py + dev.py + prod.py
+│   │   ├── settings.py      # one file; DEBUG switches dev vs production
 │   │   ├── urls.py          # everything under /api/v1/
 │   │   ├── exceptions.py    # the single API error envelope
 │   │   ├── pagination.py
 │   │   ├── routing.py       # WebSocket routes
 │   │   └── ws_auth.py       # JWT auth for WebSockets
-│   └── apps/
-│       ├── common/          # abstract models, shared permissions, slug helpers
-│       ├── accounts/        # User, Friendship, Google sign-in
-│       ├── groups/          # Player roster, SavedTeam, Game/GameMode
-│       ├── stats/           # StatsBoard, tables/columns/rows, tournament links
-│       └── tournaments/     # Tournament, Entrant, Match, Rating, TeamDraft
-│           ├── brackets/    # the bracket engine: generators + advancement
-│           ├── services/    # business logic (creation, drafts, standings, stats…)
-│           ├── views/       # one module per resource; the viewset's actions
-│           │                #   are split into mixins by concern
-│           ├── consumers.py # WebSocket consumers
-│           └── permissions.py
+│   ├── common/              # abstract models, shared permissions, slug helpers
+│   ├── accounts/            # User, Friendship, Google sign-in
+│   ├── groups/              # Player roster, SavedTeam, Game/GameMode
+│   ├── stats/               # StatsBoard, tables/columns/rows, tournament links
+│   ├── tournaments/         # Tournament, Entrant, Match, Rating, TeamDraft
+│   │   ├── brackets/        # the bracket engine: generators + advancement
+│   │   ├── services/        # business logic (creation, drafts, standings, stats…)
+│   │   ├── views/           # one module per resource; the viewset's actions
+│   │   │                    #   are split into mixins by concern
+│   │   ├── consumers.py     # WebSocket consumers
+│   │   └── permissions.py
+│   ├── manage.py
+│   └── requirements.txt     # every dependency, runtime and dev tooling alike
 │
 │   Every app follows the same shape: models.py, serializers.py, urls.py,
 │   views (a module, or a package once it grows), services/ for logic that
@@ -95,9 +96,9 @@ cd backend
 python -m venv venv
 venv/Scripts/activate          # Windows;  source venv/bin/activate elsewhere
 
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 
-cp .env.example .env           # then set SECRET_KEY and DATABASE_URL
+cp .env.example .env           # then set DEBUG=True and DATABASE_URL
 python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"
 
 python manage.py migrate
@@ -190,8 +191,9 @@ duplicate.
 `config/exceptions.py` and unwrapped into an `ApiError` in `api/client.js`. The
 frontend reads `.message` for a toast and `.details` for field errors, always.
 
-**Settings are split, not conditional.** `dev.py` and `prod.py` layer over
-`base.py`. Production fails at startup on a missing `SECRET_KEY` or a default
+**One settings file, switched by `DEBUG`.** `config/settings.py` serves every
+environment; `DEBUG` defaults to False, so an unconfigured deploy fails closed.
+With `DEBUG` off it fails at startup on a missing `SECRET_KEY` or a default
 `ALLOWED_HOSTS` rather than degrading quietly.
 
 **Query keys come from a factory.** `lib/queryClient.js` exports `queryKeys`;

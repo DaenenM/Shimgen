@@ -33,10 +33,10 @@ services:
     startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
     healthCheckPath: /healthz
     envVars:
-      # Without this manage.py falls back to config.settings.dev, which imports
-      # django_extensions — a dev-only dependency that is not installed here.
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.prod
+      # DEBUG already defaults to False; stating it keeps a stray dashboard value
+      # from silently turning on the debug pages.
+      - key: DEBUG
+        value: "false"
       - key: PYTHON_VERSION
         value: 3.13.5
       - key: SECRET_KEY

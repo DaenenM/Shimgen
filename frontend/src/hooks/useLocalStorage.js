@@ -58,12 +58,7 @@ function subscribe(key, listener) {
   function onStorage(event) {
     if (event.key !== key) return
     try {
-      cache.set(
-        key, 
-        event.newValue === null 
-        ? undefined 
-        : JSON.parse(event.newValue)
-      )
+      cache.set(key, event.newValue === null ? undefined : JSON.parse(event.newValue))
       listener()
     } catch {
       // Another tab wrote something unparseable; keep what we have.

@@ -48,7 +48,7 @@ export function Footer() {
 
         <div className="border-base-300 mt-8 flex flex-col items-center justify-between gap-2 border-t pt-6 text-sm sm:flex-row">
           <p>© {new Date().getFullYear()} Shimgen. All rights reserved.</p>
-          <p className="text-base-content/50">No account needed to build a bracket.</p>
+          <p className="text-base-content/50">No account needed to run a tournament.</p>
         </div>
       </div>
     </footer>

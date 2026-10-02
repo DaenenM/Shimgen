@@ -1,28 +1,25 @@
 import { Link } from 'react-router-dom'
 
-import { Shuffle, Trophy, Zap } from '@/components/icons'
-import { useAuth } from '@/features/auth/hooks/useAuth'
+import { Shuffle, Trophy } from '@/components/icons'
 import { paths } from '@/routes/paths'
 
-// Landing page hero: pitch plus the two primary CTAs. Used by HomePage.jsx.
+// Landing page hero: what Shimgen is in one line, plus the two primary CTAs.
+// Used by HomePage.jsx. Copy is written for someone who has never run a
+// bracket, so it says "tournament" and avoids format jargon.
 export function HomeHero() {
-  const { isAuthenticated } = useAuth()
-
   return (
     <section className="text-center">
       {/* Pill, not DaisyUI's outlined badge, to match the glass surfaces below. */}
       <span className="glass-inset text-base-content/70 rise-in rise-delay-1 mb-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
-        <Zap className="text-primary h-3.5 w-3.5" />
-        No signup needed
+        Free <span className="text-base-content/30">·</span> No account needed
       </span>
 
       <h1 className="rise-in rise-delay-2 text-4xl font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-        Brackets, teams and stats that <span className="text-primary">stick around</span>
+        Tournaments and teams for <span className="text-primary">game night</span>
       </h1>
 
       <p className="text-base-content/70 rise-in rise-delay-3 mx-auto mt-5 max-w-2xl text-lg text-pretty">
-        Build a tournament in ten seconds, generate balanced teams, and keep the results that make
-        next Saturday worth showing up for.
+        Add names. Pick a game style. Start playing.
       </p>
 
       <div className="rise-in rise-delay-4 mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -37,7 +34,7 @@ export function HomeHero() {
             className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full"
           />
           <Trophy className="h-4.5 w-4.5 transition-transform duration-200 ease-out group-hover:-rotate-12" />
-          Create a bracket
+          New tournament
         </Link>
 
         {/* Glass counterpart: brightens/lifts on hover instead of glowing. */}
@@ -46,18 +43,9 @@ export function HomeHero() {
           className="group glass-raised hover:border-base-content/30 hover:bg-base-content/5 flex h-12 w-full items-center justify-center gap-2 px-7 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98] sm:w-auto"
         >
           <Shuffle className="h-4.5 w-4.5 transition-transform duration-300 ease-out group-hover:rotate-180" />
-          Randomise teams
+          Make random teams
         </Link>
       </div>
-
-      {!isAuthenticated && (
-        <p className="text-base-content/50 rise-in rise-delay-5 mt-5 text-sm">
-          Already have an account?{' '}
-          <Link to={paths.login} className="text-primary font-medium hover:underline">
-            Sign in
-          </Link>
-        </p>
-      )}
     </section>
   )
 }

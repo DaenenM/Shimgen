@@ -1,4 +1,4 @@
-# Runtime dependencies for Shimgen.
+# Every Python dependency for Shimgen: runtime, testing and tooling.
 #
 # Direct dependencies only, pinned to exact versions. Transitive packages are
 # resolved by pip — listing them here would mean hand-editing this file on every
@@ -6,7 +6,6 @@
 # not already provide.
 #
 # Install:  pip install -r requirements.txt
-# Local dev also wants:  pip install -r requirements-dev.txt
 
 # ── Framework ─────────────────────────────────────────────────────────────────
 Django==6.0.8
@@ -42,3 +41,15 @@ requests==2.34.2
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 python-dotenv==1.2.3                   # loads backend/.env into os.environ
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+# The bracket generators are the part of this codebase where a bug destroys
+# trust instantly (plan §8), so the test tooling is not optional.
+pytest==9.1.1
+pytest-django==4.14.0
+pytest-cov==7.1.0
+factory_boy==3.3.3                     # model factories, so tests read as intent not setup
+
+# ── Tooling ───────────────────────────────────────────────────────────────────
+ruff==0.16.6                           # linter and formatter; configured in pyproject.toml
+django-extensions==4.1                 # shell_plus, show_urls, graph_models (DEBUG only)

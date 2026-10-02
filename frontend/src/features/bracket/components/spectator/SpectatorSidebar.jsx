@@ -19,7 +19,7 @@ export function SpectatorSidebar({ standings, className = '' }) {
         <div className="flex flex-col items-center p-4 text-center">
           <p className="text-base-content/60 text-xs">Running your own game nights?</p>
           <Button to={paths.quickStart} size="sm" className="mt-2">
-            Build a bracket
+            New tournament
           </Button>
         </div>
       </div>

@@ -14,14 +14,15 @@ export function GeneratedTeams({ teams, teamNames, nameFor, onRename, onArrange 
   const labelOf = (id) => labels.get(id) ?? ''
 
   return (
-    <div className="max-w-[28.75rem] space-y-4">
+    <div className="space-y-4 lg:max-w-[28.75rem]">
       <TeamDragProvider
         groups={teams.map((team) => team.map((player) => String(player.id)))}
         onChange={onArrange}
         labelOf={labelOf}
       >
-        {/* Two across, capped width so cards don't stretch across empty space. */}
-        <div className="grid items-start justify-start gap-3 sm:grid-cols-[repeat(2,minmax(0,14rem))]">
+        {/* Full width when stacked, so cards line up with the setup panel above;
+            two across from sm, where the lg column cap keeps them from stretching. */}
+        <div className="grid items-start gap-3 sm:grid-cols-2">
           {teams.map((team, index) => (
             <GeneratedTeamCard
               key={index}

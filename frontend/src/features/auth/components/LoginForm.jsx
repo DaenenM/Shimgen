@@ -63,7 +63,7 @@ export function LoginForm({ login }) {
       <p className="text-base-content/50 text-center text-xs">
         You don't need an account to{' '}
         <Link to={paths.quickStart} className="link">
-          build a bracket
+          run a tournament
         </Link>
         .
       </p>

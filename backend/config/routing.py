@@ -12,7 +12,7 @@ client knowing the difference.
 
 from django.urls import path
 
-from apps.tournaments.consumers import DraftConsumer, TournamentConsumer
+from tournaments.consumers import DraftConsumer, TournamentConsumer
 
 websocket_urlpatterns = [
     path("ws/drafts/<int:tournament_id>/", DraftConsumer.as_asgi()),

@@ -7,10 +7,7 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    # Defaults to dev so `python manage.py ...` is safe to run locally without
-    # setting anything. Deploys set DJANGO_SETTINGS_MODULE=config.settings.prod
-    # explicitly, which takes precedence over this default.
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

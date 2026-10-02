@@ -12,8 +12,8 @@ export function TournamentList({ isAuthenticated, isLoading, items, cardHandlers
       <EmptyState
         icon={Trophy}
         title="Your tournaments live in your account"
-        description="You can build a bracket without signing up, but an account is what keeps it, along with your roster and stats, for next Saturday."
-        actionLabel="Create a bracket"
+        description="You can run a tournament without signing up, but an account is what keeps it, along with your roster and stats, for next Saturday."
+        actionLabel="New tournament"
         actionTo={paths.quickStart}
       />
     )

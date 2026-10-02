@@ -18,10 +18,10 @@ from drf_spectacular.views import (
 from config.views import health
 
 api_v1 = [
-    path("auth/", include("apps.accounts.urls")),
-    path("", include("apps.groups.urls")),
-    path("", include("apps.stats.urls")),
-    path("", include("apps.tournaments.urls")),
+    path("auth/", include("accounts.urls")),
+    path("", include("groups.urls")),
+    path("", include("stats.urls")),
+    path("", include("tournaments.urls")),
 ]
 
 urlpatterns = [

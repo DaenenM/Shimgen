@@ -32,17 +32,13 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["apps", "config"]
-
-[tool.ruff.lint.per-file-ignores]
-# Settings modules use star imports by design to layer over base.py.
-"config/settings/*.py" = ["F403", "F405", "E402"]
+known-first-party = ["accounts", "common", "config", "groups", "stats", "tournaments"]
 
 # ── pytest ────────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.dev"
+DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py"]
-testpaths = ["apps"]
+testpaths = ["accounts", "common", "groups", "stats", "tournaments"]
 addopts = [
     "--strict-markers",
     "--reuse-db",       # keep the test database between runs; --create-db forces a rebuild
@@ -51,7 +47,7 @@ addopts = [
 filterwarnings = ["error::DeprecationWarning"]
 
 [tool.coverage.run]
-source = ["apps", "config"]
+source = ["accounts", "common", "config", "groups", "stats", "tournaments"]
 omit = ["*/migrations/*", "*/tests/*", "*/venv/*"]
 
 [tool.coverage.report]

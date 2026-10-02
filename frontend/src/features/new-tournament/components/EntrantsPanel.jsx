@@ -3,12 +3,11 @@ import { RosterPicker } from '@/features/roster/components/RosterPicker'
 
 import { TeamBuilder } from './team-builder/TeamBuilder'
 
-// Third array entry is the phone label (short form, since three full labels don't fit).
 const MODES = [
-  ['solo', 'Solo players', 'Solo'],
+  ['solo', 'Solo'],
   ['teams', 'Teams'],
   // Captains mode still enters solo players; the draft produces the teams, so it shares the solo entry box.
-  ['captains', 'Team captains', 'Captains'],
+  ['captains', 'Captains'],
 ]
 
 // Who is playing: title, entry mode, and players/teams. Used by QuickStartPage.jsx.

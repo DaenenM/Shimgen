@@ -13,9 +13,10 @@ const SITE_NAME = 'Shimgen'
  * A route may give a function instead of a string when the name depends on
  * loaded data, such as a tournament's own title. It receives the match, and
  * returning nothing falls back to the bare site name rather than rendering
- * "Shimgen | undefined".
+ * "Shimgen · undefined".
  *
- * Every page reads "Shimgen | {page}". Marketing-length titles were tried here
+ * Every page reads "Shimgen · {page}", except a route whose handle has no
+ * title — the home page — which reads just "Shimgen". Marketing-length titles were tried here
  * and reverted: a tab strip with six tournaments open needs the page name
  * legible in ~20 characters, which a keyword-first headline cannot do.
  * Ranking copy lives in `handle.description` and in index.html instead.
@@ -29,14 +30,14 @@ export function useDocumentTitle() {
 
   // The deepest match wins: nested routes describe the page more precisely
   // than their parents do.
-  const active = [...matches].reverse().find((match) => match.handle?.title)
+  const active = [...matches].reverse().find((match) => match.handle)
   const handle = active?.handle
 
   const name = typeof handle?.title === 'function' ? handle.title(active) : handle?.title
   const description = handle?.description
 
   useEffect(() => {
-    document.title = name ? `${SITE_NAME}  •  ${name}` : SITE_NAME
+    document.title = name ? `${SITE_NAME} · ${name}` : SITE_NAME
   }, [name])
 
   useEffect(() => {

@@ -270,11 +270,25 @@
          it while arbitrary page content scrolls underneath; a 55% tint that
          works over a known card is unreadable over a passing bracket
 
-     `--glass-tint-strong` plus the blur is what keeps that legible. */
-  .glass-chrome {
+     `--glass-tint-strong` plus the blur is what keeps that legible.
+
+     The blur sits on a pseudo-element rather than the bar itself. An element
+     with backdrop-filter becomes the backdrop root for everything inside it,
+     so a dropdown nested in the bar (the account menu) could only blur the
+     bar's own contents and rendered nearly clear. Every user is sticky or
+     fixed with a z-index, so z-index: -1 stays inside the bar's stacking
+     context. */
+  .glass-chrome::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background: var(--glass-tint-strong);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
+    /* Carries the lit edge, which the bar's own inset shadow would paint under. */
+    box-shadow: inherit;
   }
 
   /* The scrim behind a dialog.
@@ -591,7 +605,7 @@
     .glass-panel,
     .glass-inset,
     .glass-raised,
-    .glass-chrome {
+    .glass-chrome::before {
       background: var(--color-base-100);
     }
   }

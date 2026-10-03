@@ -63,7 +63,7 @@ export function MatchSide({ match, side, canReport, onPick, seriesHint, tone }) 
   const state = isWalkover
     ? ''
     : isWinner
-      ? 'text-base-content font-semibold rounded-t-md'
+      ? 'text-base-content font-semibold'
       : decided
         ? 'text-base-content/45 line-through decoration-base-content/35'
         : ''
@@ -74,12 +74,10 @@ export function MatchSide({ match, side, canReport, onPick, seriesHint, tone }) 
   // the round, which only the bracket knows.
   const fill = isWinner && !isWalkover && tone ? { backgroundColor: tone.wash } : undefined
 
-  // Rounded at both ends rather than square, so it reads as a deliberate marker
-  // rather than as the card's border having changed colour. Inset by a hair
-  // top and bottom for the same reason.
+  // Inset pill, clear of the card's rounded edge, so it reads as a marker rather than a clipped border.
   const marker = isWinner && !isWalkover && (
     <span
-      className="absolute inset-y-0 left-0 w-1 rounded-tl-full"
+      className="absolute inset-y-2 left-1.5 w-1 rounded-full"
       style={{ backgroundColor: tone?.edge ?? 'var(--color-primary)' }}
       aria-hidden="true"
     />

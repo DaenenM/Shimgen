@@ -8,6 +8,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it } from 'vitest'
 
 import { applyPick, applyUndo } from '@/features/draft/utils/transitions'
+import { bestOfLabel } from '@/features/bracket/utils/layout'
 import { standingsFor } from '@/features/bracket/utils/standings'
 import { suggestGames } from '@/features/new-tournament/utils/games'
 import { buildTournamentPayload } from '@/features/new-tournament/utils/payload'
@@ -256,5 +257,14 @@ describe('optimistic helpers', () => {
 
     handlers.onError(new Error('nope'), 1, context)
     expect(client.getQueryData(key)).toEqual([{ id: 1 }, { id: 2 }])
+  })
+})
+
+describe('bestOfLabel', () => {
+  it('names the series length, a range when rounds differ, nothing for Bo1', () => {
+    expect(bestOfLabel([{ best_of: 3 }, { best_of: 3 }])).toBe('Best of 3')
+    expect(bestOfLabel([{ best_of: 1 }, { best_of: 3 }, { best_of: 5 }])).toBe('Best of 1–5')
+    expect(bestOfLabel([{ best_of: 1 }])).toBeNull()
+    expect(bestOfLabel([])).toBeNull()
   })
 })

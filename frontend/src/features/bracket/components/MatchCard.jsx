@@ -69,19 +69,6 @@ export function MatchCard({ match, canReport, onReport, onClear, tone }) {
           tone={tone}
         />
       </div>
-
-      {/* "First to N" makes the score legible since clicking is the only input. */}
-      {isSeries && (
-        <div className="border-base-content/8 bg-base-content/[0.03] flex items-center justify-between border-t px-3 py-1">
-          <span className="text-base-content/50 text-xs tracking-wide uppercase">
-            Bo{match.best_of}
-          </span>
-
-          {!decided && (
-            <span className="text-base-content/40 text-xs">First to {match.wins_needed}</span>
-          )}
-        </div>
-      )}
     </div>
   )
 }

@@ -1,9 +1,10 @@
 import { Eye } from '@/components/icons'
 
-import { FORMAT_LABELS } from '../../utils/layout'
+import { FORMAT_LABELS, bestOfLabel } from '../../utils/layout'
 
 // Public bracket's title block. Used by SpectatorPage.jsx.
 export function SpectatorHeader({ tournament, className = '' }) {
+  const bestOf = bestOfLabel(tournament.matches)
   const live = tournament.state === 'active'
 
   return (
@@ -19,6 +20,7 @@ export function SpectatorHeader({ tournament, className = '' }) {
       <p className="text-base-content/60 mt-1 text-sm">
         {FORMAT_LABELS[tournament.format] ?? tournament.format} · {tournament.entrants.length}{' '}
         entrants
+        {bestOf && ` (${bestOf})`}
         <span
           className={`ml-2 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium capitalize ${
             live ? 'bg-success/15 text-success' : 'bg-base-content/8 text-base-content/60'

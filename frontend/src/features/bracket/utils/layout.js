@@ -227,6 +227,14 @@ function capacity(match, allMatches, memo = new Map()) {
   return count
 }
 
+/** "Best of 3" (or "Best of 1–5" when rounds differ) for the header; null when every match is Bo1. */
+export function bestOfLabel(matches = []) {
+  const lengths = [...new Set(matches.map((m) => m.best_of ?? 1))].sort((a, b) => a - b)
+  if (lengths.length === 0 || (lengths.length === 1 && lengths[0] === 1)) return null
+  if (lengths.length === 1) return `Best of ${lengths[0]}`
+  return `Best of ${lengths[0]}–${lengths[lengths.length - 1]}`
+}
+
 /** Series score for a side, as a display string. */
 export function scoreFor(match, side) {
   const score = match.score ?? {}

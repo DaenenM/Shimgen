@@ -2,7 +2,7 @@ import { Play } from '@/components/icons'
 import { CopyLinkButton } from '@/components/ui/CopyLinkButton'
 import { paths } from '@/routes/paths'
 
-import { FORMAT_LABELS } from '../utils/layout'
+import { FORMAT_LABELS, bestOfLabel } from '../utils/layout'
 import { CohostManager } from './CohostManager'
 import { EditableTitle } from './EditableTitle'
 import { SaveIndicator } from './SaveIndicator'
@@ -13,6 +13,7 @@ import { StatsBoardManager } from './StatsBoardManager'
 // TournamentDetailPage.jsx. `actions` comes from useTournamentDetail; the header
 // decides which of them the current viewer is allowed to see.
 export function TournamentHeader({ tournament, user, isList, saveState, actions }) {
+  const bestOf = bestOfLabel(tournament.matches)
   const { start, nextRound, rename, linkBoard, addCohost, removeCohost } = actions
 
   // The actual creator, not `is_host` (also true for co-hosts) — only the
@@ -36,6 +37,7 @@ export function TournamentHeader({ tournament, user, isList, saveState, actions 
         <p className="text-base-content/60 mt-1 text-sm">
           {FORMAT_LABELS[tournament.format] ?? tournament.format} · {tournament.entrants.length}{' '}
           entrants
+          {bestOf && ` (${bestOf})`}
           <StateBadge state={tournament.state} />
         </p>
       </div>

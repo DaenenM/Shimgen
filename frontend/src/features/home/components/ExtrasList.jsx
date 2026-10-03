@@ -2,8 +2,7 @@ import { Crown, Radio, Save, Swords, UserPlus, Users } from '@/components/icons'
 
 import { ExtraItem } from './ExtraItem'
 
-// The smaller features people discover mid-tournament, listed so they are
-// known up front. Used by HomePage.jsx.
+// "Also built in" list of smaller features. Used by HomePage.jsx.
 export function ExtrasList() {
   return (
     <section className="glass-panel rise-in rise-delay-8 mt-16 p-6 sm:p-8">

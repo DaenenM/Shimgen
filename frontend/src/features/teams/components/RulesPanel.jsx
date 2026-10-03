@@ -1,15 +1,15 @@
-import { Plus, Trash2 } from '@/components/icons'
+import { Trash2 } from '@/components/icons'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { PlayerSelect } from '@/features/roster/components/PlayerSelect'
 
 const KINDS = [
-  ['apart', 'Keep apart'],
-  ['together', 'Keep together'],
+  ['apart', 'Apart'],
+  ['together', 'Together'],
 ]
 
-// Rule builder (keep apart/together) plus the list of existing rules.
+// Rule builder (apart/together) plus the list of existing rules.
 // Used by TeamSetupPanel.jsx.
-export function RulesPanel({ names, draft, onDraftChange, rules, onAdd, onRemove }) {
+export function RulesPanel({ names, draft, onDraftChange, rules, onRemove }) {
   const noNames = names.length === 0
 
   return (
@@ -24,15 +24,16 @@ export function RulesPanel({ names, draft, onDraftChange, rules, onAdd, onRemove
           value={draft.kind}
           onChange={(kind) => onDraftChange({ ...draft, kind })}
           size="sm"
+          block
         />
 
-        {/* Stacked below `sm`, one row above — two selects + button don't fit on phone. */}
+        {/* Stacked on phones. Each picker hides the other's pick; picking both adds the rule. */}
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <PlayerSelect
             label="First player in the rule"
             value={draft.a}
             onChange={(a) => onDraftChange({ ...draft, a })}
-            names={names}
+            names={names.filter((name) => name !== draft.b)}
             disabled={noNames}
           />
 
@@ -44,19 +45,9 @@ export function RulesPanel({ names, draft, onDraftChange, rules, onAdd, onRemove
             label="Second player in the rule"
             value={draft.b}
             onChange={(b) => onDraftChange({ ...draft, b })}
-            names={names}
+            names={names.filter((name) => name !== draft.a)}
             disabled={noNames}
           />
-
-          <button
-            type="button"
-            onClick={onAdd}
-            disabled={!draft.a || !draft.b || draft.a === draft.b}
-            className="bg-primary text-primary-content hover:bg-primary/90 grid h-9 w-full shrink-0 place-items-center rounded-lg transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-30 sm:w-9"
-            aria-label="Add rule"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
         </div>
       </div>
 

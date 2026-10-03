@@ -17,7 +17,7 @@ from django.db import models
 
 from common.models import TimeStampedModel
 from common.slugs import random_slug
-from groups.models import GameMode, Player
+from groups.models import Game, GameMode, Player
 
 
 class Tournament(TimeStampedModel):
@@ -40,6 +40,14 @@ class Tournament(TimeStampedModel):
         ACTIVE = "active", "Active"
         COMPLETE = "complete", "Complete"
 
+    # What's being played — a label for now, typed on the new tournament form.
+    game = models.ForeignKey(
+        Game,
+        null=True,
+        blank=True,
+        related_name="tournaments",
+        on_delete=models.SET_NULL,
+    )
     mode = models.ForeignKey(
         GameMode,
         null=True,

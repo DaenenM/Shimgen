@@ -69,15 +69,14 @@ class Player(TimeStampedModel):
 
 
 class Game(TimeStampedModel):
-    """
-    A game the group plays — Pummel Party, League of Legends.
-
-    A null `group` marks a global preset offered to everyone, so a new crew is
-    not starting from an empty catalogue.
-    """
+    """A game a tournament is played in — League of Legends, Beer Pong."""
 
     name = models.CharField(max_length=80)
     slug = models.SlugField(max_length=80, blank=True)
+    # Nicknames that resolve to this game ("lol", "league"). Matched loosely, see services/games.py.
+    aliases = models.JSONField(default=list, blank=True)
+    # Presets are the shared suggestion list; games typed by users stay out of it.
+    is_preset = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         ordering = ["name"]

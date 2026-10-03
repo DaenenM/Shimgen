@@ -33,8 +33,7 @@ services:
     startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
     healthCheckPath: /healthz
     envVars:
-      # DEBUG already defaults to False; stating it keeps a stray dashboard value
-      # from silently turning on the debug pages.
+      # Explicit so a stray dashboard value can't enable debug.
       - key: DEBUG
         value: "false"
       - key: PYTHON_VERSION

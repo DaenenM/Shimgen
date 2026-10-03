@@ -4,9 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { paths } from '@/routes/paths'
 
-// Closing pitch for an account, shown only when signed out. Used by
-// HomePage.jsx. Everything above works without one (plan §4, NEW 6); this says
-// what an account adds rather than gating anything.
+// Sign-up pitch, shown only when signed out. Used by HomePage.jsx.
 export function AccountPrompt() {
   const { isAuthenticated } = useAuth()
   if (isAuthenticated) return null

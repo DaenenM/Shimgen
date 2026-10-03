@@ -2,8 +2,7 @@ import { Link } from 'react-router-dom'
 
 import { ArrowRight } from '@/components/icons'
 
-// One tool, linking to its page. Used by ToolGrid.jsx.
-// The whole card is the link, so the target is as large as the card looks.
+// One tool card; the whole card links to its page. Used by ToolGrid.jsx.
 export function ToolCard({ icon: Icon, title, body, to, action, note, delay = '' }) {
   return (
     <Link

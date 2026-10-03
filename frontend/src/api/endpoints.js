@@ -39,6 +39,10 @@ export const savedTeams = {
   remove: (id) => api.delete(`/saved-teams/${id}/`).then((r) => r.data),
 }
 
+export const games = {
+  list: () => api.get('/games/').then((r) => r.data),
+}
+
 export const tournaments = {
   list: (params) => api.get('/tournaments/', { params }).then((r) => r.data),
   get: (id) => api.get(`/tournaments/${id}/`).then((r) => r.data),

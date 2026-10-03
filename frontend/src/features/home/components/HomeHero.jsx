@@ -3,9 +3,7 @@ import { Link } from 'react-router-dom'
 import { Shuffle, Trophy } from '@/components/icons'
 import { paths } from '@/routes/paths'
 
-// Landing page hero: what Shimgen is in one line, plus the two primary CTAs.
-// Used by HomePage.jsx. Copy is written for someone who has never run a
-// bracket, so it says "tournament" and avoids format jargon.
+// Landing hero: one-line pitch plus the two main CTAs. Used by HomePage.jsx.
 export function HomeHero() {
   return (
     <section className="text-center">

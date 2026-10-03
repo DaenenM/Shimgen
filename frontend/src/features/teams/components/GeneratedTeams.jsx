@@ -20,8 +20,7 @@ export function GeneratedTeams({ teams, teamNames, nameFor, onRename, onArrange 
         onChange={onArrange}
         labelOf={labelOf}
       >
-        {/* Full width when stacked, so cards line up with the setup panel above;
-            two across from sm, where the lg column cap keeps them from stretching. */}
+        {/* Full width on phones; two across from sm, capped by the lg column. */}
         <div className="grid items-start gap-3 sm:grid-cols-2">
           {teams.map((team, index) => (
             <GeneratedTeamCard

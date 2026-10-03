@@ -119,15 +119,16 @@ export function useTeamGenerator() {
     }
   }
 
-  function addConstraint() {
-    if (!draft.a || !draft.b || draft.a === draft.b) return
+  // Adds the rule as soon as both players are picked, then clears the pickers.
+  function updateDraft(next) {
+    if (!next.a || !next.b || next.a === next.b) return setDraft(next)
 
-    const [a, b] = [draft.a, draft.b].sort()
+    const [a, b] = [next.a, next.b].sort()
 
-    const exists = constraints.some((c) => c.kind === draft.kind && c.a === a && c.b === b)
-    if (!exists) patch({ constraints: [...constraints, { kind: draft.kind, a, b }] })
+    const exists = constraints.some((c) => c.kind === next.kind && c.a === a && c.b === b)
+    if (!exists) patch({ constraints: [...constraints, { kind: next.kind, a, b }] })
 
-    setDraft({ kind: draft.kind, a: '', b: '' })
+    setDraft({ kind: next.kind, a: '', b: '' })
   }
 
   function removeConstraint(rule) {
@@ -162,12 +163,11 @@ export function useTeamGenerator() {
     canGenerate: names.length >= 2 && names.length >= teamCount,
     setRosterText,
     setTeamCount,
-    setDraft,
+    updateDraft,
     clearEverything,
     stageAdd,
     stageRemove,
     generate,
-    addConstraint,
     removeConstraint,
     renameTeam,
     nameFor,

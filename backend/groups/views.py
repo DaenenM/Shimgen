@@ -4,12 +4,14 @@ from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from common.permissions import IsOwner
 
-from .models import Player, SavedTeam
+from .models import Game, Player, SavedTeam
 from .serializers import (
+    GameSerializer,
     PlayerBulkSerializer,
     PlayerSerializer,
     SavedTeamSerializer,
@@ -150,3 +152,13 @@ class SavedTeamViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+
+class GameViewSet(viewsets.ReadOnlyModelViewSet):
+    """Preset games for autocomplete. Public: quick start works signed out (plan §4, NEW 6)."""
+
+    serializer_class = GameSerializer
+    permission_classes = [AllowAny]
+    # ~75 rows fetched once and filtered client-side, so no paging.
+    pagination_class = None
+    queryset = Game.objects.filter(is_preset=True)

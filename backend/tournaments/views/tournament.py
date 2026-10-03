@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from common.permissions import CanReportResults, IsTournamentHost
+from groups.services.games import resolve_game
 
 from ..models import Role, Tournament
 from ..permissions import CanPickInDraft
@@ -53,6 +54,7 @@ class TournamentViewSet(
         # 28-match double elimination ran 60+ round trips per render. They are
         # already in `entrants`; this just stops Django fetching them again.
         base = Tournament.objects.select_related(
+            "game",
             "mode",
             "created_by",
             # The list says whether deleting a row would touch a board, which is
@@ -169,12 +171,13 @@ class TournamentViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        game = resolve_game(serializer.validated_data.pop("game_name", ""))
         labels = serializer.validated_data.pop("entrant_labels", [])
         teams = serializer.validated_data.pop("entrant_teams", [])
         seeding = serializer.validated_data.pop("seeding", "random")
 
         tournament = serializer.save(
-            created_by=request.user if request.user.is_authenticated else None
+            game=game, created_by=request.user if request.user.is_authenticated else None
         )
 
         if not (tournament.title or "").strip():

@@ -35,6 +35,7 @@ export function useNewTournamentForm() {
   const [captains, setCaptains] = useState({ count: 2, mode: 'random', chosen: [] })
 
   const [title, setTitle] = useState('')
+  const [game, setGame] = useState('')
   const [format, setFormat] = useState('single')
   const [bestOf, setBestOf] = useState(1)
   const [thirdPlace, setThirdPlace] = useState(false)
@@ -66,6 +67,7 @@ export function useNewTournamentForm() {
       tournamentsApi.create(
         buildTournamentPayload({
           title,
+          game,
           format,
           mode,
           teams,
@@ -166,6 +168,8 @@ export function useNewTournamentForm() {
     setCaptains,
     title,
     setTitle,
+    game,
+    setGame,
     format,
     setFormat,
     bestOf,

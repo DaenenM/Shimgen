@@ -93,6 +93,7 @@ def restage_tournament(tournament, *, user, reshuffle: bool = False):
         description=tournament.description,
         rules=tournament.rules,
         format=tournament.format,
+        game=tournament.game,
         mode=tournament.mode,
         third_place_match=tournament.third_place_match,
         settings=dict(tournament.settings or {}),

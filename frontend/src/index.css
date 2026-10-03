@@ -222,10 +222,7 @@
 }
 
 @layer components {
-  /* Every backdrop-filter below lists the -webkit- form FIRST. The production
-     minifier treats the pair as one property and keeps only the last; with the
-     prefix last, Chrome and Firefox lost all blur on the live site while dev,
-     which is not minified, looked fine. */
+  /* -webkit-backdrop-filter must come FIRST: the prod minifier keeps only the last of the pair. */
   .glass-panel {
     position: relative;
     background: var(--glass-tint);
@@ -274,14 +271,9 @@
          it while arbitrary page content scrolls underneath; a 55% tint that
          works over a known card is unreadable over a passing bracket
 
-     `--glass-tint-strong` plus the blur is what keeps that legible.
+     `--glass-tint-strong` plus the blur is what keeps that legible. */
 
-     The blur sits on a pseudo-element rather than the bar itself. An element
-     with backdrop-filter becomes the backdrop root for everything inside it,
-     so a dropdown nested in the bar (the account menu) could only blur the
-     bar's own contents and rendered nearly clear. Every user is sticky or
-     fixed with a z-index, so z-index: -1 stays inside the bar's stacking
-     context. */
+  /* Blur on ::before, not the bar, so nested dropdowns (account menu) can blur the page. */
   .glass-chrome::before {
     content: '';
     position: absolute;
@@ -291,7 +283,7 @@
     background: var(--glass-tint-strong);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     backdrop-filter: blur(24px) saturate(180%);
-    /* Carries the lit edge, which the bar's own inset shadow would paint under. */
+    /* Re-draws the lit edge this layer would otherwise cover. */
     box-shadow: inherit;
   }
 

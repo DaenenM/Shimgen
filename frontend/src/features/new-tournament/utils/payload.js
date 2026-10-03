@@ -29,10 +29,11 @@ function entrants({ mode, teams, names }) {
 
 // Create-tournament request body for the new-tournament form. Used by useNewTournamentForm.js.
 export function buildTournamentPayload(form) {
-  const { title, format, mode, bestOf, thirdPlace, bracketReset, statsBoard, captains } = form
+  const { title, game, format, mode, bestOf, thirdPlace, bracketReset, statsBoard, captains } = form
 
   return {
     title: title.trim(),
+    ...(game?.trim() ? { game_name: game.trim() } : {}),
     format,
     ...entrants(form),
     third_place_match: thirdPlace,

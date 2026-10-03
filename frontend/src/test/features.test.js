@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { applyPick, applyUndo } from '@/features/draft/utils/transitions'
+import { suggestGames } from '@/features/new-tournament/utils/games'
 import { buildTournamentPayload } from '@/features/new-tournament/utils/payload'
 
 const draft = {
@@ -120,5 +121,49 @@ describe('buildTournamentPayload', () => {
     const table = buildTournamentPayload({ ...base, statsBoard: 'abc::42' })
     expect(table.stats_table).toBe(42)
     expect(table.stats_board).toBeUndefined()
+  })
+})
+
+describe('suggestGames', () => {
+  const games = [
+    { name: 'League of Legends', aliases: ['lol', 'league'] },
+    { name: 'Counter-Strike 2', aliases: ['cs', 'cs2', 'csgo'] },
+    { name: 'Beer Pong', aliases: ['beerpong', 'pong'] },
+    { name: 'Ping Pong', aliases: ['table tennis'] },
+  ]
+
+  it('puts a nickname match first', () => {
+    expect(suggestGames(games, 'LoL')[0]).toBe('League of Legends')
+    expect(suggestGames(games, 'cs:go')).toEqual(['Counter-Strike 2'])
+  })
+
+  it('matches name prefixes and words inside names', () => {
+    expect(suggestGames(games, 'beer')).toEqual(['Beer Pong'])
+    expect(suggestGames(games, 'pong')).toEqual(['Beer Pong', 'Ping Pong'])
+  })
+
+  it('hides once the exact name is typed, and for empty text', () => {
+    expect(suggestGames(games, 'beer pong')).toEqual([])
+    expect(suggestGames(games, '  ')).toEqual([])
+  })
+})
+
+describe('buildTournamentPayload game', () => {
+  const form = {
+    title: '',
+    format: 'single',
+    mode: 'solo',
+    teams: [],
+    names: ['Ann', 'Bo'],
+    bestOf: 1,
+    thirdPlace: false,
+    bracketReset: false,
+    statsBoard: '',
+    captains: { count: 2, mode: 'random', chosen: [] },
+  }
+
+  it('sends a trimmed game name only when one is typed', () => {
+    expect(buildTournamentPayload({ ...form, game: ' LoL ' }).game_name).toBe('LoL')
+    expect(buildTournamentPayload({ ...form, game: '  ' })).not.toHaveProperty('game_name')
   })
 })

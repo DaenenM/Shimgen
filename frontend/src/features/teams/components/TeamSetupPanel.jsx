@@ -28,9 +28,8 @@ export function TeamSetupPanel({ gen, className = '' }) {
         <RulesPanel
           names={gen.names}
           draft={gen.draft}
-          onDraftChange={gen.setDraft}
+          onDraftChange={gen.updateDraft}
           rules={gen.liveConstraints}
-          onAdd={gen.addConstraint}
           onRemove={gen.removeConstraint}
         />
 

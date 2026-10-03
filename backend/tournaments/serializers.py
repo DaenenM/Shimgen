@@ -149,6 +149,7 @@ class TournamentSerializer(serializers.ModelSerializer):
     # warns about that, and a warning shown when nothing is linked would train
     # hosts to dismiss it.
     feeds_stats_board = serializers.SerializerMethodField()
+    game_name = serializers.CharField(source="game.name", read_only=True, default=None)
 
     class Meta:
         model = Tournament
@@ -157,6 +158,7 @@ class TournamentSerializer(serializers.ModelSerializer):
             "title",
             "format",
             "state",
+            "game_name",
             "mode",
             "third_place_match",
             "settings",
@@ -358,6 +360,10 @@ class CreateTournamentSerializer(serializers.ModelSerializer):
     seeding = serializers.ChoiceField(
         choices=["manual", "random", "rating"], default="random", write_only=True
     )
+    # Typed game; nicknames resolve to a preset (groups/services/games.py).
+    game_name = serializers.CharField(
+        max_length=80, required=False, allow_blank=True, write_only=True
+    )
 
     class Meta:
         model = Tournament
@@ -373,6 +379,7 @@ class CreateTournamentSerializer(serializers.ModelSerializer):
             "entrant_labels",
             "entrant_teams",
             "seeding",
+            "game_name",
         )
         read_only_fields = ("id",)
 

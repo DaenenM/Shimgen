@@ -1,6 +1,7 @@
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { RosterPicker } from '@/features/roster/components/RosterPicker'
 
+import { GameField } from './GameField'
 import { TeamBuilder } from './team-builder/TeamBuilder'
 
 const MODES = [
@@ -29,6 +30,8 @@ export function EntrantsPanel({ form, className = '' }) {
             onChange={(e) => form.setTitle(e.target.value)}
           />
         </label>
+
+        <GameField value={form.game} onChange={form.setGame} />
 
         <div>
           <SegmentedControl

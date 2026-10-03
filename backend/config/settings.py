@@ -1,11 +1,4 @@
-"""
-Settings for Shimgen.
-
-One file for every environment. DEBUG (read from backend/.env locally, from the
-host's env vars in production) picks between the development conveniences and
-the production hardening near the bottom. It defaults to False, so a deploy
-that forgets to set it fails closed rather than serving the debug pages.
-"""
+"""Settings for every environment. DEBUG picks dev vs prod; defaults to False."""
 
 from datetime import timedelta
 from pathlib import Path
@@ -24,9 +17,7 @@ load_dotenv(BASE_DIR / ".env")
 # ── Core ──────────────────────────────────────────────────────────────────────
 DEBUG = env_bool("DEBUG", False)
 
-# No default in production on purpose: a misconfigured deploy fails loudly
-# instead of signing tokens with a published key. Development gets a fixed
-# insecure key so sessions survive restarts without any setup.
+# Prod fails loudly without a real key; dev gets a fixed insecure one.
 SECRET_KEY = env_str("SECRET_KEY", "")
 if DEBUG:
     SECRET_KEY = SECRET_KEY or "django-insecure-local-development-only-key"
@@ -79,8 +70,7 @@ LOCAL_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
-# shell_plus, show_urls and graph_models locally. Kept out of production, where
-# the extra surface buys nothing.
+# shell_plus, show_urls, graph_models — dev only.
 if DEBUG:
     INSTALLED_APPS.append("django_extensions")
 
@@ -147,8 +137,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# The manifest backend errors on any file collectstatic has not processed, which
-# is every file during development, so dev uses plain storage.
+# Dev uses plain storage; the manifest backend errors on unprocessed files.
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
@@ -174,8 +163,7 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
         "rest_framework.filters.SearchFilter",
     ),
-    # The browsable API is the fastest way to poke at endpoints by hand. It
-    # renders user-supplied content as HTML, so production is JSON only.
+    # Browsable API in dev only; it renders user content as HTML.
     "DEFAULT_RENDERER_CLASSES": (
         ("rest_framework.renderers.JSONRenderer", "rest_framework.renderers.BrowsableAPIRenderer")
         if DEBUG
@@ -188,7 +176,7 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ),
-    # Throttling locally just gets in the way of a fast edit-refresh loop.
+    # Effectively unthrottled in dev.
     "DEFAULT_THROTTLE_RATES": (
         {"anon": "10000/min", "user": "10000/min"}
         if DEBUG
@@ -231,7 +219,7 @@ SPECTACULAR_SETTINGS = {
 GOOGLE_CLIENT_ID = env_str("GOOGLE_CLIENT_ID", "")
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-# Vite's dev server moves ports when 5173 is taken, so dev allows the usual spread.
+# Dev allows the ports Vite falls back to when 5173 is taken.
 CORS_ALLOWED_ORIGINS = env_csv(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:5173,http://127.0.0.1:5173,"
@@ -249,9 +237,7 @@ CSRF_TRUSTED_ORIGINS = env_csv(
 CORS_ALLOW_CREDENTIALS = False
 
 # ── Channels ──────────────────────────────────────────────────────────────────
-# Redis fans WebSocket messages out across processes. Development uses the
-# in-memory layer so no Redis needs to be running; set USE_REDIS=true to
-# exercise the real fanout path before deploying.
+# Dev uses the in-memory layer; set USE_REDIS=true to test real Redis fanout.
 REDIS_URL = env_str("REDIS_URL", "redis://127.0.0.1:6379/0")
 if DEBUG and not env_bool("USE_REDIS", False):
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}

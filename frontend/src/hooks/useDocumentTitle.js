@@ -15,8 +15,7 @@ const SITE_NAME = 'Shimgen'
  * returning nothing falls back to the bare site name rather than rendering
  * "Shimgen · undefined".
  *
- * Every page reads "Shimgen · {page}", except a route whose handle has no
- * title — the home page — which reads just "Shimgen". Marketing-length titles were tried here
+ * Every page reads "Shimgen · {page}"; a handle with no title (home) reads "Shimgen". Marketing-length titles were tried here
  * and reverted: a tab strip with six tournaments open needs the page name
  * legible in ~20 characters, which a keyword-first headline cannot do.
  * Ranking copy lives in `handle.description` and in index.html instead.

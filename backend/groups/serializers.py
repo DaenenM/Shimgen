@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from accounts.serializers import PublicUserSerializer
 
-from .models import Player, SavedTeam
+from .models import Game, Player, SavedTeam
 
 
 class PlayerSerializer(serializers.ModelSerializer):
@@ -172,3 +172,11 @@ class SavedTeamSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+
+class GameSerializer(serializers.ModelSerializer):
+    """A preset game and its nicknames, for the new tournament form's suggestions."""
+
+    class Meta:
+        model = Game
+        fields = ("id", "name", "aliases")

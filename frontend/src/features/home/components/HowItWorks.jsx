@@ -1,8 +1,6 @@
 import { HowItWorksStep } from './HowItWorksStep'
 
-// The three steps from names to a finished tournament. Used by HomePage.jsx.
-// Aimed at first-timers: it answers "what would I actually do here?" before
-// the tool cards below get into specifics.
+// Three steps from names to a finished tournament. Used by HomePage.jsx.
 export function HowItWorks() {
   return (
     <section className="mt-16">

@@ -101,6 +101,9 @@ export const queryKeys = {
   savedTeams: {
     all: ['saved-teams'],
   },
+  games: {
+    all: ['games'],
+  },
   friends: {
     all: ['friends'],
     accepted: ['friends', 'accepted'],

@@ -27,7 +27,7 @@ class SpectatorView(RetrieveAPIView):
     lookup_field = "public_slug"
     # Same nested prefetches as the host view: a spectator renders the same
     # bracket, and this is the page strangers land on from a shared link.
-    queryset = Tournament.objects.select_related("mode", "created_by").prefetch_related(
+    queryset = Tournament.objects.select_related("game", "mode", "created_by").prefetch_related(
         "entrants",
         "entrants__players",
         "roles",

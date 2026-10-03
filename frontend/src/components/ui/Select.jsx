@@ -42,6 +42,8 @@ export function Select({
 
   const trigger = useRef(null)
   const list = useRef(null)
+  // Set on open and keyboard moves; hover never scrolls the list.
+  const reveal = useRef(false)
   const id = useId()
 
   const selectedIndex = options.findIndex((option) => option.value === value)
@@ -87,14 +89,23 @@ export function Select({
     }
   }, [open])
 
-  // Keep the keyboard's option in view as it moves through a long list.
+  // Keeps the active option in view by scrolling the list only (scrollIntoView also scrolled the page).
   useEffect(() => {
-    if (!open || active < 0) return
-    list.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' })
-  }, [open, active])
+    if (!open || active < 0 || !reveal.current) return
+
+    const box = list.current
+    const item = box?.querySelector(`[data-index="${active}"]`)
+    if (!box || !item) return
+    reveal.current = false
+
+    if (item.offsetTop < box.scrollTop) box.scrollTop = item.offsetTop
+    else if (item.offsetTop + item.offsetHeight > box.scrollTop + box.clientHeight)
+      box.scrollTop = item.offsetTop + item.offsetHeight - box.clientHeight
+  }, [open, active, position])
 
   function show() {
     if (disabled) return
+    reveal.current = true
     setActive(
       selectedIndex >= 0 && !options[selectedIndex].disabled ? selectedIndex : (enabled[0] ?? -1),
     )
@@ -113,6 +124,7 @@ export function Select({
     if (enabled.length === 0) return
     const at = enabled.indexOf(active)
     const next = at === -1 ? 0 : (at + delta + enabled.length) % enabled.length
+    reveal.current = true
     setActive(enabled[next])
   }
 
@@ -136,10 +148,12 @@ export function Select({
         break
       case 'Home':
         event.preventDefault()
+        reveal.current = true
         setActive(enabled[0] ?? -1)
         break
       case 'End':
         event.preventDefault()
+        reveal.current = true
         setActive(enabled[enabled.length - 1] ?? -1)
         break
       case 'Enter':

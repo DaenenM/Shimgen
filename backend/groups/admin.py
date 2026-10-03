@@ -18,8 +18,8 @@ class PlayerAdmin(admin.ModelAdmin):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug")
-    # A null group marks a global preset; this filter separates the two.
+    list_display = ("name", "slug", "is_preset")
+    list_filter = ("is_preset",)
     search_fields = ("name",)
     inlines = [GameModeInline]
 

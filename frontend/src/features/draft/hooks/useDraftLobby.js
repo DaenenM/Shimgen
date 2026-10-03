@@ -81,7 +81,6 @@ export function useDraftLobby(id) {
     // Invalidate the stale "no bracket yet" tournament cache from during the draft.
     // The host already gets a fresh copy via draft_complete's onSuccess; this covers everyone else.
     queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.detail(id) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.standings(id) })
 
     navigate(paths.tournament(id, tournament?.title), { replace: true })
   }, [draft?.completed_at, id, tournament?.title, navigate, queryClient])

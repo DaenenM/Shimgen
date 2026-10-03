@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { tournaments as tournamentsApi } from '@/api/endpoints'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
+
+import { eliminatedIds, standingsFor } from '../utils/standings'
 
 // A tournament, its standings, and the host's actions on it (start, rename, link board, cohosts).
 // Used by TournamentHeader.jsx and TournamentDetailPage.jsx.
@@ -20,11 +22,9 @@ export function useTournamentDetail(id) {
     queryFn: () => tournamentsApi.get(id),
   })
 
-  const { data: standings } = useQuery({
-    queryKey: queryKeys.tournaments.standings(id),
-    queryFn: () => tournamentsApi.standings(id),
-    enabled: Boolean(tournament),
-  })
+  // Derived from cached matches, so it moves the instant a result is clicked.
+  const standings = useMemo(() => standingsFor(tournament), [tournament])
+  const eliminated = useMemo(() => eliminatedIds(tournament), [tournament])
 
   // A bare-id URL rewrites to the named form; `replace` keeps it out of the back stack.
   const canonical = tournament ? paths.tournament(tournament.id, tournament.title) : null
@@ -35,8 +35,6 @@ export function useTournamentDetail(id) {
     }
   }, [canonical, location.pathname, navigate])
 
-  // Standings are computed from matches, never stored, so invalidating the detail
-  // key also covers standings (React Query matches by prefix).
   const refresh = () => queryClient.invalidateQueries({ queryKey: key })
 
   // Also invalidates the tournament list and boards — used where tournament state
@@ -46,9 +44,22 @@ export function useTournamentDetail(id) {
     queryClient.invalidateQueries({ queryKey: queryKeys.boards.all })
   }
 
+  // Patches the cached tournament on click and restores it if the request fails.
+  const patchDetail = (patch) => ({
+    onMutate: (vars) => {
+      const previous = queryClient.getQueryData(key)
+      if (previous) queryClient.setQueryData(key, patch(previous, vars))
+      return { previous }
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous)
+    },
+  })
+
   const start = useMutation({
     meta: { errorShown: true },
     mutationFn: () => tournamentsApi.start(id),
+    ...patchDetail((t) => ({ ...t, state: 'active' })),
     onSuccess: refreshAll,
   })
 
@@ -62,14 +73,7 @@ export function useTournamentDetail(id) {
   const rename = useMutation({
     meta: { errorShown: true },
     mutationFn: (title) => tournamentsApi.update(id, { title }),
-    onMutate: (title) => {
-      const previous = queryClient.getQueryData(key)
-      if (previous) queryClient.setQueryData(key, { ...previous, title })
-      return { previous }
-    },
-    onError: (_error, _title, context) => {
-      if (context?.previous) queryClient.setQueryData(key, context.previous)
-    },
+    ...patchDetail((t, title) => ({ ...t, title })),
     onSuccess: refreshAll,
   })
 
@@ -94,6 +98,10 @@ export function useTournamentDetail(id) {
   const removeCohost = useMutation({
     meta: { errorShown: true },
     mutationFn: (userId) => tournamentsApi.removeCohost(id, userId),
+    ...patchDetail((t, userId) => ({
+      ...t,
+      roles: (t.roles ?? []).filter((r) => r.role === 'host' || r.user?.id !== userId),
+    })),
     onSuccess: refresh,
   })
 
@@ -105,6 +113,7 @@ export function useTournamentDetail(id) {
   return {
     tournament,
     standings,
+    eliminated,
     isLoading,
     start,
     nextRound,

@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 
 import { spectate } from '@/api/endpoints'
 import { queryKeys } from '@/lib/queryClient'
 
+import { eliminatedIds, standingsFor } from '../utils/standings'
 import { useTournamentSocket } from './useTournamentSocket'
 
 // Public bracket + standings, kept live over a socket rather than polling.
@@ -15,11 +17,9 @@ export function useSpectatorBracket(publicSlug) {
     queryFn: () => spectate.get(publicSlug),
   })
 
-  const { data: standings } = useQuery({
-    queryKey: queryKeys.spectate.standings(publicSlug),
-    queryFn: () => spectate.standings(publicSlug),
-    enabled: Boolean(tournament),
-  })
+  // Derived from the bracket, so it refreshes with every socket nudge.
+  const standings = useMemo(() => standingsFor(tournament), [tournament])
+  const eliminated = useMemo(() => eliminatedIds(tournament), [tournament])
 
   // Socket groups are per tournament id (from the payload), not the URL slug.
   useTournamentSocket(
@@ -28,5 +28,5 @@ export function useSpectatorBracket(publicSlug) {
     { enabled: Boolean(tournament?.id) },
   )
 
-  return { tournament, standings, isLoading }
+  return { tournament, standings, eliminated, isLoading }
 }

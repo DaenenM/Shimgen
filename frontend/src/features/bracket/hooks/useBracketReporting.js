@@ -58,7 +58,6 @@ export function useBracketReporting(id, tournament) {
     async (operations) => {
       const fresh = await tournamentsApi.batchReport(id, operations)
       queryClient.setQueryData(queryKeys.tournaments.detail(id), fresh)
-      queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.standings(id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.all })
       // A linked board is updated server-side by the same request; invalidate
       // its cache too or it shows stale numbers for up to 2 minutes.
@@ -95,7 +94,6 @@ export function useBracketReporting(id, tournament) {
   useTournamentSocket(id, () => {
     if (hasPending()) return
     queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.detail(id) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.standings(id) })
   })
 
   // Moves the bracket now, queues the result to send with its neighbours.

@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 
 import { roster as rosterApi } from '@/api/endpoints'
+import { optimistic, patchById, removeById } from '@/lib/optimistic'
 import { queryKeys } from '@/lib/queryClient'
 
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -37,17 +38,20 @@ export function useRoster() {
     // Real delete: stats rows survive (SET_NULL), but PlayerRating is CASCADE,
     // so a deleted player's Elo history is gone even if the same name is re-added.
     mutationFn: (id) => rosterApi.remove(id),
-    onSuccess: invalidate,
+    ...optimistic(queryClient, queryKeys.roster.all, removeById),
   })
 
   const archiveOne = useMutation({
     mutationFn: (id) => rosterApi.archive(id),
-    onSuccess: invalidate,
+    ...optimistic(queryClient, queryKeys.roster.all, (data, id) =>
+      patchById(data, id, { archived: true }),
+    ),
   })
 
   const players = useMemo(() => {
     if (!isAuthenticated) return local.players
-    return unwrapList(data)
+    // Archived rows only appear here mid-optimistic-update; the server list excludes them.
+    return unwrapList(data).filter((p) => !p.archived)
   }, [isAuthenticated, local.players, data])
 
   // Remembers names just used. Signed in, the bulk endpoint de-dupes server-side.

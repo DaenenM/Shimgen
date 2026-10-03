@@ -24,7 +24,7 @@ export function TournamentDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
   const detail = useTournamentDetail(id)
-  const { tournament, standings, isLoading, actionError } = detail
+  const { tournament, standings, eliminated, isLoading, actionError } = detail
   const { syncError, saveState, onReport, onClear } = useBracketReporting(id, tournament)
 
   if (isLoading) return <SkeletonPage width="max-w-[92rem]" />
@@ -95,7 +95,7 @@ export function TournamentDetailPage() {
       {/* Standings and roster share the bottom row. */}
       <div className="mt-8 grid gap-6 sm:mt-10 lg:grid-cols-[20rem_1fr]">
         <StandingsSection rows={standings} />
-        <EntrantRoster entrants={tournament.entrants} />
+        <EntrantRoster entrants={tournament.entrants} eliminated={eliminated} />
       </div>
     </PageShell>
   )

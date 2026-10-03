@@ -92,7 +92,6 @@ export const queryKeys = {
     all: ['tournaments'],
     detail: (slug) => ['tournaments', slug],
     matches: (slug) => ['tournaments', slug, 'matches'],
-    standings: (slug) => ['tournaments', slug, 'standings'],
     draft: (slug) => ['tournaments', slug, 'draft'],
   },
   roster: {
@@ -112,7 +111,6 @@ export const queryKeys = {
   },
   spectate: {
     detail: (publicSlug) => ['spectate', publicSlug],
-    standings: (publicSlug) => ['spectate', publicSlug, 'standings'],
   },
   boards: {
     all: ['boards'],

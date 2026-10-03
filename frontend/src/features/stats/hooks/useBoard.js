@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { boards as boardsApi, friends as friendsApi } from '@/api/endpoints'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
+import { optimistic } from '@/lib/optimistic'
 import { queryKeys } from '@/lib/queryClient'
 import { paths } from '@/routes/paths'
 
@@ -72,23 +73,50 @@ export function useBoard(slug) {
     },
   })
 
-  // Every structural change is a request followed by a refetch.
+  // Adds need server ids, so they wait for the response and refetch.
   const change = (mutationFn, options = {}) => ({ mutationFn, onSuccess: refresh, ...options })
+  // Edits/removals patch the cached board on click, then refetch.
+  const edit = (mutationFn, patch) => ({
+    mutationFn,
+    ...optimistic(queryClient, key, (b, vars) => (b?.tables ? patch(b, vars) : b)),
+  })
 
   // Slug stays stable across a rename, so existing links keep working.
-  const renameBoard = useMutation(change((name) => boardsApi.update(slug, { name })))
+  const renameBoard = useMutation(
+    edit(
+      (name) => boardsApi.update(slug, { name }),
+      (b, name) => ({ ...b, name }),
+    ),
+  )
   const addTable = useMutation(change((payload) => boardsApi.addTable(slug, payload)))
-  const renameTable = useMutation(change(({ id, name }) => boardsApi.updateTable(id, { name })))
-  const removeTable = useMutation(change((id) => boardsApi.removeTable(id)))
+  const renameTable = useMutation(
+    edit(
+      ({ id, name }) => boardsApi.updateTable(id, { name }),
+      (b, { id, name }) => withTables(b, (t) => (t.id === id ? { ...t, name } : t)),
+    ),
+  )
+  const removeTable = useMutation(
+    edit(
+      (id) => boardsApi.removeTable(id),
+      (b, id) => ({ ...b, tables: b.tables.filter((t) => t.id !== id) }),
+    ),
+  )
 
-  // Swaps two tables' positions via two PATCHes sent together, refreshed once
-  // (refreshing after only the first would repaint mid-swap).
+  // Two PATCHes sent together; the cache swaps both positions at once.
   const moveTable = useMutation(
-    change(({ a, b }) =>
-      Promise.all([
-        boardsApi.updateTable(a.id, { position: b.position }),
-        boardsApi.updateTable(b.id, { position: a.position }),
-      ]),
+    edit(
+      ({ a, b }) =>
+        Promise.all([
+          boardsApi.updateTable(a.id, { position: b.position }),
+          boardsApi.updateTable(b.id, { position: a.position }),
+        ]),
+      (board, { a, b }) => ({
+        ...board,
+        tables: board.tables
+          .map((t) => (t.id === a.id ? { ...t, position: b.position } : t))
+          .map((t) => (t.id === b.id ? { ...t, position: a.position } : t))
+          .sort((x, y) => x.position - y.position || x.id - y.id),
+      }),
     ),
   )
 
@@ -96,21 +124,54 @@ export function useBoard(slug) {
     change(({ tableId, ...payload }) => boardsApi.addColumn(tableId, payload)),
   )
   const updateColumn = useMutation(
-    change(({ id, ...payload }) => boardsApi.updateColumn(id, payload)),
+    edit(
+      ({ id, ...payload }) => boardsApi.updateColumn(id, payload),
+      (b, { id, ...payload }) =>
+        withTables(b, (t) => ({
+          ...t,
+          columns: t.columns.map((c) => (c.id === id ? { ...c, ...payload } : c)),
+        })),
+    ),
   )
-  const removeColumn = useMutation(change((id) => boardsApi.removeColumn(id)))
+  const removeColumn = useMutation(
+    edit(
+      (id) => boardsApi.removeColumn(id),
+      (b, id) => withTables(b, (t) => ({ ...t, columns: t.columns.filter((c) => c.id !== id) })),
+    ),
+  )
 
   const addRows = useMutation(
     change(({ tableId, ...payload }) => boardsApi.addRows(tableId, payload)),
   )
-  const removeRow = useMutation(change((id) => boardsApi.removeRow(id)))
-  // Renaming/swapping/unlinking a row all keep its tallies; only `label` or `player` changes.
-  const updateRow = useMutation(change(({ id, ...payload }) => boardsApi.updateRow(id, payload)))
+  const removeRow = useMutation(
+    edit(
+      (id) => boardsApi.removeRow(id),
+      (b, id) => withTables(b, (t) => ({ ...t, rows: t.rows.filter((r) => r.id !== id) })),
+    ),
+  )
+  // Rename/swap/unlink keep tallies. Label shows at once; a new player link arrives with the refetch.
+  const updateRow = useMutation(
+    edit(
+      ({ id, ...payload }) => boardsApi.updateRow(id, payload),
+      (b, { id, label }) =>
+        label === undefined
+          ? b
+          : withTables(b, (t) => ({
+              ...t,
+              rows: t.rows.map((r) => (r.id === id ? { ...r, label } : r)),
+            })),
+    ),
+  )
 
   const addPerson = useMutation(
     change((userId) => boardsApi.addPerson(slug, userId), { meta: { errorShown: true } }),
   )
-  const removePerson = useMutation(change((userId) => boardsApi.removePerson(slug, userId)))
+  const removePerson = useMutation(
+    edit(
+      (userId) => boardsApi.removePerson(slug, userId),
+      (b, userId) => ({ ...b, people: (b.people ?? []).filter((p) => p.user !== userId) }),
+    ),
+  )
 
   const removeBoard = useMutation({
     mutationFn: () => boardsApi.remove(slug),
@@ -152,6 +213,11 @@ export function useBoard(slug) {
     addingTable: addTable.isPending,
     addPersonError: addPerson.error?.message,
   }
+}
+
+// Board with `fn` applied to each table.
+function withTables(board, fn) {
+  return { ...board, tables: board.tables.map(fn) }
 }
 
 // Board with one tally cell moved by `delta`, floored at zero like the server.

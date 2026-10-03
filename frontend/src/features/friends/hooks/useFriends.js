@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { unwrapList } from '@/api/client'
 import { friends as friendsApi } from '@/api/endpoints'
+import { editList, optimistic, removeById, sameKey } from '@/lib/optimistic'
 import { queryKeys } from '@/lib/queryClient'
 
 /** Accepted friends, requests both ways, and the actions on them. */
@@ -28,8 +30,26 @@ export function useFriends() {
     mutationFn: (handle) => friendsApi.request(handle.trim()),
     onSuccess: invalidate,
   })
-  const accept = useMutation({ mutationFn: friendsApi.accept, onSuccess: invalidate })
-  const remove = useMutation({ mutationFn: friendsApi.remove, onSuccess: invalidate })
+  // Accepting moves the request into friends on click.
+  const accept = useMutation({
+    mutationFn: friendsApi.accept,
+    ...optimistic(
+      queryClient,
+      queryKeys.friends.all,
+      (data, id, key, request) =>
+        sameKey(key, queryKeys.friends.accepted) && request
+          ? editList(data, (list) => [{ ...request, status: 'accepted' }, ...list])
+          : removeById(data, id),
+      {
+        prepare: (id) =>
+          unwrapList(queryClient.getQueryData(queryKeys.friends.pending)).find((r) => r.id === id),
+      },
+    ),
+  })
+  const remove = useMutation({
+    mutationFn: friendsApi.remove,
+    ...optimistic(queryClient, queryKeys.friends.all, removeById),
+  })
 
   const friends = accepted ?? []
   const incoming = pending ?? []

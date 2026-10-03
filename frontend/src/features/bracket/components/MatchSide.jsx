@@ -7,7 +7,7 @@ import { scoreFor } from '../utils/layout'
  * so without a fixed height the card grew or shrank the instant a name landed
  * in it, which read as a flicker on every click.
  */
-const ROW = 'relative flex h-11 items-center pr-3 pl-4'
+const ROW = 'relative flex h-9.5 items-center pr-3 pl-4'
 
 export function MatchSide({ match, side, canReport, onPick, seriesHint, tone }) {
   const entrantId = side === 'a' ? match.a : match.b

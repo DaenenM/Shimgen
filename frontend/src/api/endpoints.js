@@ -51,7 +51,6 @@ export const tournaments = {
   remove: (id) => api.delete(`/tournaments/${id}/`).then((r) => r.data),
 
   start: (id) => api.post(`/tournaments/${id}/start/`).then((r) => r.data),
-  standings: (id) => api.get(`/tournaments/${id}/standings/`).then((r) => r.data),
   nextRound: (id) => api.post(`/tournaments/${id}/next-round/`).then((r) => r.data),
   // A run of results in one request. Returns the whole bracket.
   batchReport: (id, operations) =>
@@ -90,7 +89,6 @@ export const tournaments = {
 
 export const spectate = {
   get: (publicSlug) => api.get(`/spectate/${publicSlug}/`).then((r) => r.data),
-  standings: (publicSlug) => api.get(`/spectate/${publicSlug}/standings/`).then((r) => r.data),
 }
 
 export const boards = {

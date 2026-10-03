@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { unwrapList } from '@/api/client'
 import { savedTeams as savedTeamsApi } from '@/api/endpoints'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { optimistic, patchById, removeById } from '@/lib/optimistic'
 import { queryKeys } from '@/lib/queryClient'
 
 // Saved teams CRUD. Used by SavedTeamsPage.jsx and SavedTeamPicker.jsx.
@@ -33,12 +34,18 @@ export function useSavedTeams() {
   const update = useMutation({
     meta: { errorShown: true },
     mutationFn: ({ id, ...payload }) => savedTeamsApi.update(id, payload),
-    onSuccess: invalidate,
+    // Name and logo show at once; member changes arrive with the refetch.
+    ...optimistic(queryClient, queryKeys.savedTeams.all, (data, { id, name, logo }) =>
+      patchById(data, id, {
+        ...(name !== undefined ? { name } : {}),
+        ...(logo !== undefined ? { logo } : {}),
+      }),
+    ),
   })
 
   const remove = useMutation({
     mutationFn: (id) => savedTeamsApi.remove(id),
-    onSuccess: invalidate,
+    ...optimistic(queryClient, queryKeys.savedTeams.all, removeById),
   })
 
   // unwrapList reads both paginated and unpaginated shapes, since this endpoint may change.

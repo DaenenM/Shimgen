@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { unwrapList } from '@/api/client'
 import { tournaments as tournamentsApi } from '@/api/endpoints'
+import { optimistic as optimisticEdit, toggleFavourite } from '@/lib/optimistic'
 import { queryKeys } from '@/lib/queryClient'
 
 const activeKey = [...queryKeys.tournaments.all, { archived: false }]
@@ -38,7 +39,7 @@ export function useTournamentList({ enabled = true } = {}) {
 
   const favourite = useMutation({
     mutationFn: (id) => tournamentsApi.favourite(id),
-    onSuccess: invalidate,
+    ...optimisticEdit(queryClient, queryKeys.tournaments.all, toggleFavourite),
   })
   // Optimistic update shared by archive/restore/delete: `apply(id)` edits the
   // cached lists on click; a failed request restores the snapshot taken first.

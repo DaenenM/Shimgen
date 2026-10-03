@@ -12,10 +12,18 @@ export function useProfileForm() {
   const [username, setUsername] = useState(user?.username ?? '')
   const [saved, setSaved] = useState(false)
 
+  // Navbar name updates on click; a refused username rolls it back.
   const save = useMutation({
     meta: { errorShown: true },
     mutationFn: () =>
       auth.updateMe({ display_name: displayName.trim(), username: username.trim() }),
+    onMutate: () => {
+      setUser({ ...user, display_name: displayName.trim(), username: username.trim() })
+      return { previous: user }
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) setUser(context.previous)
+    },
     onSuccess: (updated) => {
       setUser(updated)
       setSaved(true)

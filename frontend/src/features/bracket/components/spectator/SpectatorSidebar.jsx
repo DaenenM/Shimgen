@@ -8,8 +8,8 @@ export function SpectatorSidebar({ standings, className = '' }) {
   return (
     <aside className={`space-y-4 ${className}`}>
       <div className="glass-panel">
-        <div className="p-4">
-          <h3 className="mb-2 text-sm font-semibold">Standings</h3>
+        <div className="py-3">
+          <h3 className="mb-1 px-4 text-sm font-semibold">Standings</h3>
           <StandingsTable rows={standings} />
         </div>
       </div>

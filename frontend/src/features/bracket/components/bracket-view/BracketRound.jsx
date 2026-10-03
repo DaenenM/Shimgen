@@ -1,3 +1,4 @@
+import { SLOT_PAD } from '../../utils/layout'
 import { MatchCard } from '../MatchCard'
 import { RoundConnector } from './RoundConnector'
 
@@ -27,7 +28,7 @@ export function BracketRound({ matches, feeders, canReport, onReport, onClear, t
       <div className={`${size.card} flex shrink-0 flex-col`}>
         {matches.map(({ match, hidden }) => (
           // Equal-height share, centred — aligns each card with the midpoint of its feeders.
-          <div key={match.id} className="flex flex-1 items-center py-1.5">
+          <div key={match.id} className={`flex flex-1 items-center ${SLOT_PAD}`}>
             {!hidden && (
               <div className="w-full">
                 <MatchCard

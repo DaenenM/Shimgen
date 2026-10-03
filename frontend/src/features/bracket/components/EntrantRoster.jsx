@@ -4,7 +4,8 @@ import { teamTone } from '@/features/teams/utils/tone'
 // Card grid showing who's on each team, at the foot of the bracket. Used by
 // TournamentDetailPage.jsx and SpectatorPage.jsx — entrant labels are per-event
 // nicknames (plan §3), so this is how people remember who's actually on "Blue Shells".
-export function EntrantRoster({ entrants }) {
+// `eliminated`: ids derived from cached matches, so cards grey out on click (falls back to the server flag).
+export function EntrantRoster({ entrants, eliminated }) {
   if (!entrants?.length) return null
 
   // Solo entrants carry no useful roster: the label already is the player.
@@ -29,11 +30,12 @@ export function EntrantRoster({ entrants }) {
           // Same scale as the generator, keyed off the same position, so a team
           // keeps the colour it was given when it was drawn.
           const tone = teamTone(index)
+          const out = eliminated ? eliminated.has(entrant.id) : entrant.eliminated
 
           return (
             <li
               key={entrant.id}
-              className={`glass-panel overflow-hidden ${entrant.eliminated ? 'opacity-50' : ''}`}
+              className={`glass-panel overflow-hidden ${out ? 'opacity-50' : ''}`}
               style={{ borderTopColor: tone.edge }}
             >
               {/* Team colour as a gradient wash, matching the team generator. */}
@@ -53,7 +55,7 @@ export function EntrantRoster({ entrants }) {
                   </span>
 
                   <h3
-                    className={`min-w-0 flex-1 truncate text-sm font-semibold sm:text-base ${entrant.eliminated ? 'line-through' : ''}`}
+                    className={`min-w-0 flex-1 truncate text-sm font-semibold sm:text-base ${out ? 'line-through' : ''}`}
                   >
                     {entrant.label}
                   </h3>
@@ -82,7 +84,7 @@ export function EntrantRoster({ entrants }) {
                   <p className="text-base-content/50 text-sm italic">No players listed</p>
                 )}
 
-                {entrant.eliminated && <p className="text-base-content/50 text-xs">Eliminated</p>}
+                {out && <p className="text-base-content/50 text-xs">Eliminated</p>}
               </div>
             </li>
           )

@@ -84,13 +84,16 @@ export function roundLabel(roundNo, totalRounds, section = 'main', displayNo = r
 // property, and letting phone width shrink with depth used to put a 28-entrant losers bracket at
 // four unreadable columns. Only `sm:` steps down with depth.
 // Lives here, not in BracketView, so the component file stays Fast-Refresh-safe (one export).
+// Vertical padding around every card slot. Symmetric, so connector lines still meet card centres.
+export const SLOT_PAD = 'py-3'
+
 const SIZES = {
   // Four columns or fewer: a quarterfinal onward, which fits comfortably.
-  roomy: { card: 'w-40 sm:w-64', gap: 'w-4 sm:w-16', arm: 'w-2 sm:w-8' },
+  roomy: { card: 'w-40 sm:w-60', gap: 'w-4 sm:w-14', arm: 'w-2 sm:w-7' },
   // Five columns — the winners bracket of a 17-32 entrant draw.
-  compact: { card: 'w-40 sm:w-48', gap: 'w-4 sm:w-10', arm: 'w-2 sm:w-5' },
+  compact: { card: 'w-40 sm:w-46', gap: 'w-4 sm:w-9', arm: 'w-2 sm:w-4.5' },
   // Six or more, which is where a losers bracket of that size lands.
-  tight: { card: 'w-40 sm:w-40', gap: 'w-4 sm:w-8', arm: 'w-2 sm:w-4' },
+  tight: { card: 'w-40 sm:w-36', gap: 'w-4 sm:w-7', arm: 'w-2 sm:w-3.5' },
 }
 
 // Per section, not per tournament: winners/losers are independent scrollers with
@@ -98,6 +101,31 @@ const SIZES = {
 export function sizeFor(columnCount) {
   if (columnCount >= 6) return SIZES.tight
   if (columnCount === 5) return SIZES.compact
+  return SIZES.roomy
+}
+
+// One section's drawable columns: phantoms marked hidden, dead rounds dropped, sized to fit.
+// Used by BracketSection.jsx and DoubleEliminationLayout.jsx.
+export function sectionColumns(matches, section) {
+  const rounds = toRounds(matches, section)
+  const totalRounds = rounds.length ? rounds[rounds.length - 1].roundNo : 0
+
+  // Hidden rather than removed, so each round keeps the slot count its feeders expect.
+  const columns = rounds
+    .map((round) => ({
+      ...round,
+      matches: round.matches.map((match) => ({ match, hidden: isPhantom(match, matches) })),
+    }))
+    .filter((round) => round.matches.some((slot) => !slot.hidden))
+
+  return { columns, totalRounds, size: sizeFor(columns.length) }
+}
+
+// Size for the combined double-elimination grid (brackets + finals columns), stepped by
+// what fits a ~1400px page: up to 4 roomy, up to 6 compact, then tight.
+export function gridSizeFor(totalColumns) {
+  if (totalColumns > 6) return SIZES.tight
+  if (totalColumns > 4) return SIZES.compact
   return SIZES.roomy
 }
 

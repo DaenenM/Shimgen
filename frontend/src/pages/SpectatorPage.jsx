@@ -18,7 +18,7 @@ const LIST_FORMATS = new Set(['rr', 'swiss'])
 // this view can't drift out of sync with the host's.
 export function SpectatorPage() {
   const { publicSlug } = useParams()
-  const { tournament, standings, isLoading } = useSpectatorBracket(publicSlug)
+  const { tournament, standings, eliminated, isLoading } = useSpectatorBracket(publicSlug)
 
   if (isLoading) return <SkeletonPage width="max-w-[92rem]" />
 
@@ -56,7 +56,7 @@ export function SpectatorPage() {
         </div>
       </div>
 
-      <EntrantRoster entrants={tournament.entrants} />
+      <EntrantRoster entrants={tournament.entrants} eliminated={eliminated} />
     </PageShell>
   )
 }

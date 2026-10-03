@@ -1696,7 +1696,7 @@ describe('drag to scroll', () => {
 describe('bracket sizing by depth', () => {
   // Laptop widths only: the phone width is one value across every tier now, so
   // the depth stepping these tests check lives entirely in the `sm:` tokens.
-  const REM = { 'w-64': 16, 'w-48': 12, 'w-40': 10 }
+  const REM = { 'w-60': 15, 'w-46': 11.5, 'w-36': 9 }
   const rem = (token, prefix) => {
     const match = token.split(' ').find((part) => part.startsWith(prefix))
     return REM[match.replace(`${prefix}`, 'w-')]
@@ -1707,7 +1707,7 @@ describe('bracket sizing by depth', () => {
     // The laptop half is what "full size" means now: every tier shares one
     // phone width, because fitting two columns is a property of the viewport
     // rather than of how deep the draw is.
-    expect(sizeFor(4).card).toBe('w-40 sm:w-64')
+    expect(sizeFor(4).card).toBe('w-40 sm:w-60')
   })
 
   it('fits about two columns on a phone at every depth', () => {
@@ -1750,7 +1750,7 @@ describe('bracket sizing by depth', () => {
     // the elbow short of the card or running past it.
     for (const count of [3, 5, 6, 12]) {
       const { gap, arm } = sizeFor(count)
-      const widths = (token) => token.split(' ').map((part) => Number(part.match(/\d+/)[0]))
+      const widths = (token) => token.split(' ').map((part) => Number(part.match(/\d+(\.\d+)?/)[0]))
 
       const [gapBase, gapWide] = widths(gap)
       const [armBase, armWide] = widths(arm)
@@ -2133,11 +2133,13 @@ describe('friend suggestions', () => {
 describe('standings podium', () => {
   const show = (rows) => render(<StandingsTable rows={rows} />)
 
-  // The number cell carries the medal edge, so it is the row's own marker.
+  // The rank badge carries the medal colour, so it stands in for the row.
   const rowFor = (container, label) =>
-    [...container.querySelectorAll('tbody tr')].find((tr) => tr.textContent.includes(label))
+    [...container.querySelectorAll('ol li')]
+      .find((li) => li.textContent.includes(label))
+      ?.querySelector('span')
 
-  const tinted = (tr) => tr.getAttribute('style')?.includes('background-color')
+  const tinted = (badge) => badge.getAttribute('style')?.includes('background-color')
 
   it('gives the top three a tint and leaves the rest plain', () => {
     const { container } = show([
@@ -2276,5 +2278,96 @@ describe('saved roster ordering', () => {
     ])
 
     expect(namesInOrder(container)).toEqual(['Adam', 'zoe'])
+  })
+})
+
+describe('BracketView with a grand final', () => {
+  const m = (id, bracket, round_no, extra = {}) => ({
+    id,
+    bracket,
+    round_no,
+    position: 0,
+    a: null,
+    b: null,
+    a_label: null,
+    b_label: null,
+    winner: null,
+    score: {},
+    best_of: 1,
+    wins_needed: 1,
+    next_match_win: null,
+    next_match_lose: null,
+    ...extra,
+  })
+
+  // 2-round winners, 1 losers match, grand final (30) and reset (31).
+  const bracket = (resetExtra = {}) => [
+    m(1, 'main', 1, {
+      a: 1,
+      b: 2,
+      a_label: 'Ann',
+      b_label: 'Bo',
+      next_match_win: 3,
+      next_match_lose: 10,
+    }),
+    m(2, 'main', 1, {
+      a: 3,
+      b: 4,
+      a_label: 'Cy',
+      b_label: 'Di',
+      next_match_win: 3,
+      next_match_lose: 10,
+    }),
+    m(3, 'main', 2, { next_match_win: 30 }),
+    m(10, 'losers', 1, { next_match_win: 30 }),
+    m(30, 'final', 3, { next_match_win: 31 }),
+    m(31, 'final', 4, resetExtra),
+  ]
+
+  const resetCell = (container) =>
+    [...container.querySelectorAll('[title], div')].find(
+      (el) => el.className.includes?.('col-start-5') && el.className.includes('row-start-3'),
+    )
+
+  it('draws winners, losers and both finals in one grid', () => {
+    const { container } = render(<BracketView matches={bracket()} canReport={false} />)
+
+    expect(container.querySelectorAll('section')).toHaveLength(1)
+    expect(container.textContent).toContain('Winners bracket')
+    expect(container.textContent).toContain('Losers bracket')
+    expect(container.textContent).toContain('Grand final')
+    expect(container.textContent).toContain('Bracket reset')
+  })
+
+  it('greys the reset out until the losers-side finalist forces it', () => {
+    const idle = render(<BracketView matches={bracket()} canReport={false} />)
+    expect(resetCell(idle.container).className).toContain('grayscale')
+    idle.unmount()
+
+    const live = render(
+      <BracketView
+        matches={bracket({ a: 1, b: 4, a_label: 'Ann', b_label: 'Di' })}
+        canReport={false}
+      />,
+    )
+    expect(resetCell(live.container).className).not.toContain('grayscale')
+  })
+})
+
+describe('standings shared ranks', () => {
+  it('labels a shared place T-something and a lone one plainly', () => {
+    render(
+      <StandingsTable
+        rows={[
+          { entrant_id: 1, label: 'Solo', placement: 1 },
+          { entrant_id: 2, label: 'Twin A', placement: 2 },
+          { entrant_id: 3, label: 'Twin B', placement: 2 },
+        ]}
+      />,
+    )
+    const badges = [...document.querySelectorAll('ol li > span:first-child')].map(
+      (b) => b.textContent,
+    )
+    expect(badges).toEqual(['1', 'T2', 'T2'])
   })
 })

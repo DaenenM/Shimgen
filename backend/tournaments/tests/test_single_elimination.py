@@ -375,19 +375,13 @@ def test_third_place_loser_is_not_double_eliminated():
 # ── Placements ────────────────────────────────────────────────────────────────
 
 
-def test_nobody_is_first_before_the_tournament_is_won():
-    """
-    A fresh bracket has no champion. Reporting every entrant as 1st — which is
-    what happens if "reached round 1" is treated as a finishing position — reads
-    as though everybody won.
-    """
+def test_a_fresh_bracket_has_no_standings():
+    """Before any match is played there's nothing to rank, not eight joint winners."""
     from tournaments.services.standings import elimination_placements
 
     tournament, _ = build(5)
 
-    places = elimination_placements(tournament)
-
-    assert 1 not in places.values()
+    assert elimination_placements(tournament) == {}
 
 
 def test_a_first_round_bye_does_not_crown_a_champion():

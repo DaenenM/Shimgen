@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { unwrapList } from '@/api/client'
 import { roster as rosterApi } from '@/api/endpoints'
+import { optimistic, patchById, removeById } from '@/lib/optimistic'
 import { queryKeys } from '@/lib/queryClient'
 
 // Roster page data: every saved player (including archived) and actions on them.
@@ -23,17 +24,19 @@ export function useRosterManager() {
     mutationFn: (names) => rosterApi.bulk(names),
     onSuccess: invalidate,
   })
+  const setArchived = (archived) => (data, id) => patchById(data, id, { archived })
+
   const archive = useMutation({
     mutationFn: (id) => rosterApi.archive(id),
-    onSuccess: invalidate,
+    ...optimistic(queryClient, queryKeys.roster.all, setArchived(true)),
   })
   const restore = useMutation({
     mutationFn: (id) => rosterApi.restore(id),
-    onSuccess: invalidate,
+    ...optimistic(queryClient, queryKeys.roster.all, setArchived(false)),
   })
   const remove = useMutation({
     mutationFn: (id) => rosterApi.remove(id),
-    onSuccess: invalidate,
+    ...optimistic(queryClient, queryKeys.roster.all, removeById),
   })
 
   const players = unwrapList(data)

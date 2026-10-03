@@ -177,6 +177,15 @@ def elimination_placements(tournament) -> dict[int, int]:
     """
     reached: dict[int, tuple] = {}
 
+    played = (
+        tournament.matches.filter(winner__isnull=False)
+        .exclude(a__isnull=True)
+        .exclude(b__isnull=True)
+    )
+    # Nothing played yet: no standings, rather than everyone tied for 1st.
+    if not played.exists():
+        return {}
+
     # Every appearance counts, including a slot whose opponent is undecided:
     # ignoring the round an entrant has already advanced into would tie a
     # finalist with the entrant they knocked out in round one.
@@ -200,9 +209,7 @@ def elimination_placements(tournament) -> dict[int, int]:
                 match.b_id if match.winner_id == match.a_id else match.a_id,
                 _depth_of(match),
             )
-            for match in tournament.matches.filter(winner__isnull=False)
-            .exclude(a__isnull=True)
-            .exclude(b__isnull=True)
+            for match in played
         )
         if reached.get(loser) == depth
     }
@@ -221,19 +228,15 @@ def elimination_placements(tournament) -> dict[int, int]:
         # separates them.
         depth = (reached[entrant_id], entrant_id in beaten)
 
-        # Only the actual champion takes 1st. Without the None guard a bracket
-        # with no results reports every entrant as 1st — they have all "reached"
-        # round one — which reads as though everybody won.
+        # The champion takes 1st outright once there is one.
         if winner is not None and entrant_id == winner:
             result[entrant_id] = 1
             previous_depth, position = None, 1
             continue
 
         if depth != previous_depth:
-            # Offset by one while the tournament is unfinished: 1st belongs to
-            # the champion alone, so the deepest survivors are joint 2nd until
-            # somebody actually wins it.
-            position = index if winner is not None else index + 1
+            # Mid-tournament the deepest survivors share 1st (shown as T1).
+            position = index
             previous_depth = depth
 
         result[entrant_id] = position
